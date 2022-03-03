@@ -1,135 +1,233 @@
 #!/usr/bin/env python
 
-import rospy 
-from std_msgs.msg import String
-from mavsdk import System
-from mavsdk.mission import MissionItem, MissionPlan
-import asyncio 
-# Based on https://github.com/mavlink/MAVSDK-Python/blob/main/examples/telemetry_takeoff_and_land.py
+import rospy
+from mavros_msgs.msg import State, WaypointReached, Waypoint, WaypointList
+from mavros_msgs.srv import CommandBool, SetMode, WaypointPush
+from sensor_msgs.msg import NavSatFix, Imu
+from geometry_msgs.msg import PoseStamped
+from pymavlink import mavutil
 
-async def run():
-    boat = System()
-    print('Attempting to connect to boat...')
-    await boat.connect(system_address='serial:///dev/ttyTHS2:921600')
-    async for state in boat.core.connection_state():
-        if state.is_connected:
-            print('Connected to boat!')
-            break
-    
-    print_gps_task = asyncio.ensure_future(print_gps(boat))
-    print_imu_task = asyncio.ensure_future(print_imu(boat))
-    print_heading_task = asyncio.ensure_future(print_heading(boat))
-    print_health_task = asyncio.ensure_future(print_health(boat))
-    print_battery_task = asyncio.ensure_future(print_battery(boat))
-    running_tasks = [print_gps_task, print_imu_task, print_heading_task, print_health_task, print_battery_task]
+from arcturus_pilot.msg import Waypoint
 
-    # print("Arming boat...")
-    # await boat.action.arm()
-    # print("Armed boat!")
+from six.moves import xrange
 
-    # print("Waiting 5 seconds...")
-    # await asyncio.sleep(5)
-    # print("Waited 5 seconds!")
+class WaypointPilot():
+    def __init__(self):
+        self.state = State()
+        self.imu = Imu()
+        self.global_position = NavSatFix()
+        self.local_position = PoseStamped()
+        self.set_arming_srv = None
+        self.set_mode_srv = None
 
-    # print("Disarming boat...")
-    # await boat.action.disarm()
-    # print("Dismared boat!")
-    
-async def print_gps(boat):
-    """Prints the GPS location when it changes"""
-    previous_gps_info = None
-    
-    async for gps_info in boat.telemetry.gps_info():
-        if gps_info != previous_gps_info:
-            previous_gps_info = gps_info
-            print(f"GPS info: {gps_info}")
-    
-async def print_imu(boat):
-    """Prints the GPS location when it changes"""
-    
-    previous_imu = None
-    async for imu in boat.telemetry.imu():
-        if imu != previous_imu:
-            previous_imu = imu
-            print(f"IMU: {imu}")
+        self.waypoints = []
+        self.current_order = 0
+        self.mission_item_reached = -1
 
-async def print_heading(boat):
-    """Prints the heading of the boat when it changes"""
-    previous_heading = None
-    
-    async for heading in boat.telemetry.heading():
-        if heading != previous_heading:
-            previous_heading = heading
-            print(f"Heading: {heading}")
+    def run(self):
+        rospy.init_node('pilot', anonymous=True)
 
-async def print_health(boat):
-    """Prints the health of the various sensors when it changes"""
-    previous_health = None
-
-    async for health in boat.telemetry.health():
-        if health != previous_health:
-            previous_health = health
-            print(f"Health: {health}")
-
-async def print_battery(boat):
-    """Prints the battery when it changes"""
-
-    previous_battery_remaining_percent = None
-    async for battery in boat.telemetry.battery():
-        if battery.remaining_percent != previous_battery_remaining_percent:
-            previous_battery_remaining_percent = battery.remaining_percent
-            print(f"Battery: {battery.remaining_percent}")
-
-def make_mission_item(latitude, longitude, is_fly_through=True, speed=float('nan'), loiter_time=float('nan'), acceptance_radius=float('nan')):
-    """Creates a mission item for a mission plan based on given parameters"""
-    # Not sure if relative_altitude should be 0 or float('nan')
-    # Not sure if speed = -1 or float('nan') makes the speed not change between between waypoints?
-    # Documentation: http://mavsdk-python-docs.s3-website.eu-central-1.amazonaws.com/plugins/mission.html
-
-    return MissionItem(latitude, longitude, float('nan'), speed, is_fly_through, float('nan'), float('nan'), 
-        MissionItem.CameraAction.NONE, loiter_time, float('nan'), acceptance_radius, float('nan'), float('nan'))
-
-async def wait_mission_complete(boat):
-    """"Function that returns only when the boat has finished its current mission"""
-    previous_mission_progress = None
-
-    async for mission_progress in boat.mission.mission_progress():
-        if mission_progress.current == total:
+        service_timeout = 30
+        rospy.loginfo("waiting for ROS services")
+        try:
+            rospy.wait_for_service('mavros/cmd/arming', service_timeout)
+            rospy.wait_for_service('mavros/set_mode', service_timeout)
+            rospy.wait_for_service('mavros/mission/push', service_timeout)
+            rospy.loginfo("ROS services are up")
+        except rospy.ROSException:
+            rospy.logerr('failed to connect to services')
             return
-        if mission_progress != previous_mission_progress:
-            previous_mission_progress = mission_progress
-            print(f"Mission progress: {mission_progress.current}/{mission_progress.total}")
         
-async def follow_waypoints(boat, waypoints):
-    """Follows a series of waypoints given as [latitude, longitude] waypoints and waits until it ends"""
-    mission_items = []
+        self.set_arming_srv = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
+        self.set_mode_srv = rospy.ServiceProxy('mavros/set_mode', SetMode)
+        self.push_waypoints_srv = rospy.ServiceProxy('mavros/mission/push', WaypointPush)
+        
+        rospy.Subscriber('mavros/state', State, self.state_callback)
+        rospy.Subscriber('mavros/imu/data', Imu, self.imu_callback)
+        rospy.Subscriber('mavros/global_position/global', NavSatFix, self.global_position_callback)
+        rospy.Subscriber('mavros/local_position/pose', PoseStamped, self.local_position_callback)
+        self.sub_topics_ready = {
+            key: False
+            for key in ['state', 'imu', 'global_pos', 'local_pos']
+        }
 
-    for i, (latitude, longitude) in enumerate(waypoints):
-        mission_items.append(make_mission_item(latitude, longitude, i == len(waypoints) - 1))
+        rospy.Subscriber('mavros/mission/reached', WaypointReached, self.mission_item_reached_callback)
 
-    mission_plan = MissionPlan(mission_items)
+        rospy.Subscriber('waypoint', Waypoint, self.waypoint_callback)
 
-    print('Uploading mission to boat...')
-    await boat.mission.upload_mission(mission_plan)
-    print('Uploaded mission to boat!')
+        self.wait_for_topics(60)
+        self.set_mode("Auto", 5)
+        self.set_arm(True, 5)
 
-    print('Starting mission...')
-    await boat.mission.start_mission()
-    print('Started mission!')
+        rate = rospy.Rate(10) # frequency in Hz at which we can update next waypoint
+        while not rospy.is_shutdown():
+            # send everything in queue to the controller
+            if len(self.waypoints != 0):
+                self.push_waypoints(self.waypoints, 10)
+                self.waypoints = []
+            rate.sleep()
 
-    print('Waiting for mission to end...')
-    termination_task = asyncio.ensure_future(wait_mission_complete(boat))
-    await termination_task
-    print('Mission ended!')
+        self.set_arm(False, 5)
 
-def main():
-    rospy.init_node('pilot', anonymous= True)
-    asyncio.ensure_future(run())
-    asyncio.get_event_loop().run_forever()
-    rate = rospy.Rate(10) #Frequency in Hz at which we can update next waypoint
-    while not rospy.is_shutdown():
-        # Check topic and send waypoint command 
-        rate.sleep()
+    def wait_for_topics(self, timeout):
+        rospy.loginfo("waiting for subscribed topics to be ready")
+        loop_freq = 1 # Hz
+        rate = rospy.Rate(loop_freq)
+        for i in xrange(timeout * loop_freq):
+            if all(value for value in self.sub_topics_ready.values()):
+                rospy.loginfo("subscribed topics ready in {0} seconds".format(i / loop_freq))
+                break
+            try:
+                rate.sleep()
+            except rospy.ROSException as e:
+                rospy.logerr(e)
+
+    def state_callback(self, data):
+        if self.state.armed != data.armed:
+            rospy.loginfo("armed state changed from {0} to {1}".format(
+                self.state.armed, data.armed))
+
+        if self.state.connected != data.connected:
+            rospy.loginfo("connected changed from {0} to {1}".format(
+                self.state.connected, data.connected))
+
+        if self.state.mode != data.mode:
+            rospy.loginfo("mode changed from {0} to {1}".format(
+                self.state.mode, data.mode))
+
+        if self.state.system_status != data.system_status:
+            rospy.loginfo("system_status changed from {0} to {1}".format(
+                mavutil.mavlink.enums['MAV_STATE'][
+                    self.state.system_status].name, mavutil.mavlink.enums[
+                        'MAV_STATE'][data.system_status].name))
+
+        self.state = data
+
+        # mavros publishes a disconnected state message on init
+        if not self.sub_topics_ready['state'] and data.connected:
+            self.sub_topics_ready['state'] = True
+
+    def imu_callback(self, data):
+        self.imu = data
+        if not self.sub_topics_ready['imu']:
+            self.sub_topics_ready['imu'] = True
+
+    def global_position_callback(self, data):
+        self.global_position = data
+        if not self.sub_topics_ready['global_position']:
+            self.sub_topics_ready['global_position'] = True
+
+    def local_position_callback(self, data):
+        self.local_position = data
+        if not self.sub_topics_ready['local_pos']:
+            self.sub_topics_ready['local_pos'] = True
+
+    def waypoint_callback(self, waypoint):
+        adjusted_order = waypoint.order - self.current_order
+        if adjusted_order < 0:
+            return
+        while len(self.waypoints < adjusted_order):
+            self.waypoints.append(None)
+        self.waypoints[adjusted_order] = self.create_waypoint(waypoint.x, waypoint.y)
+
+    def create_waypoint(waypoint_x, waypoint_y):
+        """
+        Frame values:
+            uint8 FRAME_GLOBAL = 0
+            uint8 FRAME_LOCAL_NED = 1
+            uint8 FRAME_MISSION = 2
+            uint8 FRAME_GLOBAL_REL_ALT = 3
+            uint8 FRAME_LOCAL_ENU = 4
+
+        Command values:
+            uint16 NAV_WAYPOINT = 16
+            uint16 NAV_LOITER_UNLIM = 17
+            uint16 NAV_LOITER_TURNS = 18
+            uint16 NAV_LOITER_TIME = 19
+            uint16 NAV_RETURN_TO_LAUNCH = 20
+            uint16 NAV_LAND = 21
+            uint16 NAV_TAKEOFF = 22
+
+        https://mavlink.io/en/messages/common.html#MAV_CMD_NAV_WAYPOINT
+        Params for waypoint:
+            1: hold time in seconds
+            2: accept radius in m
+            3: pass radius in m
+            4: yaw n deg (use NaN to use current system)
+        """
+        return Waypoint(frame=1, command=16, is_current=False, autocontinue=True, param1=0.0, param2=0.25,
+            param3=0, param4=float('nan'), x_lat=waypoint_x, y_lon=waypoint_y, z_alt=0)
+
+    def mission_item_reached_callback(self, data):
+        if self.mission_item_reached != data.wp_seq:
+            rospy.loginfo("mission item reached: {0}".format(data.wp_seq))
+            self.mission_item_reached = data.wp_seq
+
+    def set_arm(self, arm, timeout):
+        rospy.loginfo("setting FCU arm: {0}".format(arm))
+        loop_freq = 1 # Hz
+        rate = rospy.Rate(loop_freq)
+        for i in xrange(timeout * loop_freq):
+            if self.state.armed == arm:
+                rospy.loginfo("set arm success in {0} seconds".format(i / loop_freq))
+                break
+            else:
+                try:
+                    res = self.set_arming_srv(arm)
+                    if not res.success:
+                        rospy.logerr("failed to send arm command")
+                except rospy.ServiceException as e:
+                    rospy.logerr(e)
+            
+            try:
+                rate.sleep()
+            except rospy.RosException as e:
+                rospy.logerr(e)
+    
+    def set_mode(self, mode, timeout):
+        rospy.loginfo("setting FCU mode: {0}".format(mode))
+        loop_freq = 1 # Hz
+        rate = rospy.Rate(loop_freq)
+        for i in xrange(timeout * loop_freq):
+            if self.state.mode == mode:
+                rospy.loginfo("set mode success in {0} seconds".format(i / loop_freq))
+                break
+            else:
+                try:
+                    res = self.set_mode_srv(0, mode)
+                    if not res.success:
+                        rospy.logerr("failed to send mode command")
+                except rospy.ServiceException as e:
+                    rospy.logerr(e)
+            
+            try:
+                rate.sleep()
+            except rospy.RosException as e:
+                rospy.logerr(e)
+
+    def push_waypoints(self, waypoints, timeout):
+        rospy.loginfo("pushing waypoints")
+        loop_freq = 1 # Hz
+        rate = rospy.Rate(loop_freq)
+        for i in xrange(timeout * loop_freq):
+            try:
+                res = self.push_waypoints_srv(self.current_order, waypoints)
+                if res.success:
+                    self.current_order += len(waypoints)
+                    break
+                else:
+                    rospy.logerr("failed to send waypoints")
+            except rospy.ServiceException as e:
+                rospy.logerr(e)
+        
+            try:
+                rate.sleep()
+            except rospy.RosException as e:
+                rospy.logerr(e)
 
 if __name__ == '__main__':
-    main()
+    try:
+        pilot = WaypointPilot()
+        pilot.run()
+    except rospy.ROSInterruptException:
+        pass
