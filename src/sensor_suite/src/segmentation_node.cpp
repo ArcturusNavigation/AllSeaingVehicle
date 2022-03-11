@@ -1,5 +1,9 @@
+#include "cv_bridge/cv_bridge.h"
+#include "opencv2/mat.hpp"
 #include "ros/ros.h"
-#include "vision_msgs/BoundingBox2DArray.msg"
+#include "sensor_msgs/Image.h"
+#include "vision_msgs/BoundingBox2D.h"
+#include "vision_msgs/BoundingBox2DArray.h"
 
 class SegmentationNode {
  protected:
