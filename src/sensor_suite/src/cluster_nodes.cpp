@@ -6,6 +6,9 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "tf/transform_listener.h"
 
+// Projection code based on personal work for 6.172
+// Clustering based on following tutorial:
+// https://pcl.readthedocs.io/en/latest/region_growing_segmentation.html#region-growing-segmentation
 class ClusterNode {
  protected:
   ros::NodeHandle nh_;
@@ -38,6 +41,12 @@ class ClusterNode {
 
   void ClusterNode::pcCallback(
       const sensor_msgs::PointCloud2ConstPtr& pcl_msg) {
+    pcl::PCLPointCloud<pcl::PointXYZ> cloud;
+    pcl::fromROSMsg(*input, cloud);
+    pcl::PCLPointCloud2 clustered_cloud;
+
+    pcl::SACSEgmentation<pcl::PointXYZ> seg;
+
     for (auto& point : pcl_msg->points) {
       vector point = {point.x, point.y, point.z};
       pixel px = ClusterNode::projectPointToImage(
