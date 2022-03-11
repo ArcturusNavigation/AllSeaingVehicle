@@ -2,8 +2,8 @@
 #include "opencv2/mat.hpp"
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
-#include "vision_msgs/BoundingBox2D.h"
-#include "vision_msgs/BoundingBox2DArray.h"
+#include "sensor_suite/LabeledBoundingBox2D.h"
+#include "sensor_suite/LabeledBoundingBox2DArray.h"
 
 class SegmentationNode {
  protected:
@@ -12,14 +12,14 @@ class SegmentationNode {
   ros::Publisher box_pub_;
 
  private:
-  BoundBox2DArray box_array_;
+  LabeledBoundingBox2DArray box_array_;
   cv::Mat img_;
 
  public:
   SegmentationNode::SegmentationNode(ros::NodeHandle n) : nh_(n) {
     img_sub_ = nh_.subscribe("/sensor_suite/image", 1,
                              &SegmentationNode::imgCallback, this);
-    box_pub_ = nh_.advertise<vision_msgs::BoundingBox2DArray>(
+    box_pub_ = nh_.advertise<LabeledBoundingBox2DArray>(
         "/sensor_suite/bounding_boxes", 1);
   }
   SegmentationNode::imgCallback(const sensor_msgs::ImageConstPtr& msg) {
@@ -65,34 +65,34 @@ class SegmentationNode {
     for (int i = 0; i < contours_red.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_red[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 0, 255), 2);
-      vision_msgs::BoundingBox2D box;
+      LabeledBoundingBox2D box;
       box.x = rect.x;
       box.y = rect.y;
       box.width = rect.width;
       box.height = rect.height;
-      box.label = "red";
+      box.label = 1;  // TODO: Change to Enum
       box_array_.boxes.push_back(box);
     }
     for (int i = 0; i < contours_green.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_green[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 255, 0), 2);
-      vision_msgs::BoundingBox2D box;
+      LabeledBoundingBox2D box;
       box.x = rect.x;
       box.y = rect.y;
       box.width = rect.width;
       box.height = rect.height;
-      box.label = "green";
+      box.label = 2;
       box_array_.boxes.push_back(box);
     }
     for (int i = 0; i < contours_yellow.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_yellow[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 255, 255), 2);
-      vision_msgs::BoundingBox2D box;
+      LabeledBoundingBox2D box;
       box.x = rect.x;
       box.y = rect.y;
       box.width = rect.width;
       box.height = rect.height;
-      box.label = "yellow";
+      box.label = 3;
       box_array_.boxes.push_back(box);
     }
     box_pub_.publish(box_array_);

@@ -69,11 +69,10 @@ class ClusterNode {
     reg.setCuravtureThreshold(1.0);
 
     // Initiate subscribers and publishers
-    using sync_pol =
-        message_filters::sync_policies::ApproximateTime<sensor_msgs::Image,
-                                                        sensor_msgs::Image>;
-    message_filters::Synchronizer<sync_pol> sync(sync_pol(10), cam0_sub,
-                                                 cam1_sub);
+    using sync_pol = message_filters::sync_policies::ApproximateTime<
+        sensor_msgs::PointCloud2, vision_msgs::BoundingBox2DArray>;
+    message_filters::Synchronizer<sync_pol> sync(sync_pol(10), pcl_sub_,
+                                                 bbox_sub_);
 
     sync.registerCallback(&ClusterNode::pcCallback);
     object_pub_ =
@@ -87,9 +86,9 @@ class ClusterNode {
     buffer_->header.frame_id = "world";
   }
 
-  void ClusterNode::pcCallback(
-      const sensor_msgs::PointCloud2ConstPtr& pcl_msg) {
-    pcl::fromROSMsg(*input, *buffer);
+  void ClusterNode::pcCallback(const sensor_msgs::PointCloud2ConstPtr& pcl_msg,
+                               const BoundingBox2DArrayConstPtr& bbox_msg) {
+    pcl::fromROSMsg(*pcl_msg, *buffer);
     pcl::removeNaNFromPointCloud(*buffer, *indices);
 
     reg.setInputCloud(buffer_);
@@ -118,7 +117,7 @@ class ClusterNode {
             1920, )  // Image sized based on
                      // https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
             // TO-DO Checkbbounding box to determine how to assign cluster
-            int label = ClusterNode::getRegion(px);
+            int label = ClusterNode::getRegion(px, bbox_msg);
         if (label != 0) {
           centroid.get(centroid_point);
           object_pub_.publish(sensor_suite::Object(centroid_point, label,
@@ -130,7 +129,21 @@ class ClusterNode {
     return;
   }
   // TODO: Finish this function
-  int ClusterNode::getRegion(pixel px) { return 0; }
+
+  // Loops through bounding boxes and returns the label of the bounding box
+  int ClusterNode::getRegion(pixel px,
+                             const BoundingBox2DArrayConstPtr& bbox_msg) {
+    for (int i = 0; i < bbox_msg->boxes.size(); i++) {
+      float min_x = bbox_msg->boxes[i].x - bbox_msg->boxes[i].width / 2;
+      float max_x = bbox_msg->boxes[i].x + bbox_msg->boxes[i].width / 2;
+      float min_y = bbox_msg->boxes[i].y - bbox_msg->boxes[i].height / 2;
+      float max_y = bbox_msg->boxes[i].y + bbox_msg->boxes[i].height / 2;
+      if (px.x > min_x && px.x < max_x && px.y > min_y && px.y < max_y) {
+        return bbox_msg->boxes[i].label;
+      }
+    }
+    return 0;
+  }
   // Based of this piazza post: https://piazza.com/class/kt40btbwj942gr?cid=528
   vector ClusterNode::projectPointToPlane(vector point) {
     // center image frame
