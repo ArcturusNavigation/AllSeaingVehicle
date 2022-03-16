@@ -22,12 +22,12 @@ class LaserScanProcessorNode {
  public:
   LaserScanProcessorNode::LaserScanProcessorNode(ros::NodeHandle n)
       : nh_(n),
-        laser_sub_(n_, 'commercial/raw_scan', 10),
-        laser_notifier_(laser_sub_, listener_, "base_link", 10) {
+        laser_sub_(nh_, 'commercial/raw_scan', 10),
+        laser_notifier_(laser_sub_, tf_, "base_link", 10) {
     laser_notifier_.registerCallback(
         boost::bind(&LaserScanToPointCloud::scanCallback, this, _1));
     laser_notifier_.setTolerance(ros::Duration(0.01));  // TODO: Explain
-        pc_pub = n_.advertise(sensor_msgs::PointCloud>("/sensor_suite/raw_cloud", 1);
+        pc_pub_ = n_.advertise(sensor_msgs::PointCloud("/sensor_suite/raw_cloud", 1);
   }
   LaserScanProcessorNode::scanCallback(
       const sensor_msgs::LaserScan::ConstPtr& scan_in) {

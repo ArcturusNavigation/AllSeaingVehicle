@@ -1,5 +1,4 @@
 #include "cv_bridge/cv_bridge.h"
-#include "opencv2/mat.hpp"
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
 #include "sensor_suite/LabeledBoundingBox2D.h"
@@ -12,17 +11,17 @@ class SegmentationNode {
   ros::Publisher box_pub_;
 
  private:
-  LabeledBoundingBox2DArray box_array_;
+  sensor_suite::LabeledBoundingBox2DArray box_array_;
   cv::Mat img_;
 
  public:
-  SegmentationNode::SegmentationNode(ros::NodeHandle n) : nh_(n) {
+  SegmentationNode(ros::NodeHandle n) : nh_(n) {
     img_sub_ = nh_.subscribe("/sensor_suite/image", 1,
                              &SegmentationNode::imgCallback, this);
     box_pub_ = nh_.advertise<LabeledBoundingBox2DArray>(
         "/sensor_suite/bounding_boxes", 1);
   }
-  SegmentationNode::imgCallback(const sensor_msgs::ImageConstPtr& msg) {
+  void SegmentationNode::imgCallback(const sensor_msgs::ImageConstPtr& msg) {
     cv_bridge::CvImagePtr cv_ptr;
     try {
       cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
@@ -65,7 +64,7 @@ class SegmentationNode {
     for (int i = 0; i < contours_red.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_red[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 0, 255), 2);
-      LabeledBoundingBox2D box;
+      sensor_suite::LabeledBoundingBox2D box;
       box.x = rect.x;
       box.y = rect.y;
       box.width = rect.width;
@@ -76,7 +75,7 @@ class SegmentationNode {
     for (int i = 0; i < contours_green.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_green[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 255, 0), 2);
-      LabeledBoundingBox2D box;
+      sensor_suite::LabeledBoundingBox2D box;
       box.x = rect.x;
       box.y = rect.y;
       box.width = rect.width;
@@ -87,7 +86,7 @@ class SegmentationNode {
     for (int i = 0; i < contours_yellow.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_yellow[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 255, 255), 2);
-      LabeledBoundingBox2D box;
+      sensor_suite::LabeledBoundingBox2D box;
       box.x = rect.x;
       box.y = rect.y;
       box.width = rect.width;

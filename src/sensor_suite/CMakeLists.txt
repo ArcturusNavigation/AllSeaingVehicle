@@ -12,6 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   std_msgs
+  genmsg
+  message_generation 
+  pcl_ros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -47,12 +50,13 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+# Generate messages in the 'msg' folder
+add_message_files(
+  FILES
+  LabeledBoundingBox2D.msg
+  LabeledBoundingBox2DArray.msg
+  Object.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -69,10 +73,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   sensor_msgs#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  sensor_msgs#   std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -106,7 +110,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES sensor_suite
-#  CATKIN_DEPENDS roscpp rospy sensor_msgs std_msgs
+ CATKIN_DEPENDS message_runtime #roscpp rospy sensor_msgs std_msgs pcl_ros pcl
 #  DEPENDS system_lib
 )
 
@@ -205,3 +209,20 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+
+add_executable(segmentation src/segmentation_node.cpp)
+target_link_libraries(segmentation ${catkin_LIBRARIES})
+add_dependencies(segmentation sensor_suite_generate_messages_cpp )
+
+find_package(OpenCV)
+include_directories(${OpenCV_INCLUDE_DIRS})
+target_link_libraries(segmentation ${OpenCV_LIBRARIES})
+
+add_executable(processor src/processor_nodes.cpp)
+target_link_libraries(processor ${catkin_LIBRARIES})
+add_dependencies(processor sensor_suite_generate_messages_cpp)
+
+add_executable(cluster src/cluster_nodes.cpp)
+target_link_libraries(cluster ${catkin_LIBRARIES})
+add_dependencies(cluster sensor_suite_generate_messages_cpp )

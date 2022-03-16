@@ -1,3 +1,3 @@
-Point point 
-int label
-int num_points 
+geometry_msgs/Point point 
+int8 label
+int32 num_points 

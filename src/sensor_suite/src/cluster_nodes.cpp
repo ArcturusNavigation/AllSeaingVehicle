@@ -1,3 +1,5 @@
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
 #include <pcl/common/centroid.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/extract_indices.h>
@@ -14,8 +16,9 @@
 #include "pcl_ros/point_cloud.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "sensor_suite/LabeledBoundingBox2D.h"
+#include "sensor_suite/LabeledBoundingBox2DArray.h"
 #include "tf/transform_listener.h"
-#include "vision_msgs/BoundingBox2DArray.msg"
 
 // Projection code based on personal work for 6.172
 // Clustering based on following tutorial:
@@ -34,7 +37,7 @@ class ClusterNode {
   tf::TransformListener listener_;
 
   pcl::PointCloud<pcl::PointXYZ> buffer_;
-  pcl::IndicesPtr indices;
+  pcl::IndicesPtr indices_;
   pcl::search::Search<pcl::PointXYZ>::Ptr tree_;
   pcl::PointCloud<pcl::Normal>::Ptr normals_;
 
@@ -51,9 +54,10 @@ class ClusterNode {
  public:
   ClusterNode(ros::NodeHandle n)
       : nh_(n),
-        indices(new std::vector<int>),
+        indices_(new std::vector<int>),
         pcl_sub_(nh_, "/sensor_suite/raw_cloud", 1),
         bbox_sub_(nh_, "/sensor_suite/bounding_boxes", 1),
+        buffer_(pcl::PointCloud<pcl::PointXYZ>()),
   {
     // calculate basis vectors for projections
     vector up = newVector(0, 0, 1);
@@ -62,15 +66,14 @@ class ClusterNode {
     v = qcross(w, u);
     e = newVector(800 * f, 100 * f, 0);
     viewDirection = newVector(-1, 0, 0);
-    normal_estimator.setSearchMethod(tree);
-    normal_estimator.setInputCloud(cloud);
+    normal_estimator.setSearchMethod(tree_);
     normal_estimator.setKSearch(50);
     reg.setSmoothnessThreshold(3.0 / 180.0 * M_PI);
-    reg.setCuravtureThreshold(1.0);
+    reg.setCurvatureThreshold(1.0);
 
     // Initiate subscribers and publishers
     using sync_pol = message_filters::sync_policies::ApproximateTime<
-        sensor_msgs::PointCloud2, vision_msgs::BoundingBox2DArray>;
+        sensor_msgs::PointCloud2, sensor_suite::LabeledBoundingBox2DArray>;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), pcl_sub_,
                                                  bbox_sub_);
 
@@ -80,17 +83,17 @@ class ClusterNode {
 
     // Clear point_cloud pointers
     // TODO: Move to initialization List
-    buffer_.reset(new pcl::PointCloud<pcl::PointXYZ>);
     normals_.reset(new pcl::PointCloud<pcl::Normal>);
     tree_.reset(new pcl::search::KdTree<pcl::PointXYZ>);
-    buffer_->header.frame_id = "world";
+    buffer_.header.frame_id = "world";
   }
 
-  void ClusterNode::pcCallback(const sensor_msgs::PointCloud2ConstPtr& pcl_msg,
-                               const BoundingBox2DArrayConstPtr& bbox_msg) {
-    pcl::fromROSMsg(*pcl_msg, *buffer);
-    pcl::removeNaNFromPointCloud(*buffer, *indices);
-
+  void ClusterNode::pcCallback(
+      const sensor_msgs::PointCloud2ConstPtr& pcl_msg,
+      const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
+    pcl::fromROSMsg(*pcl_msg, *buffer_);
+    pcl::removeNaNFromPointCloud(*buffer_, *indices_);
+    normal_estimator.setInputCloud(buffer_);
     reg.setInputCloud(buffer_);
     extract.setInputCloud(buffer_);
     reg.SetIndices(indices_);
@@ -110,7 +113,10 @@ class ClusterNode {
       pcl::CentroidPoint<pcl::PointXYZ> centroid;
       pcl::PointXYZ centroid_point;
       for (int i = 0; i < cloud->points.size(); i++) {
-        vector p = cloud->points[i];
+        vector p;
+        p.x = cloud->points[i].x;
+        p.y = cloud->points[i].y;
+        p.z = cloud->points[i].z;
         centroid.add(cloud->points[i]);
         pixel px = ClusterNode::projectPointToImage(
             point, 1080,
@@ -131,14 +137,15 @@ class ClusterNode {
   // TODO: Finish this function
 
   // Loops through bounding boxes and returns the label of the bounding box
-  int ClusterNode::getRegion(pixel px,
-                             const BoundingBox2DArrayConstPtr& bbox_msg) {
+  int ClusterNode::getRegion(
+      pixel px,
+      const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
     for (int i = 0; i < bbox_msg->boxes.size(); i++) {
       float min_x = bbox_msg->boxes[i].x - bbox_msg->boxes[i].width / 2;
       float max_x = bbox_msg->boxes[i].x + bbox_msg->boxes[i].width / 2;
       float min_y = bbox_msg->boxes[i].y - bbox_msg->boxes[i].height / 2;
       float max_y = bbox_msg->boxes[i].y + bbox_msg->boxes[i].height / 2;
-      if (px.x > min_x && px.x < max_x && px.y > min_y && px.y < max_y) {
+      if (px.u > min_x && px.u < max_x && px.v > min_y && px.v < max_y) {
         return bbox_msg->boxes[i].label;
       }
     }
@@ -157,22 +164,22 @@ class ClusterNode {
   pixel ClusterNode::projectPointToImage(vector point, int image_height,
                                          int image_width) {
     vector projection = projectPointToPlane(point);
-    double index_i = -(double)projection.y + (double)(width / 2.0);
-    double inde_j = (double)projection.z + (double)(height / 2.0f);
+    double index_i = -(double)projection.y + (double)(image_width / 2.0);
+    double index_j = (double)projection.z + (double)(image_height / 2.0f);
     if (index_i < 0) {
       index_i = -1;
-    } else if (index_i > width) {
-      index_i = width + 1;
+    } else if (index_i > image_width) {
+      index_i = image_width + 1;
     }
     if (index_j < 0) {
       index_j = -1;
-    } else if (index_j > height) {
-      index_j = height + 1;
+    } else if (index_j > image_height) {
+      index_j = image_height + 1;
     }
-    Pixel projection_pixel;
-    projectionPixel.u = index_i;
-    projectionPixel.v = index_j;
-    return projectionPixel
+    pixel projection_pixel;
+    projection_pixel.u = index_i;
+    projection_pixel.v = index_j;
+    return projection_pixel;
   }
 };
 
