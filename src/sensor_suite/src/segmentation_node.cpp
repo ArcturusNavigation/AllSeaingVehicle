@@ -16,12 +16,11 @@ class SegmentationNode {
 
  public:
   SegmentationNode(ros::NodeHandle n) : nh_(n) {
-    img_sub_ = nh_.subscribe("/sensor_suite/image", 1,
-                             &SegmentationNode::imgCallback, this);
-    box_pub_ = nh_.advertise<LabeledBoundingBox2DArray>(
+    img_sub_ = nh_.subscribe("/sensor_suite/image", 1, &imgCallback, this);
+    box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>(
         "/sensor_suite/bounding_boxes", 1);
   }
-  void SegmentationNode::imgCallback(const sensor_msgs::ImageConstPtr& msg) {
+  void imgCallback(const sensor_msgs::ImageConstPtr& msg) {
     cv_bridge::CvImagePtr cv_ptr;
     try {
       cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);

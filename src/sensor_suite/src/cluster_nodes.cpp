@@ -1,4 +1,5 @@
 #include <message_filters/subscriber.h>
+#include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/time_synchronizer.h>
 #include <pcl/common/centroid.h>
 #include <pcl/features/normal_3d.h>
@@ -31,7 +32,8 @@ class ClusterNode {
  protected:
   ros::NodeHandle nh_;
   message_filters::Subscriber<pcl::PointCloud<pcl::PointXYZ>> pcl_sub_;
-  message_filters::Subscriber<vision_msgs::BoundingBox2DArray> bbox_sub_;
+  message_filters::Subscriber<sensor_suite::LabeledBoundingBox2DArray>
+      bbox_sub_;
   ros::Publisher pcl_pub_;
   ros::Publisher object_pub_;
   tf::TransformListener listener_;
@@ -43,7 +45,7 @@ class ClusterNode {
 
   pcl::ExtractIndices<pcl::PointXYZ> extract;
   pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
-  pcl::SACSEgmentation<pcl::PointXYZ> seg;
+  pcl::SACSegmentation<pcl::PointXYZ> seg;
   pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
   pcl::PointCloud<pcl::PointXYZ>::iterator iter;
 
@@ -57,9 +59,11 @@ class ClusterNode {
         indices_(new std::vector<int>),
         pcl_sub_(nh_, "/sensor_suite/raw_cloud", 1),
         bbox_sub_(nh_, "/sensor_suite/bounding_boxes", 1),
-        buffer_(pcl::PointCloud<pcl::PointXYZ>()),
-  {
+        buffer_(pcl::PointCloud<pcl::PointXYZ>()) {
     // calculate basis vectors for projections
+
+    // 1080 = image height
+    float f = (float)1080 / 1000.;
     vector up = newVector(0, 0, 1);
     w = scale(1 / qsize(viewDirection), viewDirection);
     u = scale(1 / qsize(qcross(up, w)), qcross(up, w));
@@ -77,7 +81,7 @@ class ClusterNode {
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), pcl_sub_,
                                                  bbox_sub_);
 
-    sync.registerCallback(&ClusterNode::pcCallback);
+    sync.registerCallback(&pcCallback);
     object_pub_ =
         nh_.advertise<sensor_suite::Object>("/sensor_suite/object", 1);
 
@@ -88,17 +92,17 @@ class ClusterNode {
     buffer_.header.frame_id = "world";
   }
 
-  void ClusterNode::pcCallback(
+  void pcCallback(
       const sensor_msgs::PointCloud2ConstPtr& pcl_msg,
       const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
-    pcl::fromROSMsg(*pcl_msg, *buffer_);
-    pcl::removeNaNFromPointCloud(*buffer_, *indices_);
+    pcl::fromROSMsg(*pcl_msg, buffer_);
+    pcl::removeNaNFromPointCloud(buffer_, indices_);
     normal_estimator.setInputCloud(buffer_);
     reg.setInputCloud(buffer_);
     extract.setInputCloud(buffer_);
-    reg.SetIndices(indices_);
+    reg.setIndices(indices_);
 
-    normal_estimator.compute(*normals);
+    normal_estimator.compute(*normals_);
     std::vector<pcl::PointIndices> clusters;
     reg.extract(clusters);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(
@@ -118,12 +122,11 @@ class ClusterNode {
         p.y = cloud->points[i].y;
         p.z = cloud->points[i].z;
         centroid.add(cloud->points[i]);
-        pixel px = ClusterNode::projectPointToImage(
-            point, 1080,
-            1920, )  // Image sized based on
-                     // https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
-            // TO-DO Checkbbounding box to determine how to assign cluster
-            int label = ClusterNode::getRegion(px, bbox_msg);
+        pixel px = projectPointToImage(
+            p, 1080,
+            1920);  // Image sized based on
+                    // https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
+        int label = getRegion(px, bbox_msg);
         if (label != 0) {
           centroid.get(centroid_point);
           object_pub_.publish(sensor_suite::Object(centroid_point, label,
@@ -137,7 +140,7 @@ class ClusterNode {
   // TODO: Finish this function
 
   // Loops through bounding boxes and returns the label of the bounding box
-  int ClusterNode::getRegion(
+  int getRegion(
       pixel px,
       const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
     for (int i = 0; i < bbox_msg->boxes.size(); i++) {
@@ -161,8 +164,7 @@ class ClusterNode {
     vector projectedPoint = qsubtract(e, scale(scalar, qsubtract(point, e)));
     return projectedPoint;
   }
-  pixel ClusterNode::projectPointToImage(vector point, int image_height,
-                                         int image_width) {
+  pixel projectPointToImage(vector point, int image_height, int image_width) {
     vector projection = projectPointToPlane(point);
     double index_i = -(double)projection.y + (double)(image_width / 2.0);
     double index_j = (double)projection.z + (double)(image_height / 2.0f);

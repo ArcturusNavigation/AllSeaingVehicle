@@ -20,23 +20,19 @@ class LaserScanProcessorNode {
   ros::Publisher pc_pub_;  // Point cloud Publisher
 
  public:
-  LaserScanProcessorNode::LaserScanProcessorNode(ros::NodeHandle n)
-      : nh_(n),
-        laser_sub_(nh_, 'commercial/raw_scan', 10),
-        laser_notifier_(laser_sub_, tf_, "base_link", 10) {
-    laser_notifier_.registerCallback(
-        boost::bind(&LaserScanToPointCloud::scanCallback, this, _1));
-    laser_notifier_.setTolerance(ros::Duration(0.01));  // TODO: Explain
-        pc_pub_ = n_.advertise(sensor_msgs::PointCloud("/sensor_suite/raw_cloud", 1);
+  LaserScanProcessorNode(ros::NodeHandle n) : nh_(n) {
+    laser_sub_ = nh_.subscribe("/commercial/raw_scan", 10,
+                               &LaserScanProcessorNode::laserCallback, this);
+    pc_pub_ =
+        nh_.advertise(sensor_msgs::PointCloud, "/sensor_suite/raw_cloud", 1);
   }
-  LaserScanProcessorNode::scanCallback(
-      const sensor_msgs::LaserScan::ConstPtr& scan_in) {
+  void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan_in) {
     sensor_msgs::PointCloud cloud;
     // It is best practice to still wrap transformation in try catch statement
     // even with messagefilter
     try {
-      projector.transformLaserScanToPointCloud("base_link", *scan_in, cloud,
-                                               listener);
+      projector_.transformLaserScanToPointCloud("base_link", *scan_in, cloud,
+                                                listener);
     } catch (tf::TransformException& e) {
       std::cout << e.what();
       return;
