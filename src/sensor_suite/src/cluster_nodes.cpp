@@ -1,6 +1,7 @@
+#include <bits/stdc++.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
-#include <message_filters/time_synchronizer.h>
+#include <message_filters/synchronizer.h>
 #include <pcl/common/centroid.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/extract_indices.h>
@@ -8,9 +9,11 @@
 #include <pcl/search/kdtree.h>
 #include <pcl/search/search.h>
 #include <pcl/segmentation/region_growing.h>
+#include <pcl/segmentation/sac_segmentation.h>
 #include <sensor_suite/Object.h>
 
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include "geometry.h"
@@ -31,14 +34,14 @@
 class ClusterNode {
  protected:
   ros::NodeHandle nh_;
-  message_filters::Subscriber<pcl::PointCloud<pcl::PointXYZ>> pcl_sub_;
+  message_filters::Subscriber<sensor_msgs::PointCloud2> pcl_sub_;
   message_filters::Subscriber<sensor_suite::LabeledBoundingBox2DArray>
       bbox_sub_;
   ros::Publisher pcl_pub_;
   ros::Publisher object_pub_;
   tf::TransformListener listener_;
 
-  pcl::PointCloud<pcl::PointXYZ> buffer_;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr buffer_;
   pcl::IndicesPtr indices_;
   pcl::search::Search<pcl::PointXYZ>::Ptr tree_;
   pcl::PointCloud<pcl::Normal>::Ptr normals_;
@@ -52,6 +55,11 @@ class ClusterNode {
  private:
   vector e, viewDirection;
   vector w, u, v;
+  typedef message_filters::sync_policies::ApproximateTime<
+      sensor_msgs::PointCloud2, sensor_suite::LabeledBoundingBox2DArray>
+      SyncPolicy;
+  typedef message_filters::Synchronizer<SyncPolicy> Sync;
+  boost::shared_ptr<Sync> sync_;
 
  public:
   ClusterNode(ros::NodeHandle n)
@@ -59,7 +67,7 @@ class ClusterNode {
         indices_(new std::vector<int>),
         pcl_sub_(nh_, "/sensor_suite/raw_cloud", 1),
         bbox_sub_(nh_, "/sensor_suite/bounding_boxes", 1),
-        buffer_(pcl::PointCloud<pcl::PointXYZ>()) {
+        buffer_(new pcl::PointCloud<pcl::PointXYZ>) {
     // calculate basis vectors for projections
 
     // 1080 = image height
@@ -76,12 +84,9 @@ class ClusterNode {
     reg.setCurvatureThreshold(1.0);
 
     // Initiate subscribers and publishers
-    using sync_pol = message_filters::sync_policies::ApproximateTime<
-        sensor_msgs::PointCloud2, sensor_suite::LabeledBoundingBox2DArray>;
-    message_filters::Synchronizer<sync_pol> sync(sync_pol(10), pcl_sub_,
-                                                 bbox_sub_);
-
-    sync.registerCallback(&pcCallback);
+    sync_.reset(new Sync(SyncPolicy(10), pcl_sub_, bbox_sub_));
+    sync_->registerCallback(
+        boost::bind(&ClusterNode::pcCallback, this, _1, _2));
     object_pub_ =
         nh_.advertise<sensor_suite::Object>("/sensor_suite/object", 1);
 
@@ -89,14 +94,15 @@ class ClusterNode {
     // TODO: Move to initialization List
     normals_.reset(new pcl::PointCloud<pcl::Normal>);
     tree_.reset(new pcl::search::KdTree<pcl::PointXYZ>);
-    buffer_.header.frame_id = "world";
+    buffer_->header.frame_id = "world";
   }
 
   void pcCallback(
       const sensor_msgs::PointCloud2ConstPtr& pcl_msg,
       const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
-    pcl::fromROSMsg(*pcl_msg, buffer_);
-    pcl::removeNaNFromPointCloud(buffer_, indices_);
+    pcl::fromROSMsg(*pcl_msg, *buffer_);
+    // pcl::removeNaNFromPointCloud(buffer_);  TODO // Source:
+    // https://github.com/daviddoria/Examples/blob/master/c%2B%2B/PCL/Filters/RemoveNaNFromPointCloud/RemoveNaNFromPointCloud.cpp
     normal_estimator.setInputCloud(buffer_);
     reg.setInputCloud(buffer_);
     extract.setInputCloud(buffer_);
@@ -112,7 +118,9 @@ class ClusterNode {
     int min_count = 0;  // minimum points in cluster labelled as one object to
                         // avoid nosie TODO: Use
     for (auto cluster : clusters) {
-      extract.setIndices(cluster);
+      pcl::PointIndices::Ptr cluster_indices(new pcl::PointIndices);
+      cluster_indices->indices = cluster.indices;
+      extract.setIndices(cluster_indices);
       extract.filter(*cloud);
       pcl::CentroidPoint<pcl::PointXYZ> centroid;
       pcl::PointXYZ centroid_point;
@@ -129,8 +137,11 @@ class ClusterNode {
         int label = getRegion(px, bbox_msg);
         if (label != 0) {
           centroid.get(centroid_point);
-          object_pub_.publish(sensor_suite::Object(centroid_point, label,
-                                                   cloud->points.size()));
+          sensor_suite::Object new_object;
+          // new_object.point = centroid_point; TODO: Finish
+          new_object.label = label;
+          new_object.num_points = cloud->points.size();
+          object_pub_.publish(new_object);
           break;
         }
       }
@@ -155,7 +166,7 @@ class ClusterNode {
     return 0;
   }
   // Based of this piazza post: https://piazza.com/class/kt40btbwj942gr?cid=528
-  vector ClusterNode::projectPointToPlane(vector point) {
+  vector projectPointToPlane(vector point) {
     // center image frame
     vector normalVector = qcross(u, v);
 

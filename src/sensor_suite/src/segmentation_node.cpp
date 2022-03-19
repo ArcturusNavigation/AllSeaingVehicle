@@ -16,7 +16,8 @@ class SegmentationNode {
 
  public:
   SegmentationNode(ros::NodeHandle n) : nh_(n) {
-    img_sub_ = nh_.subscribe("/sensor_suite/image", 1, &imgCallback, this);
+    img_sub_ = nh_.subscribe("/sensor_suite/image", 1,
+                             &SegmentationNode::imgCallback, this);
     box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>(
         "/sensor_suite/bounding_boxes", 1);
   }

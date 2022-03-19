@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
   genmsg
   message_generation 
   pcl_ros
+  cv_bridge
+  laser_geometry
 )
 
 ## System dependencies are found with CMake's conventions
@@ -211,13 +213,13 @@ include_directories(
 # catkin_add_nosetests(test)
 
 
-add_executable(segmentation src/segmentation_node.cpp)
-target_link_libraries(segmentation ${catkin_LIBRARIES})
-add_dependencies(segmentation sensor_suite_generate_messages_cpp )
-
 find_package(OpenCV)
 include_directories(${OpenCV_INCLUDE_DIRS})
+
+add_executable(segmentation src/segmentation_node.cpp)
 target_link_libraries(segmentation ${OpenCV_LIBRARIES})
+target_link_libraries(segmentation ${catkin_LIBRARIES})
+add_dependencies(segmentation sensor_suite_generate_messages_cpp )
 
 add_executable(processor src/processor_nodes.cpp)
 target_link_libraries(processor ${catkin_LIBRARIES})
