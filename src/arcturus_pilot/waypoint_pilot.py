@@ -5,7 +5,7 @@ import tf
 from mavros_msgs.msg import State, Waypoint
 from mavros_msgs.srv import CommandBool, SetMode
 from sensor_msgs.msg import NavSatFix, Imu
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped
 from pymavlink import mavutil
 
 from arcturus_pilot.msg import Waypoint
@@ -13,6 +13,7 @@ from arcturus_pilot.msg import Waypoint
 from six.moves import xrange
 
 ACCEPTANCE_RADIUS = 0.2
+USE_FAKE_GPS_FROM_ZED = True
 
 class WaypointPilot():
     def __init__(self):
@@ -54,6 +55,10 @@ class WaypointPilot():
         rospy.Subscriber('waypoint', Waypoint, self.waypoint_callback)
 
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
+
+        if USE_FAKE_GPS_FROM_ZED:
+            rospy.Subscriber('zed/zed_node/pose_with_covariance', PoseWithCovarianceStamped, self.zed_pose_callback)
+            self.send_fake_gps = rospy.Publisher('mavros/mocap/pose_cov', PoseWithCovarianceStamped, queue_size=5)
 
         self.wait_for_topics(60)
         self.set_mode("Guided", 5)
@@ -141,6 +146,9 @@ class WaypointPilot():
         while len(self.waypoints < adjusted_order):
             self.waypoints.append(None)
         self.waypoints[adjusted_order] = (waypoint.x, waypoint.y, waypoint.heading)
+
+    def zed_pose_callback(self, pose_with_cov):
+        self.send_fake_gps.publish(pose_with_cov)
 
     def set_arm(self, arm, timeout):
         rospy.loginfo("setting FCU arm: {0}".format(arm))
