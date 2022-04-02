@@ -8,6 +8,7 @@ class SegmentationNode {
  protected:
   ros::NodeHandle nh_;
   ros::Subscriber img_sub_;
+  ros::Publisher img_pub_;
   ros::Publisher box_pub_;
 
  private:
@@ -16,8 +17,9 @@ class SegmentationNode {
 
  public:
   SegmentationNode(ros::NodeHandle n) : nh_(n) {
-    img_sub_ = nh_.subscribe("/sensor_suite/image", 1,
+    img_sub_ = nh_.subscribe("/zed/rgb/image_rect_color", 1,
                              &SegmentationNode::imgCallback, this);
+    img_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/image", 1);
     box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>(
         "/sensor_suite/bounding_boxes", 1);
   }
@@ -60,6 +62,9 @@ class SegmentationNode {
                      CV_CHAIN_APPROX_SIMPLE);
     cv::findContours(thresh_yellow, contours_yellow, CV_RETR_EXTERNAL,
                      CV_CHAIN_APPROX_SIMPLE);
+    cv::drawContours(img_, contours_red, -1, cv::Scalar(0, 0, 255), 2);
+    cv::drawContours(img_, contours_green, -1, cv::Scalar(0, 255, 0), 2);
+    cv::drawContours(img_, contours_yellow, -1, cv::Scalar(255, 255, 0), 2);
     // Create bounding boxes for each contour
     for (int i = 0; i < contours_red.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_red[i]);
@@ -95,6 +100,7 @@ class SegmentationNode {
       box_array_.boxes.push_back(box);
     }
     box_pub_.publish(box_array_);
+    img_pub_.publish(cv_ptr->toImageMsg());
   }
 };
 int main(int argc, char** argv) {
