@@ -1,7 +1,16 @@
 #include <bits/stdc++.h>
+#include <iostream>
+#include <sstream>
+#include <vector>
+
+#include "geometry.h"
+#include "ros/ros.h"
+#include "tf/transform_listener.h"
+
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/synchronizer.h>
+
 #include <pcl/common/centroid.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/extract_indices.h>
@@ -10,19 +19,16 @@
 #include <pcl/search/search.h>
 #include <pcl/segmentation/region_growing.h>
 #include <pcl/segmentation/sac_segmentation.h>
-#include <sensor_suite/Object.h>
-
-#include <iostream>
-#include <sstream>
-#include <vector>
-
-#include "geometry.h"
+#include <pcl/filters/passthrough.h>
+#include <pcl/segmentation/region_growing_rgb.h>
 #include "pcl_ros/point_cloud.h"
-#include "ros/ros.h"
+
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_suite/LabeledBoundingBox2D.h"
 #include "sensor_suite/LabeledBoundingBox2DArray.h"
-#include "tf/transform_listener.h"
+#include <sensor_suite/Object.h>
+#include "sensor_suite/ObjectArray.h"
+
 
 // Projection code based on personal work for 6.172
 // Clustering based on following tutorial:
@@ -195,6 +201,94 @@ class ClusterNode {
     return projection_pixel;
   }
 };
+
+// using namespace std::chrono_literals;
+
+// class ColorClusterNode {
+//  protected:
+//   ros::NodeHandle nh_;
+//   message_filters::Subscriber<sensor_msgs::PointCloud2> pcl_sub_;
+//   ros::Publisher pcl_pub_;
+//   ros::Publisher object_pub_;
+//   tf::TransformListener listener_;
+
+//   pcl::PointCloud<pcl::PointXYZRGB>::Ptr buffer_;
+//   pcl::IndicesPtr indices_;
+//   pcl::search::Search<pcl::PointXYZRGB>::Ptr tree_;
+//   pcl::PointCloud<pcl::Normal>::Ptr normals_;
+
+//   pcl::ExtractIndices<pcl::PointXYZRGB> extract;
+//   pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> normal_estimator;
+//   pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+//   pcl::RegionGrowing<pcl::PointXYZRGB, pcl::Normal> reg;
+//   pcl::PointCloud<pcl::PointXYZRGB>::iterator iter;
+
+//  public:
+//   ClusterNode(ros::NodeHandle n)
+//       : nh_(n),
+//         indices_(new std::vector<int>),
+//         pcl_sub_(nh_, "/zed/point_cloud/cloud_registered", 1),
+//         buffer_(new pcl::PointCloud<pcl::PointXYZRGB>) {
+//     // Initiate subscribers and publishers
+//     pcl_sub_.registerCallback(boost::bind(&ClusterNode::cloud_cb, this, _1));
+//     object_pub_ = nh_.advertise<sensor_suite::ObjectArray>("/sensor_suite/new_objects", 1);
+
+//     // Clear point_cloud pointers
+//     // TODO: Move to initialization List
+//     tree_.reset(new pcl::search::KdTree<pcl::PointXYZRGB>);
+//     buffer_->header.frame_id = "map";
+//   }
+
+//   void cloud_cb(
+//       const sensor_msgs::PointCloud2ConstPtr& pcl_msg) {
+//     pcl::fromROSMsg(*pcl_msg, *buffer_);
+//     // pcl::removeNaNFromPointCloud(buffer_);  TODO // Source:
+//     // https://github.com/daviddoria/Examples/blob/master/c%2B%2B/PCL/Filters/RemoveNaNFromPointCloud/RemoveNaNFromPointCloud.cpp
+//     normal_estimator.setInputCloud(buffer_);
+//     reg.setInputCloud(buffer_);
+//     reg.setIndices(indices_);
+//     reg.setSearchMethod(tree);
+//     reg.setDistanceThreshold(10);
+//     reg.setPointColorThreshold(6);
+//     reg.setREgionColorThreshold(5);
+//     reg.setMinClusterSize(600);
+//     extract.setInputCloud(buffer_);
+
+//     std::vector<pcl::PointIndices> clusters;
+//     reg.extract(clusters);
+//     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
+//         new pcl::PointCloud<pcl::PointXYZRGB>);
+
+//     // Loop through every point in each cluster and project to bounding box
+//     int min_count = 0;  // minimum points in cluster labelled as one object to
+//                         // avoid nosie TODO: Use
+//     for (auto cluster : clusters) {
+//       pcl::PointIndices::Ptr cluster_indices(new pcl::PointIndices);
+//       cluster_indices->indices = cluster.indices;
+//       extract.setIndices(cluster_indices);
+//       extract.filter(*cloud);
+//       pcl::CentroidPoint<pcl::PointXYZRGB> centroid;
+//       pcl::PointXYZRGB centroid_point;
+//       for (int i = 0; i < cloud->points.size(); i++) {
+//         centroid.add(cloud->points[i]);       
+//         int label = getLabel();
+//         if (label != 0) {
+//           centroid.get(centroid_point);
+//           sensor_suite::Object new_object;
+//           // new_object.point = centroid_point; TODO: Finish
+//           new_object.label = label;
+//           new_object.num_points = cloud->points.size();
+//           object_pub_.publish(new_object);
+//           break;
+//         }
+//       }
+//     }
+//     return;
+//   }
+//   int getLabel(pcl::PointXYZRGB p){
+
+//   }
+// };
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "cluster_node");

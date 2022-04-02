@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   cv_bridge
   laser_geometry
+  image_geometry
 )
 
 ## System dependencies are found with CMake's conventions
@@ -58,6 +59,7 @@ add_message_files(
   LabeledBoundingBox2D.msg
   LabeledBoundingBox2DArray.msg
   Object.msg
+  ObjectArray.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -219,7 +221,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 add_executable(segmentation src/segmentation_node.cpp)
 target_link_libraries(segmentation ${OpenCV_LIBRARIES})
 target_link_libraries(segmentation ${catkin_LIBRARIES})
-add_dependencies(segmentation sensor_suite_generate_messages_cpp )
+add_dependencies(segmentation sensor_suite_generate_messages_cpp)
 
 add_executable(processor src/processor_nodes.cpp)
 target_link_libraries(processor ${catkin_LIBRARIES})
