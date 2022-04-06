@@ -2,6 +2,7 @@
 
 #include "cv_bridge/cv_bridge.h"
 #include "ros/ros.h"
+#include "visualization_msgs/Marker.h"
 #include "sensor_msgs/Image.h"
 #include "sensor_suite/LabeledBoundingBox2D.h"
 #include "sensor_suite/LabeledBoundingBox2DArray.h"
@@ -125,6 +126,7 @@ class SegmentationClusterNode {
   message_filters::Subscriber<sensor_msgs::Image> depth_sub_;
   message_filters::Subscriber<sensor_msgs::CameraInfo> info_sub_;
   ros::Publisher object_pub_;
+  ros::Publisher marker_pub_;
   ros::Publisher box_pub_;
   ros::Publisher img_pub_;
   image_geometry::PinholeCameraModel cam_model_; 
@@ -145,9 +147,9 @@ class SegmentationClusterNode {
     object_pub_ = nh_.advertise<sensor_suite::ObjectArray>("/sensor_suite/objects", 1);
     box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>("/sensor_suite/bounding_boxes", 1);
     img_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/segmented_image", 1);
+    marker_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/object_markers", 1);
     sync_.reset(new Sync(SyncPolicy(10), img_sub_, depth_sub_,info_sub_));
     sync_->registerCallback(boost::bind(&SegmentationClusterNode::imgCallback, this, _1, _2,_3));
-
   }
 
   void imgCallback(const sensor_msgs::ImageConstPtr& img_msg, const sensor_msgs::ImageConstPtr& depth_msg,const sensor_msgs::CameraInfoConstPtr& info_msg) {
@@ -173,12 +175,10 @@ class SegmentationClusterNode {
     cv::dilate(img_, img_, element);
     // Colour thresholding with each color
     cv::Mat thresholds[3];
-    cv::inRange(img_, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255),
-                thresholds[0]);
-    cv::inRange(img_, cv::Scalar(40, 100, 100), cv::Scalar(70, 255, 255),
-                thresholds[1]);
-    cv::inRange(img_, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255),
-                thresholds[2]);
+    cv::Scalar color_ranges[3][2] = {{cv::Scalar(0, 100, 100),  cv::Scalar(10, 255, 255)}, { cv::Scalar(40, 100, 100), cv::Scalar(70, 255, 255)}, { cv::Scalar(20, 100, 100),cv::Scalar(30, 255, 255)}};
+    for(int i = 0; i < 3; i++){
+      cv::inRange(img_, color_ranges[i][0], color_ranges[i][1],thresholds[i]);
+    }
     // Get multiple contours on Image:
     std::vector<std::vector<cv::Point>> colored_contours[3]; 
     cv::Scalar colors[3] = {cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0)};
@@ -209,6 +209,25 @@ class SegmentationClusterNode {
           object.label = i + 1;
           object.header = img_msg->header;
           object_array_.objects.push_back(object);
+          // Visualization
+          visualization_msgs::Marker marker;
+          marker.header.frame_id = "base_link";
+          marker.header.stamp = ros::Time();
+          marker.type = visualization_msgs::Marker::SPHERE;
+          marker.action = visualization_msgs::Marker::ADD; 
+          marker.pose.position = object.point; 
+          marker.pose.orientation.x = 0.0;
+          marker.pose.orientation.y = 0.0;
+          marker.pose.orientation.z = 0.0;
+          marker.pose.orientation.w = 1.0;
+          marker.scale.x = 1;
+          marker.scale.y = 0.1;
+          marker.scale.z = 0.1; 
+          marker.color.a = 1.0;
+          marker.color.r = 1.0;
+          marker.color.g = 1.0;
+          marker.color.b = 1.0; 
+          marker_pub_.publish(marker);
         }else{
           // colored_contours[i].erase(colored_contours[i].begin() + j);
           // j--;

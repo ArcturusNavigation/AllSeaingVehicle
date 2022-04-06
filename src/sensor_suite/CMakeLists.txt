@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   sensor_msgs
+  visualization_msgs
   std_msgs
   genmsg
   message_generation 
@@ -79,6 +80,7 @@ add_message_files(
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
+  visualization_msgs
   sensor_msgs#   std_msgs
 )
 
