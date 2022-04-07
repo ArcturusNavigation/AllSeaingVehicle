@@ -9,6 +9,7 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCova
 from pymavlink import mavutil
 
 from arcturus_pilot.msg import Waypoint
+from arcturus_pilot.srv import GoToWaypoint, GoToWaypointResponse
 
 from six.moves import xrange
 
@@ -21,6 +22,7 @@ class WaypointPilot():
         self.imu = Imu()
         self.global_position = NavSatFix()
         self.local_position = PoseStamped()
+        self.init_local_position = None
         self.set_arming_srv = None
         self.set_mode_srv = None
 
@@ -42,6 +44,8 @@ class WaypointPilot():
         
         self.set_arming_srv = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
         self.set_mode_srv = rospy.ServiceProxy('mavros/set_mode', SetMode)
+
+        rospy.Service('go_to_waypoint', GoToWaypoint, go_to_waypoint)
         
         rospy.Subscriber('mavros/state', State, self.state_callback)
         rospy.Subscriber('mavros/imu/data', Imu, self.imu_callback)
@@ -120,10 +124,20 @@ class WaypointPilot():
         if not self.sub_topics_ready['global_position']:
             self.sub_topics_ready['global_position'] = True
 
+    def go_to_waypoint(self, req):
+        self.waypoints = [(self.local_position.pose.position.x + req.x, 
+            self.local_position.pose.position.y + req.y, req.heading)]
+        return GoToWaypointResponse()
+
     # subscribes to the local position of the boat and updates the next
     # waypoint if the local position is within acceptance radius of current setpoint
     def local_position_callback(self, data):
+        if self.init_local_position == None:
+            self.init_local_position = data
         self.local_position = data
+
+        rospy.loginfo("local position: {0, 1, 2}}".format(data.pose.position.x, data.pose.position.y, data.pose.position.z))
+
         if not self.sub_topics_ready['local_pos']:
             self.sub_topics_ready['local_pos'] = True
         
@@ -195,19 +209,22 @@ class WaypointPilot():
     # takes the current setpoint and sends it to the FCU
     # needs to be called at minimum 2 Hz
     def send_setpoint(self):
+        waypoint = None
         if len(self.waypoints) == 0:
-            return
-        waypoint = self.waypoints[0]
-        waypoint_x, waypoint_y, waypoint_heading = waypoint[0], waypoint[1], waypoint[2]
-        rospy.loginfo("setting setpoint: {0, 1, 2}".format(waypoint_x, waypoint_y, waypoint_heading))
+            self.set_local_setpoint.publish(self.local_position)
+        else:
+            waypoint = self.waypoints[0]
+            waypoint_x, waypoint_y, waypoint_heading = waypoint[0], waypoint[1], waypoint[2]
+            rospy.loginfo("setting setpoint: {0, 1, 2}".format(waypoint_x, waypoint_y, waypoint_heading))
 
-        pose = PoseStamped()
-        pose.header.stamp = rospy.now()
-        pose.header.frame_id = '/local_origin'
-        pose.pose = Pose()
-        pose.pose.position = Point(x=waypoint_x, y=waypoint_y, z=0)
-        pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0, 0, waypoint_heading))
-        self.set_local_setpoint.publish(pose)
+            pose = PoseStamped()
+            pose.header.stamp = rospy.now()
+            pose.header.frame_id = '/local_origin'
+            pose.pose = Pose()
+            pose.pose.position = Point(x = waypoint_x + self.init_local_position.pose.position.x, 
+                y = waypoint_y + self.init_local_position.pose.position.y, z = 0)
+            pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0, 0, waypoint_heading))
+            self.set_local_setpoint.publish(pose)
 
 if __name__ == '__main__':
     try:
