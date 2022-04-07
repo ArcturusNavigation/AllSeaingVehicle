@@ -3,6 +3,7 @@
 #include "cv_bridge/cv_bridge.h"
 #include "ros/ros.h"
 #include "visualization_msgs/Marker.h"
+#include "visualization_msgs/MarkerArray.h"
 #include "sensor_msgs/Image.h"
 #include "sensor_suite/LabeledBoundingBox2D.h"
 #include "sensor_suite/LabeledBoundingBox2DArray.h"
@@ -142,12 +143,12 @@ class SegmentationClusterNode {
  public:
   SegmentationClusterNode(ros::NodeHandle n) : nh_(n), img_sub_(nh_, "/zed2i/zed_node/rgb/image_rect_color", 1),
                                                depth_sub_(nh_, "/zed2i/zed_node/depth/depth_registered", 1),
-                                               info_sub_(nh_, "/zed2i/zed_node/rgb/camera_info", 1)
+                                               info_sub_(nh_, "/zed2i/zed_node/rgb_raw/camera_info", 1)
                                                {
     object_pub_ = nh_.advertise<sensor_suite::ObjectArray>("/sensor_suite/objects", 1);
     box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>("/sensor_suite/bounding_boxes", 1);
     img_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/segmented_image", 1);
-    marker_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/object_markers", 1);
+    marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/sensor_suite/object_markers", 1);
     sync_.reset(new Sync(SyncPolicy(10), img_sub_, depth_sub_,info_sub_));
     sync_->registerCallback(boost::bind(&SegmentationClusterNode::imgCallback, this, _1, _2,_3));
   }
@@ -189,6 +190,8 @@ class SegmentationClusterNode {
     // Create bounding boxes and objects for each contour
     sensor_suite::LabeledBoundingBox2DArray box_array_;
     sensor_suite::ObjectArray object_array_;
+    visualization_msgs::MarkerArray marker_array_;
+
     for(int i = 0; i < 3; i++){
       for(int j = 0; j < colored_contours[i].size(); j++){
       cv::Rect rect = cv::boundingRect(colored_contours[i][j]);
@@ -211,7 +214,7 @@ class SegmentationClusterNode {
           object_array_.objects.push_back(object);
           // Visualization
           visualization_msgs::Marker marker;
-          marker.header.frame_id = "base_link";
+          marker.header.frame_id = "zed2i_base_link";
           marker.header.stamp = ros::Time();
           marker.type = visualization_msgs::Marker::SPHERE;
           marker.action = visualization_msgs::Marker::ADD; 
@@ -220,14 +223,14 @@ class SegmentationClusterNode {
           marker.pose.orientation.y = 0.0;
           marker.pose.orientation.z = 0.0;
           marker.pose.orientation.w = 1.0;
-          marker.scale.x = 1;
+          marker.scale.x = .1;
           marker.scale.y = 0.1;
           marker.scale.z = 0.1; 
           marker.color.a = 1.0;
           marker.color.r = 1.0;
           marker.color.g = 1.0;
           marker.color.b = 1.0; 
-          marker_pub_.publish(marker);
+          marker_array_.markers.push_back(marker);
         }else{
           // colored_contours[i].erase(colored_contours[i].begin() + j);
           // j--;
@@ -238,6 +241,7 @@ class SegmentationClusterNode {
     box_pub_.publish(box_array_);
     object_pub_.publish(object_array_);
     img_pub_.publish(cv_ptr->toImageMsg());
+    marker_pub_.publish(marker_array_);
   }
 
   bool isValidBox(cv::Rect* rect){
