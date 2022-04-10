@@ -249,12 +249,12 @@ class SegmentationClusterNode {
       return false;
     }
     if(rect->width > rect->height){
-      if (rect->width/rect->height > 2){
+      if (rect->width/rect->height > 1.5){
         return false; 
       }
     }
     else{
-      if(rect->height/rect->width > 2){
+      if(rect->height/rect->width > 1.5){
         return false; 
       }
     }
