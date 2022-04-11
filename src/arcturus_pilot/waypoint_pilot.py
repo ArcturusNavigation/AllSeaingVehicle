@@ -6,7 +6,6 @@ from mavros_msgs.msg import State, Waypoint
 from mavros_msgs.srv import CommandBool, SetMode
 from sensor_msgs.msg import NavSatFix, Imu
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped
-from pymavlink import mavutil
 
 from arcturus_pilot.msg import Waypoint
 from arcturus_pilot.srv import GoToWaypoint, GoToWaypointResponse
@@ -15,6 +14,19 @@ from six.moves import xrange
 
 ACCEPTANCE_RADIUS = 0.2
 USE_FAKE_GPS_FROM_ZED = True
+
+# see https://mavlink.io/en/messages/common.html#MAV_STATE
+MAV_STATE_ENUM = {
+    0: 'UNINIT',
+    1: 'BOOT',
+    2: 'CALIBRATING',
+    3: 'STANDBY',
+    4: 'ACTIVE',
+    5: 'CRITICAL',
+    6: 'EMERGENCY',
+    7: 'POWEROFF',
+    8: 'FLIGHT_TERMINATION'
+}
 
 class WaypointPilot():
     def __init__(self):
@@ -104,9 +116,8 @@ class WaypointPilot():
 
         if self.state.system_status != data.system_status:
             rospy.loginfo("system_status changed from {0} to {1}".format(
-                mavutil.mavlink.enums['MAV_STATE'][
-                    self.state.system_status].name, mavutil.mavlink.enums[
-                        'MAV_STATE'][data.system_status].name))
+                MAV_STATE_ENUM[self.state.system_status],
+                MAV_STATE_ENUM[data.system_status]))
 
         self.state = data
 
