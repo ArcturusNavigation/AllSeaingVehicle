@@ -1,0 +1,3 @@
+<launch>
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find arcturus_pilot)/maps/willow-2010-02-18-0.10.yaml"/>
+</launch>

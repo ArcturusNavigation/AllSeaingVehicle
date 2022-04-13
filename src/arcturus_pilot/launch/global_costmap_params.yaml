@@ -1,0 +1,8 @@
+costmap:
+  plugins: []
+  publish_frequency: 1.0
+  footprint: [[-0.325, -0.325], [-0.325, 0.325], [0.325, 0.325], [0.46, 0.0], [0.325, -0.325]]
+  plugins: 
+    - {name: static_map,       type: "costmap_2d::StaticLayer"}
+    - {name: obstacle_layer,   type: "costmap_2d::VoxelLayer"}
+    - {name: inflation_map,    type: "costmap_2d::InflationLayer"}
