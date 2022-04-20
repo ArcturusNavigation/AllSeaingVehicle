@@ -164,6 +164,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/waypoint_pilot.py
   scripts/broadcast_map_transform.py
+  scripts/compute_occupancy_grid.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
