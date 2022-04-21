@@ -2,7 +2,7 @@
 
 import rospy
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import Point, Quaternion
+from geometry_msgs.msg import Point, Quaternion, PoseStamped
 import tf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,25 +11,52 @@ import math
 import skimage
 
 GRID_RESOLUTION = 0.2 # m / cell
-GRID_WIDTH = 100 # m
-GRID_HEIGHT = 100 # m
+GRID_WIDTH = 200 # m
+GRID_HEIGHT = 150 # m
 
 GRID_NUM_ROWS = int(math.ceil(GRID_HEIGHT / GRID_RESOLUTION))
 GRID_NUM_COLS = int(math.ceil(GRID_WIDTH / GRID_RESOLUTION))
 
-BUOY_RADIUS = 5 # m
+BUOY_RADIUS = 0.5 # m
 BEYOND_GOAL_DIST = 5 # m
 
-red_buoys   = np.array([( 6.0, 14.0), (14.0, 36.0), (22.0, 60.0), (38.0, 82.0), 
-    (75.0, 88.0), (97.0, 64.0), (88.0, 30.0), (80.0, 14.0)])
+# feet to meters
+def f2m(x):
+    return x * 0.3048
 
-green_buoys = np.array([(26.0,  8.0), (38.0, 37.0), (46.0, 55.0), (54.0, 67.0), 
-    (70.0, 72.0), (82.0, 56.0), (70.0, 44.0), (62.0, 20.0)])
+test_set_1 = [
+    np.array([( 6.0, 14.0), (14.0, 36.0), (22.0, 60.0), (38.0, 82.0), 
+        (75.0, 88.0), (97.0, 64.0), (88.0, 30.0), (80.0, 14.0)]),
+    np.array([(26.0,  8.0), (38.0, 37.0), (46.0, 55.0), (54.0, 67.0), 
+        (70.0, 72.0), (82.0, 56.0), (70.0, 44.0), (62.0, 20.0)])
+]
+
+test_set_2 = [
+    np.array([
+        (382.0, 353.0), (333.0, 353.0), (310.0, 341.0), (286.0, 320.0), (262.0, 316.0), (235.0, 323.0), (207.0, 330.0), (183.0, 350.0), (160.0, 350.0), (135.0, 335.0), (110.0, 320)
+    ]),
+    np.array([
+        (382.0, 373.0), (333.0, 373.0), (310.0, 361.0), (286.0, 340.0), (262.0, 336.0), (235.0, 343.0), (207.0, 350.0), (183.0, 370.0), (160.0, 370.0), (135.0, 355.0), (110.0, 340)
+    ])
+]
+
+red_buoys   = test_set_2[0]
+green_buoys = test_set_2[1]
 
 np.random.shuffle(red_buoys)
 np.random.shuffle(green_buoys)
 
-current_pos = np.array((1.0, 1.0))
+for i in range(len(red_buoys)):
+    red_buoys[i] = (red_buoys[i][0] + np.random.normal(0, 0, 1), red_buoys[i][1] + np.random.normal(0, 0, 1))
+    green_buoys[i] = (green_buoys[i][0] + np.random.normal(0, 0, 1), green_buoys[i][1] + np.random.normal(0, 0, 1))
+
+    red_buoys[i] = (f2m(red_buoys[i][0]), f2m(red_buoys[i][1]))
+    green_buoys[i] = (f2m(green_buoys[i][0]), f2m(green_buoys[i][1]))
+
+print(red_buoys)
+print(green_buoys)
+
+start_pos = np.array((f2m(420.0), f2m(370.0)))
 
 # finds the order of the buoys that minimizes the path distance
 # runs in O(V^2 * 2^V * log(V * 2^V)) time
@@ -45,7 +72,7 @@ def get_opt_order(points):
     start_dist = np.inf
 
     for i in range(n):
-        dist = np.linalg.norm(points[i] - current_pos)
+        dist = np.linalg.norm(points[i] - start_pos)
         if dist < start_dist:
             start_dist = dist
             start = i
@@ -144,7 +171,8 @@ def add_start_fence(grid_data, red_first, red_second, green_first, green_second)
 if __name__ == '__main__':
     rospy.init_node('compute_occupancy_grid')
     
-    pub = rospy.Publisher('/map', OccupancyGrid, queue_size=10, latch=True)
+    map_pub = rospy.Publisher('/map', OccupancyGrid, queue_size=10, latch=True)
+    goal_pub = rospy.Publisher('/planner/goal', PoseStamped, queue_size=10, latch=True)
 
     grid = OccupancyGrid()
     grid.header.stamp = rospy.Time.now()
@@ -157,6 +185,7 @@ if __name__ == '__main__':
     grid.info.origin.position = Point(0, 0, 0)
     grid.info.origin.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0, 0, 0))
 
+    print('computing grid...')
     red_order = get_opt_order(red_buoys)
     green_order = get_opt_order(green_buoys)
 
@@ -169,9 +198,12 @@ if __name__ == '__main__':
     add_buoys(grid_data, green_ordered)
 
     goal = compute_goal(red_ordered[-2], red_ordered[-1], green_ordered[-1])
-    goal_data = skimage.draw.ellipse(convert(goal[1]), convert(goal[0]), 
-        BUOY_RADIUS, BUOY_RADIUS, shape=(GRID_NUM_ROWS, GRID_NUM_COLS))
-    grid_data[goal_data] = 100
+    goal_pose = PoseStamped()
+    goal_pose.header.stamp = rospy.Time.now()
+    goal_pose.header.frame_id = 'map'
+    goal_pose.pose.position = Point(x = goal[0], y = goal[1], z = 0)
+    # TODO compute orientation for this
+    goal_pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0, 0, 0))
 
     add_start_fence(grid_data, red_ordered[0], red_ordered[1], green_ordered[0], green_ordered[1])
 
@@ -179,6 +211,10 @@ if __name__ == '__main__':
     plt.show()
 
     grid.data = np.ndarray.tolist(np.ndarray.flatten(grid_data))
-    pub.publish(grid)
+    map_pub.publish(grid)
+    print('published grid')
 
-    rospy.spin()
+    rate = rospy.Rate(10)
+    while not rospy.is_shutdown():
+        goal_pub.publish(goal_pose)
+        rate.sleep()
