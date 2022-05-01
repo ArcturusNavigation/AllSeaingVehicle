@@ -57,7 +57,7 @@ class WaypointPilot():
         self.set_arming_srv = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
         self.set_mode_srv = rospy.ServiceProxy('mavros/set_mode', SetMode)
 
-        rospy.Service('go_to_waypoint', GoToWaypoint, go_to_waypoint)
+        rospy.Service('go_to_waypoint', GoToWaypoint, self.go_to_waypoint)
         
         rospy.Subscriber('mavros/state', State, self.state_callback)
         rospy.Subscriber('mavros/imu/data', Imu, self.imu_callback)
