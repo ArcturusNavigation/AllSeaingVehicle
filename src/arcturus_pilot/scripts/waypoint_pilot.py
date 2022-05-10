@@ -68,7 +68,7 @@ class WaypointPilot():
             for key in ['state', 'imu', 'global_pos', 'local_pos']
         }
 
-        rospy.Subscriber('waypoint', Waypoint, self.waypoint_callback)
+        rospy.Subscriber('arcturus_pilot/waypoint', Waypoint, self.waypoint_callback)
 
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
 

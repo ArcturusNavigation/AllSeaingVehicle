@@ -3,6 +3,9 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Quaternion, Point
 import tf
 
+def angle_from_dir(dir):
+    return np.arctan2(dir[1], dir[0])
+
 def quaternion_from_dir(dir):
     angle = np.arctan2(dir[1], dir[0])
 
