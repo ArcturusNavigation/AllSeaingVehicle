@@ -3,7 +3,7 @@
 import rospy
 import numpy as np
 from enum import Enum
-from arcturus_pilot.msg import Waypoint
+from arcturus_pilot.msg import Waypoint, WaypointReached
 from buoy_types import BuoyType
 from geometry_msgs.msg import PoseStamped
 from geom_helper import angle_from_dir
@@ -17,144 +17,168 @@ class State(Enum):
     FIND_SEAT = 4,
     WATER_BLAST = 5,
     SKEEBALL = 6,
-    RETURN = 7
+    RETURN = 7,
+    FINISHED = 8
 
 WAYPOINT_DIST_THRESHOLD = 1
 SNACK_RUN_MARKER_CLEARANCE_DIST = 1
 SNACK_RUN_BEYOND_GOAL_DIST = 3
+EXPLORE_DIST = 3
+RETURN_DIST = 2
 
+def get_next_state(curr_state):
+    """
+    Returns what our next state should be depending after we finish the current state
+    This basically defines the path that we take through the tasks
+    """
+    if curr_state == State.CHANNEL:
+        return State.AVOID_CROWD
+    elif curr_state == State.AVOID_CROWD:
+        return State.FIND_SNACK_RUN
+    elif curr_state == State.FIND_SNACK_RUN:
+        return State.SNACK_RUN
+    elif curr_state == State.SNACK_RUN:
+        return State.FIND_SEAT
+    elif curr_state == State.FIND_SEAT:
+        return State.WATER_BLAST
+    elif curr_state == State.WATER_BLAST:
+        return State.SKEEBALL
+    elif curr_state == State.SKEEBALL:
+        return State.RETURN
+    elif curr_state == State.RETURN:
+        return State.FINISHED
+
+"""
+Sends waypoints based on the current task to arcturus_pilot/waypoint_pilot node
+Receives data from the sensor suite with the locations of all of the buoys (expected in the local_origin frame)
+All waypoints are sent in the local_origin frame
+"""
 def main():
     rospy.init_node('waypoints_generator')
     
-    cur_pos = np.array([0, 0])
-    cur_heading = 0
-    num_passed = 0
-    num_left = 100
+    curr_pos = np.array([0, 0])
+    curr_heading = 0
+    last_waypoint_visited = -1
 
-    visible_buoys = []
+    cur_buoys = []
     waypoints_sent = []
     curr_state = State.CHANNEL
     prev_state = None
 
-    # previous data so we can still compute waypoints when we can't see all of the buoys
-    snack_run_prev_midpoint = None
-    snack_run_prev_marker = None
+    def buoys_callback(data):
+        nonlocal cur_buoys
+        visible_buoys = data.buoys
+        prev_buoys = cur_buoys
+        cur_buoys = visible_buoys
+        for prev_buoy in prev_buoys:
+            matched = False
+            for cur_buoy in visible_buoys:
+                if prev_buoy[0] == cur_buoy[0] and np.linalg.norm(prev_buoy, cur_buoy) < WAYPOINT_DIST_THRESHOLD:
+                    matched = True
+                    break
+            if not matched:
+                cur_buoys.append(prev_buoy)
 
     def pos_callback(data):
-        nonlocal cur_pos
-        nonlocal cur_heading
-        cur_pos[0] = data.pose.position.x
-        cur_pos[1] = data.pose.position.y
-        cur_heading = euler_from_quaternion(data.pose.orientation)[2]
+        nonlocal curr_pos
+        nonlocal curr_heading
+        curr_pos[0] = data.pose.position.x
+        curr_pos[1] = data.pose.position.y
+        curr_heading = euler_from_quaternion(data.pose.orientation)[2]
 
     def reached_waypoint_callback(data):
-        nonlocal num_passed
-        nonlocal num_left
+        nonlocal last_waypoint_visited
         nonlocal curr_state
-        num_passed += 1
-        num_left -= 1
-
-        if num_left == 0:
-            if curr_state == State.CHANNEL:
-                curr_state = State.AVOID_CROWD
-            elif curr_state == State.AVOID_CROWD:
-                curr_state = State.FIND_SNACK_RUN
-            elif curr_state == State.SNACK_RUN:
-                pass
-            elif curr_state == State.FIND_SEAT:
-                pass
-            elif curr_state == State.WATER_BLAST:
-                pass
-            elif curr_state == State.SKEEBALL:
-                pass
-            elif curr_state == State.RETURN:
-                pass
+        last_waypoint_visited = data.order
 
     waypoint_pub = rospy.publisher('arcturus_pilot/waypoint', Waypoint, queue_size=10)
-    reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/reached_waypoint', WaypointReached, reached_waypoint_callback)
+    reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/waypoint_reached', WaypointReached, reached_waypoint_callback)
     pos_sub = rospy.Subscriber('arcturus_pilot/position', PoseStamped, pos_callback)
 
-    def find_closest_visited_index(point, wix):
+    def find_index(waypoint_id):
         for ix, waypoint in enumerate(waypoints_sent):
-            if np.linalg.norm(waypoint[0] - point) < WAYPOINT_DIST_THRESHOLD and waypoint[1] == wix:
+            if waypoint[1] == waypoint_id:
                 return ix
         return -1
 
-    def send_waypoint(position, direction, wix=0):
+    def send_waypoint(position, direction, waypoint_id, direction_is_angle=True):
         """
         Send a waypoint to the arcturus_pilot node with the given position and direction.
         Checks if the waypoint is already visited to ensure the correct index is sent
         """
 
         # check if this was already sent as a waypoint
-        ix = find_closest_visited_index(position, wix)
+        ix = find_index(waypoint_id)
         if ix == -1:
-            waypoints_sent.append((position, wix))
+            waypoints_sent.append((position, waypoint_id))
             ix = len(waypoints_sent) - 1
         else:
-            waypoints_sent[ix] = (position, wix)
+            waypoints_sent[ix] = (position, waypoint_id)
 
-        waypoint_pub.publish(Waypoint(position[0], position[1], angle_from_dir(direction), ix))
+        waypoint_pub.publish(Waypoint(position[0], position[1], angle_from_dir(direction) if direction_is_angle else direction, ix))
     
-    def send_midpoint(buoy_1, buoy_2):
-        # send the midpoint of two buoys as the waypoint with a heading pointing away from the current position
+    def send_midpoint(buoy_1, buoy_2, waypoint_id):
+        """
+        Send the midpoint of two buoys as a waypoint with a heading pointing away from the current position
+        """
         midpoint = (buoy_1 + buoy_2) / 2.0
         dir = (buoy_1 - buoy_2) / np.linalg.norm(buoy_1 - buoy_2)
         dir = np.array([dir[1], -dir[0]])
         test_pos = midpoint + dir * 10
         test_neg = midpoint - dir * 10
-        heading_dir = dir if np.linalg.norm(cur_pos - test_pos) > np.linalg.norm(cur_pos - test_neg) else -dir
+        heading_dir = dir if np.linalg.norm(curr_pos - test_pos) > np.linalg.norm(curr_pos - test_neg) else -dir
 
-        send_waypoint(midpoint, heading_dir)
+        send_waypoint(midpoint, heading_dir, waypoint_id)
     
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         state_changed = curr_state != prev_state
-        buoys = np.array(visible_buoys)
+        buoys = np.array(cur_buoys)
 
         if curr_state == State.CHANNEL:
-            if state_changed:
-                num_left = 2
-
-            closest_red = None
-            closest_green = None
+            red_buoys = []
+            green_buoys = []
 
             for buoy in buoys:
                 if buoy[0] == BuoyType.CHANNEL_RED:
-                    if closest_red is None:
-                        closest_red = buoy
-                    elif np.linalg.norm(buoy[1] - cur_pos) < np.linalg.norm(closest_red - cur_pos):
-                        closest_red = buoy
+                    red_buoys.append(buoy[1])
                 elif buoy[0] == BuoyType.CHANNEL_GREEN:
-                    if closest_green is None:
-                        closest_green = buoy
-                    elif np.linalg.norm(buoy[1] - cur_pos) < np.linalg.norm(closest_green - cur_pos):
-                        closest_green = buoy
+                    green_buoys.append(buoy[1])
 
-            if closest_red != None and closest_green != None:
-                send_midpoint(closest_red, closest_green)
+            red_buoys = sorted(red_buoys, key=lambda buoy: np.linalg.norm(buoy - curr_pos))
+            green_buoys = sorted(green_buoys, key=lambda buoy: np.linalg.norm(buoy - curr_pos))
+
+            if len(red_buoys) >= 1 and len(green_buoys) >= 1:
+                send_midpoint(red_buoys[0], green_buoys[0], 'channel0')
+            if len(red_buoys) >= 2 and len(green_buoys) >= 2:
+                send_midpoint(red_buoys[1], green_buoys[1], 'channel1')
+
+            if last_waypoint_visited != -1 and waypoints_sent[last_waypoint_visited][1] == 'channel1':
+                curr_state = get_next_state(State.CHANNEL)
             
+        # TODO: replace with PCA
         elif curr_state == State.AVOID_CROWD:
-            if state_changed:
-                num_left = 10
-
             closest_red = None
             closest_green = None
 
             for buoy in buoys:
                 if buoy[0] == BuoyType.AVOID_RED:
                     if closest_red is None:
-                        closest_red = buoy
-                    elif np.linalg.norm(buoy[1] - cur_pos) < np.linalg.norm(closest_red - cur_pos):
-                        closest_red = buoy
+                        closest_red = buoy[1]
+                    elif np.linalg.norm(buoy[1] - curr_pos) < np.linalg.norm(closest_red - curr_pos):
+                        closest_red = buoy[1]
                 elif buoy[0] == BuoyType.AVOID_GREEN:
                     if closest_green is None:
-                        closest_green = buoy
-                    elif np.linalg.norm(buoy[1] - cur_pos) < np.linalg.norm(closest_green - cur_pos):
-                        closest_green = buoy
+                        closest_green = buoy[1]
+                    elif np.linalg.norm(buoy[1] - curr_pos) < np.linalg.norm(closest_green - curr_pos):
+                        closest_green = buoy[1]
             
             if closest_red != None and closest_green != None:
                 send_midpoint(closest_red, closest_green)
+
+            # TODO fix the waypoint id this checks for once you do the PCA (even if we don't locate all buoys, make sure we don't get stuck)
+            if last_waypoint_visited != -1 and waypoints_sent[last_waypoint_visited][1] == 'avoid_crowd':
+                curr_state = get_next_state(State.AVOID_CROWD)
 
         elif curr_state == State.FIND_SNACK_RUN:
             red_buoy = None
@@ -163,79 +187,75 @@ def main():
 
             for buoy in buoys:
                 if buoy[0] == BuoyType.SNACK_RED:
-                    red_buoy = buoy
+                    red_buoy = buoy[1]
                 elif buoy[0] == BuoyType.SNACK_GREEN:
-                    green_buoy = buoy
+                    green_buoy = buoy[1]
                 elif buoy[0] == BuoyType.SNACK_BLUE:
-                    mark_buoy = buoy
+                    mark_buoy = buoy[1]
 
+            # TODO: refine this code so that it stores the position at first, goes to to the next position, and doesn't recalculate until it reaches the next
             if None in [red_buoy, green_buoy]:
-                pass
-                # TODO use current pos and current heading to somehow get a point to go to the right to explore and try to find the red and green buoys
+                right_heading = curr_heading + np.pi / 4
+                target_pos = [curr_pos[0] + np.cos(right_heading) * EXPLORE_DIST, curr_pos[1] + np.sin(right_heading) * EXPLORE_DIST]
+                send_waypoint(target_pos, right_heading, 'find_snack_run', direction_is_angle=False)
             else:
-                curr_state = State.SNACK_RUN
+                curr_state = get_next_state(State.FIND_SNACK_RUN)
 
         elif curr_state == State.SNACK_RUN:
-            if state_changed:
-                num_left = 7
-
             red_buoy = None
             green_buoy = None
             mark_buoy = None
 
             for buoy in buoys:
                 if buoy[0] == BuoyType.SNACK_RED:
-                    red_buoy = buoy
+                    red_buoy = buoy[1]
                 elif buoy[0] == BuoyType.SNACK_GREEN:
-                    green_buoy = buoy
+                    green_buoy = buoy[1]
                 elif buoy[0] == BuoyType.SNACK_BLUE:
-                    mark_buoy = buoy
+                    mark_buoy = buoy[1]
 
-            if red_buoy != None and green_buoy != None:
-                midpoint = (red_buoy + green_buoy) / 2.0
-            else:
-                midpoint = snack_run_prev_midpoint
-            snack_run_prev_midpoint = midpoint
+            midpoint = (red_buoy + green_buoy) / 2.0
+            dir = red_buoy - green_buoy
+            dir /= np.linalg.norm(dir)
+            perp = np.array([-dir[1], dir[0]])
 
+            # estimate the position of the mark buoy (might have to change depending on the course)
             if mark_buoy == None:
-                if snack_run_prev_marker == None:
-                    # estimate the position of the mark buoy
-                    mark_buoy = midpoint - np.array([15, 0])
-                else:
-                    mark_buoy = snack_run_prev_marker
-            else:
-                snack_run_prev_marker = mark_buoy
+                second_perp = np.copy(perp)
+                if np.linalg.norm(curr_pos - (midpoint + perp)) > np.linalg.norm(curr_pos - (midpoint - perp)):
+                    second_perp *= -1
+                mark_buoy = midpoint - perp * 15.0 # estimate as 15 meters along the perpendicular pointing away from the current position
 
             positions = []
             directions = []
 
-            dir = red_buoy - green_buoy
-            dir /= np.linalg.norm(dir)
-
-            first_point = mark_buoy + dir * SNACK_RUN_MARKER_CLEARANCE_DIST
-
-            perp = np.array([-dir[1], dir[0]])
-            test_point = mark_buoy + perp
-            if np.sign(np.cross(dir, mark_buoy - green_buoy)) != np.sign(np.cross(first_point - mark_buoy, test_point - mark_buoy)):
+            if np.linalg.norm(mark_buoy - (midpoint + perp)) > np.linalg.norm(mark_buoy - (midpoint - perp)):
                 perp *= -1
 
-            positions.append(midpoint)
             positions.append(midpoint - perp * SNACK_RUN_BEYOND_GOAL_DIST)
-            positions.append(first_point)
+            positions.append(midpoint)
+            positions.append(midpoint + perp * SNACK_RUN_BEYOND_GOAL_DIST)
+
+            positions.append(mark_buoy + dir * SNACK_RUN_MARKER_CLEARANCE_DIST)
             positions.append(mark_buoy + perp * SNACK_RUN_MARKER_CLEARANCE_DIST)
             positions.append(mark_buoy - dir * SNACK_RUN_MARKER_CLEARANCE_DIST)
 
             positions.append(midpoint)
             positions.append(midpoint - perp * SNACK_RUN_BEYOND_GOAL_DIST)
 
-            for cur_pos, next_pos in zip(positions[:-1], positions[1:]):
-                dir = next_pos - cur_pos
+            for curr_pos, next_pos in zip(positions[:-1], positions[1:]):
+                dir = next_pos - curr_pos
                 dir /= np.linalg.norm(dir)
                 directions.append(dir)
             directions.append(-perp)
 
+            last_ix = -1
             for ix, (point, direction) in enumerate(zip(positions, directions)):
-                send_waypoint(point, direction, ix)
+                send_waypoint(point, direction, 'snack_run' + str(ix))
+                last_ix = ix
+
+            if last_waypoint_visited != -1 and waypoints_sent[last_waypoint_visited][1] == 'snack_run' + str(last_ix):
+                curr_state = get_next_state(State.SNACK_RUN)
 
         elif curr_state == State.FIND_SEAT:
             pass
@@ -247,9 +267,12 @@ def main():
             return_buoys = []
             for buoy in buoys:
                 if buoy[0] == BuoyType.RETURN:
-                    return_buoys.append(buoy)
-            
-            # send the midpoint of these two buoys as the waypoint with the appropriate heading
+                    return_buoys.append(buoy[1])
+
+            send_midpoint(return_buoys[0], return_buoys[1], 'return')
+
+            if last_waypoint_visited != -1 and waypoints_sent[last_waypoint_visited][1] == 'return':
+                curr_state = get_next_state(State.RETURN)
 
         prev_state = curr_state
         rate.sleep()

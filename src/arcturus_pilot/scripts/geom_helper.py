@@ -6,10 +6,11 @@ import tf
 def angle_from_dir(dir):
     return np.arctan2(dir[1], dir[0])
 
-def quaternion_from_dir(dir):
-    angle = np.arctan2(dir[1], dir[0])
-
+def quaternion_from_angle(angle):
     return Quaternion(*tf.transformations.quaternion_from_euler(0, 0, angle))
+
+def quaternion_from_dir(dir):
+    return quaternion_from_angle(angle_from_dir(dir))
 
 def create_pose_stamped(pos, dir):
     pose = PoseStamped()

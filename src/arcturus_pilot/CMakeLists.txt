@@ -54,6 +54,7 @@ roslaunch_add_file_check(launch)
 add_message_files(
     FILES
     Waypoint.msg
+    WaypointReached.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -163,10 +164,7 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/waypoint_pilot.py
-  scripts/broadcast_map_transform.py
-  scripts/avoid_crowd_occupancy.py
-  scripts/avoid_crowd_waypoints.py
-  scripts/snack_run_occupancy.py
+  scripts/qual_waypoints_generator.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

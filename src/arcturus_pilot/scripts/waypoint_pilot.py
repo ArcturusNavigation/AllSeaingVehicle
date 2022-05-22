@@ -2,10 +2,11 @@
 
 import rospy
 import tf
-from mavros_msgs.msg import State, Waypoint
+import tf2_ros
+from mavros_msgs.msg import State, Waypoint, WaypointReached
 from mavros_msgs.srv import CommandBool, SetMode
 from sensor_msgs.msg import NavSatFix, Imu
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, TransformStamped
 
 from arcturus_pilot.msg import Waypoint
 from arcturus_pilot.srv import GoToWaypoint, GoToWaypointResponse
@@ -69,8 +70,10 @@ class WaypointPilot():
         }
 
         rospy.Subscriber('arcturus_pilot/waypoint', Waypoint, self.waypoint_callback)
-
+        self.send_waypoint_reached = rospy.Publisher('arcturus_pilot/waypoint_reached', WaypointReached, queue_size=5)
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
+        self.send_position = rospy.Publisher('arcturus_pilot/position', PoseStamped, queue_size=5)
+        self.position_transform_broadcaster = tf.TransformBroadcaster()
 
         if USE_FAKE_GPS_FROM_ZED:
             rospy.Subscriber('zed/zed_node/pose_with_covariance', PoseWithCovarianceStamped, self.zed_pose_callback)
@@ -151,6 +154,9 @@ class WaypointPilot():
 
         if not self.sub_topics_ready['local_pos']:
             self.sub_topics_ready['local_pos'] = True
+
+        # publish position to arcturus_pilot/position
+        self.send_position.publish(data)
         
         if len(self.waypoints == 0):
             return
@@ -160,6 +166,7 @@ class WaypointPilot():
         if dist_sq < ACCEPTANCE_RADIUS ** 2:
             self.waypoints.pop(0)
             self.current_order += 1
+            self.send_waypoint_reached.publish(WaypointReached(self.current_order))
             self.send_setpoint()
 
     # subscribes to incoming waypoints and adds them to a list in
