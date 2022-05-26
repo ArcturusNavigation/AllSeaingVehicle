@@ -3,12 +3,12 @@
 import rospy
 import tf
 import tf2_ros
-from mavros_msgs.msg import State, Waypoint, WaypointReached
+from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
 from sensor_msgs.msg import NavSatFix, Imu
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, TransformStamped
 
-from arcturus_pilot.msg import Waypoint
+from arcturus_pilot.msg import Waypoint, WaypointReached
 from arcturus_pilot.srv import GoToWaypoint, GoToWaypointResponse
 
 from six.moves import xrange

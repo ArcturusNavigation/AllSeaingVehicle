@@ -55,6 +55,8 @@ add_message_files(
     FILES
     Waypoint.msg
     WaypointReached.msg
+    Buoy.msg
+    BuoyList.msg
 )
 
 ## Generate services in the 'srv' folder
