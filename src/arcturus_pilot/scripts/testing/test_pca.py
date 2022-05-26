@@ -1,26 +1,13 @@
 import numpy as np
-import rospy
-from geometry_msgs.msg import PoseStamped, Quaternion, Point
+import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
-import tf
 
-def angle_from_dir(dir):
-    return np.arctan2(dir[1], dir[0])
 
-def quaternion_from_angle(angle):
-    return Quaternion(*tf.transformations.quaternion_from_euler(0, 0, angle))
+rng = np.random.RandomState(0)
+n_samples = 20
+cov = [[10, 10], [10, 10]]
 
-def quaternion_from_dir(dir):
-    return quaternion_from_angle(angle_from_dir(dir))
-
-def create_pose_stamped(pos, dir):
-    pose = PoseStamped()
-    pose.header.stamp = rospy.Time.now()
-    pose.header.frame_id = 'map'
-    pose.pose.position = Point(x = pos[0], y = pos[1], z = 0)
-    pose.pose.orientation = quaternion_from_dir(dir)
-
-    return pose
+X = rng.multivariate_normal(mean=[30, -20], cov=cov, size=n_samples)
 
 def get_dir_vector(data):
     pca = PCA(n_components=2)
@@ -47,3 +34,26 @@ def sort_buoys_by_dir(buoys):
 
     # add back in the mean
     return sorted_data + mean
+
+print('original data')
+print(X)
+
+ax1 = plt.subplot(121)
+ax1.scatter(X[:, 0], X[:, 1], alpha=0.3)
+for i, txt in enumerate(range(n_samples)):
+    ax1.annotate(txt, (X[i, 0], X[i, 1]))
+ax1.set_aspect('equal', 'box')
+# ax1.set(xlim=(25, 31), ylim=(-24, -18))
+
+X = sort_buoys_by_dir(X)
+print('sorted data')
+print(X)
+
+ax2 = plt.subplot(122)
+ax2.scatter(X[:, 0], X[:, 1], alpha=0.3)
+for i, txt in enumerate(range(n_samples)):
+    ax2.annotate(txt, (X[i, 0], X[i, 1]))
+ax2.set_aspect('equal', 'box')
+# ax2.set(xlim=(25, 31), ylim=(-24, -18))
+
+plt.show()

@@ -6,7 +6,7 @@ from enum import Enum
 from arcturus_pilot.msg import Waypoint, WaypointReached
 from buoy_types import BuoyType
 from geometry_msgs.msg import PoseStamped
-from geom_helper import angle_from_dir
+from geom_helper import angle_from_dir, sort_buoys_by_dir
 from tf import euler_from_quaternion
 
 class State(Enum):
@@ -156,28 +156,24 @@ def main():
             if last_waypoint_visited != -1 and waypoints_sent[last_waypoint_visited][1] == 'channel1':
                 curr_state = get_next_state(State.CHANNEL)
             
-        # TODO: replace with PCA
         elif curr_state == State.AVOID_CROWD:
-            closest_red = None
-            closest_green = None
+            red_buoys = []
+            green_buoys = []
 
             for buoy in buoys:
                 if buoy[0] == BuoyType.AVOID_RED:
-                    if closest_red is None:
-                        closest_red = buoy[1]
-                    elif np.linalg.norm(buoy[1] - curr_pos) < np.linalg.norm(closest_red - curr_pos):
-                        closest_red = buoy[1]
+                    red_buoys.append(buoy[1])
                 elif buoy[0] == BuoyType.AVOID_GREEN:
-                    if closest_green is None:
-                        closest_green = buoy[1]
-                    elif np.linalg.norm(buoy[1] - curr_pos) < np.linalg.norm(closest_green - curr_pos):
-                        closest_green = buoy[1]
+                    green_buoys.append(buoy[1])
             
-            if closest_red != None and closest_green != None:
-                send_midpoint(closest_red, closest_green)
+            sorted_red = sort_buoys_by_dir(np.array(red_buoys))
+            sorted_green = sort_buoys_by_dir(np.array(green_buoys))
 
-            # TODO fix the waypoint id this checks for once you do the PCA (even if we don't locate all buoys, make sure we don't get stuck)
-            if last_waypoint_visited != -1 and waypoints_sent[last_waypoint_visited][1] == 'avoid_crowd':
+            num_waypoints = min(len(sorted_red), len(sorted_green))
+            for i in range(num_waypoints):
+                send_midpoint(sorted_red[i], sorted_green[i], 'avoid_crowd' + str(i))
+
+            if last_waypoint_visited != -1 and waypoints_sent[last_waypoint_visited][1] == 'avoid_crowd' + str(num_waypoints - 1):
                 curr_state = get_next_state(State.AVOID_CROWD)
 
         elif curr_state == State.FIND_SNACK_RUN:
