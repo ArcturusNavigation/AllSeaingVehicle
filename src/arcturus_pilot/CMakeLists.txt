@@ -53,7 +53,8 @@ roslaunch_add_file_check(launch)
 ## Generate messages in the 'msg' folder
 add_message_files(
     FILES
-    Waypoint.msg
+    RawWaypoint.msg
+    ProcessedWaypoint.msg
     WaypointReached.msg
     Buoy.msg
     BuoyList.msg
@@ -166,7 +167,7 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/waypoint_pilot.py
-  scripts/qual_waypoints_generator.py
+  scripts/waypoints_generator.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

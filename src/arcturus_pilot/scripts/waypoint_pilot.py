@@ -5,10 +5,10 @@ import tf
 import tf2_ros
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
-from sensor_msgs.msg import NavSatFix, Imu
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, TransformStamped
+from sensor_msgs.msg import Imu
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped
 
-from arcturus_pilot.msg import Waypoint, WaypointReached
+from arcturus_pilot.msg import ProcessedWaypoint, WaypointReached
 from arcturus_pilot.srv import GoToWaypoint, GoToWaypointResponse
 
 from six.moves import xrange
@@ -41,9 +41,10 @@ class WaypointPilot():
 
         self.waypoints = []
         self.current_order = 0
+        self.current_suborder = 0
 
     def run(self):
-        rospy.init_node('pilot', anonymous=True)
+        rospy.init_node('waypoint_pilot')
 
         service_timeout = 30
         rospy.loginfo("waiting for ROS services")
@@ -62,17 +63,16 @@ class WaypointPilot():
         
         rospy.Subscriber('mavros/state', State, self.state_callback)
         rospy.Subscriber('mavros/imu/data', Imu, self.imu_callback)
-        rospy.Subscriber('mavros/global_position/global', NavSatFix, self.global_position_callback)
         rospy.Subscriber('mavros/local_position/pose', PoseStamped, self.local_position_callback)
         self.sub_topics_ready = {
             key: False
-            for key in ['state', 'imu', 'global_pos', 'local_pos']
+            for key in ['state', 'imu', 'local_pos']
         }
 
-        rospy.Subscriber('arcturus_pilot/waypoint', Waypoint, self.waypoint_callback)
+        rospy.Subscriber('arcturus_pilot/processed_waypoint', ProcessedWaypoint, self.waypoint_callback)
         self.send_waypoint_reached = rospy.Publisher('arcturus_pilot/waypoint_reached', WaypointReached, queue_size=5)
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
-        self.send_position = rospy.Publisher('arcturus_pilot/position', PoseStamped, queue_size=5)
+        self.send_pose = rospy.Publisher('arcturus_pilot/pose', PoseStamped, queue_size=5)
         self.position_transform_broadcaster = tf.TransformBroadcaster()
 
         if USE_FAKE_GPS_FROM_ZED:
@@ -133,14 +133,11 @@ class WaypointPilot():
         if not self.sub_topics_ready['imu']:
             self.sub_topics_ready['imu'] = True
 
-    def global_position_callback(self, data):
-        self.global_position = data
-        if not self.sub_topics_ready['global_position']:
-            self.sub_topics_ready['global_position'] = True
-
     def go_to_waypoint(self, req):
-        self.waypoints = [(self.local_position.pose.position.x + req.x, 
-            self.local_position.pose.position.y + req.y, req.heading)]
+        self.waypoints = [[(self.local_position.pose.position.x + req.x, 
+            self.local_position.pose.position.y + req.y, req.heading)]]
+        self.current_order = 0
+        self.current_suborder = 0
         return GoToWaypointResponse()
 
     # subscribes to the local position of the boat and updates the next
@@ -156,7 +153,7 @@ class WaypointPilot():
             self.sub_topics_ready['local_pos'] = True
 
         # publish position to arcturus_pilot/position
-        self.send_position.publish(data)
+        self.send_pose.publish(data)
         
         if len(self.waypoints == 0):
             return
@@ -164,20 +161,21 @@ class WaypointPilot():
         curr_setpoint = self.waypoints[0]
         dist_sq = (self.local_position.pose.x - curr_setpoint[0]) ** 2 + (self.local_position.pose.y - curr_setpoint[1]) ** 2
         if dist_sq < ACCEPTANCE_RADIUS ** 2:
-            self.waypoints.pop(0)
-            self.current_order += 1
-            self.send_waypoint_reached.publish(WaypointReached(self.current_order))
+            self.current_suborder += 1
+            if self.current_suborder >= len(self.waypoints[self.current_order]):
+                self.send_waypoint_reached.publish(WaypointReached(self.current_order))
+                self.current_order += 1
+                self.current_suborder = 0
             self.send_setpoint()
 
     # subscribes to incoming waypoints and adds them to a list in
     # the correct order to be processed
     def waypoint_callback(self, waypoint):
-        adjusted_order = waypoint.order - self.current_order
-        if adjusted_order < 0:
-            return
-        while len(self.waypoints < adjusted_order):
-            self.waypoints.append(None)
-        self.waypoints[adjusted_order] = (waypoint.x, waypoint.y, waypoint.heading)
+        while len(self.waypoints < waypoint.order):
+            self.waypoints.append([])
+        while len(self.waypoints[waypoint.order]) < waypoint.suborder:
+            self.waypoints[waypoint.order].append(None)
+        self.waypoints[waypoint.order][waypoint.suborder] = (waypoint.x, waypoint.y, waypoint.heading)
 
     def zed_pose_callback(self, pose_with_cov):
         self.send_fake_gps.publish(pose_with_cov)
@@ -228,10 +226,13 @@ class WaypointPilot():
     # needs to be called at minimum 2 Hz
     def send_setpoint(self):
         waypoint = None
-        if len(self.waypoints) == 0:
+        if len(self.waypoints) < self.current_order or \
+            len(self.waypoints[self.current_order]) < self.current_suborder or \
+                self.waypoints[self.current_order][self.current_suborder] == None:
+            rospy.logerr("no waypoint set")
             self.set_local_setpoint.publish(self.local_position)
         else:
-            waypoint = self.waypoints[0]
+            waypoint = self.waypoints[self.current_order][self.current_suborder]
             waypoint_x, waypoint_y, waypoint_heading = waypoint[0], waypoint[1], waypoint[2]
             rospy.loginfo("setting setpoint: {0, 1, 2}".format(waypoint_x, waypoint_y, waypoint_heading))
 

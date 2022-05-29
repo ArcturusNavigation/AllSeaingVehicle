@@ -3,7 +3,7 @@
 import rospy
 import numpy as np
 from enum import Enum
-from arcturus_pilot.msg import Waypoint, WaypointReached
+from arcturus_pilot.msg import RawWaypoint, WaypointReached
 from buoy_types import BuoyType
 from geometry_msgs.msg import PoseStamped
 from geom_helper import angle_from_dir, sort_buoys_by_dir
@@ -107,7 +107,10 @@ class SearchData():
         return waypoints
 
 """
-Sends waypoints based on the current task to arcturus_pilot/waypoint_pilot node
+Generates raw waypoints based on the current task
+Sends these raw waypoints to the arcturus_pilot/local_planner node, which processes them and then sends them to
+arcturus_pilot/waypoint_pilot
+
 Receives data from the sensor suite with the locations of all of the buoys (expected in the local_origin frame)
 All waypoints are sent in the local_origin frame
 """
@@ -191,7 +194,7 @@ def main():
             if not matched:
                 np.append(curr_buoys, prev_buoy[np.newaxis, :], axis=0)
 
-    def pos_callback(data):
+    def pose_callback(data):
         nonlocal curr_pos
         nonlocal curr_heading
         curr_pos[0] = data.pose.position.x
@@ -203,9 +206,9 @@ def main():
         nonlocal curr_state
         last_waypoint_visited = data.order
 
-    waypoint_pub = rospy.publisher('arcturus_pilot/waypoint', Waypoint, queue_size=10)
+    waypoint_pub = rospy.publisher('arcturus_pilot/raw_waypoint', Waypoint, queue_size=10)
     reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/waypoint_reached', WaypointReached, reached_waypoint_callback)
-    pos_sub = rospy.Subscriber('arcturus_pilot/position', PoseStamped, pos_callback)
+    pose_sub = rospy.Subscriber('arcturus_pilot/pose', PoseStamped, pose_callback)
     buoys_sub = rospy.Subscriber('sensor_suite/buoys', BuoyList, buoys_callback)
 
     def find_index(waypoint_id):
@@ -228,7 +231,7 @@ def main():
         else:
             waypoints_sent[ix] = (position, waypoint_id)
 
-        waypoint_pub.publish(Waypoint(position[0], position[1], angle_from_dir(direction) if direction_is_angle else direction, ix))
+        waypoint_pub.publish(RawWaypoint(position[0], position[1], angle_from_dir(direction) if direction_is_angle else direction, ix))
     
     def send_midpoint(buoy_1, buoy_2, waypoint_id):
         """
