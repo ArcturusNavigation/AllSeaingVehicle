@@ -136,21 +136,22 @@ class ClusterNode {
         p.y = cloud->points[i].y;
         p.z = cloud->points[i].z;
         centroid.add(cloud->points[i]);
-        pixel px = projectPointToImage(
+        }
+      centroid.get(centroid_point);
+      vector p;
+      p.x = centroid_point.x;
+      p.y = centroid_point.y;
+      p.z = centroid_point.z;
+      pixel px = projectPointToImage(
             p, 1080,
             1920);  // Image sized based on
-                    // https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
-        int label = getRegion(px, bbox_msg);
-        if (label != 0) {
-          centroid.get(centroid_point);
-          sensor_suite::Object new_object;
-          // new_object.point = centroid_point; TODO: Finish
-          new_object.label = label;
-          new_object.num_points = cloud->points.size();
-          object_pub_.publish(new_object);
-          break;
-        }
-      }
+                    // https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-  
+      int label = getRegion(px, bbox_msg);
+      sensor_suite::Object new_object;
+      // new_object.point = centroid_point; TODO: Finish
+      new_object.label = label;
+      new_object.num_points = cloud->points.size();
+      object_pub_.publish(new_object);
     }
     return;
   }
