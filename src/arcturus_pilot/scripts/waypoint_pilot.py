@@ -33,15 +33,14 @@ class WaypointPilot():
     def __init__(self):
         self.state = State()
         self.imu = Imu()
-        self.global_position = NavSatFix()
         self.local_position = PoseStamped()
         self.init_local_position = None
         self.set_arming_srv = None
         self.set_mode_srv = None
 
         self.waypoints = []
+        self.temp_waypoint = None
         self.current_order = 0
-        self.current_suborder = 0
 
     def run(self):
         rospy.init_node('waypoint_pilot')
@@ -137,8 +136,14 @@ class WaypointPilot():
         self.waypoints = [[(self.local_position.pose.position.x + req.x, 
             self.local_position.pose.position.y + req.y, req.heading)]]
         self.current_order = 0
-        self.current_suborder = 0
         return GoToWaypointResponse()
+
+    def get_curr_waypoint(self):
+        if self.temp_waypoint is not None:
+            return self.temp_waypoint
+        if len(self.waypoints) < self.current_order:
+            return None
+        return self.waypoints[self.current_order]
 
     # subscribes to the local position of the boat and updates the next
     # waypoint if the local position is within acceptance radius of current setpoint
@@ -155,27 +160,29 @@ class WaypointPilot():
         # publish position to arcturus_pilot/position
         self.send_pose.publish(data)
         
-        if len(self.waypoints == 0):
+        curr_waypoint = self.get_curr_waypoint()
+        if curr_waypoint is None:
             return
         
-        curr_setpoint = self.waypoints[0]
-        dist_sq = (self.local_position.pose.x - curr_setpoint[0]) ** 2 + (self.local_position.pose.y - curr_setpoint[1]) ** 2
+        dist_sq = (self.local_position.pose.x - curr_waypoint[0]) ** 2 + (self.local_position.pose.y - curr_waypoint[1]) ** 2
         if dist_sq < ACCEPTANCE_RADIUS ** 2:
-            self.current_suborder += 1
-            if self.current_suborder >= len(self.waypoints[self.current_order]):
+            if self.temp_waypoint != None:
+                self.temp_waypoint = None
+            else:
                 self.send_waypoint_reached.publish(WaypointReached(self.current_order))
                 self.current_order += 1
-                self.current_suborder = 0
             self.send_setpoint()
 
     # subscribes to incoming waypoints and adds them to a list in
     # the correct order to be processed
     def waypoint_callback(self, waypoint):
+        if waypoint.is_temp:
+            self.temp_waypoint = (waypoint.x, waypoint.y, waypoint.heading)
+            return
+            
         while len(self.waypoints < waypoint.order):
-            self.waypoints.append([])
-        while len(self.waypoints[waypoint.order]) < waypoint.suborder:
-            self.waypoints[waypoint.order].append(None)
-        self.waypoints[waypoint.order][waypoint.suborder] = (waypoint.x, waypoint.y, waypoint.heading)
+            self.waypoints.append(())
+        self.waypoints[waypoint.order] = (waypoint.x, waypoint.y, waypoint.heading)
 
     def zed_pose_callback(self, pose_with_cov):
         self.send_fake_gps.publish(pose_with_cov)
@@ -225,14 +232,11 @@ class WaypointPilot():
     # takes the current setpoint and sends it to the FCU
     # needs to be called at minimum 2 Hz
     def send_setpoint(self):
-        waypoint = None
-        if len(self.waypoints) < self.current_order or \
-            len(self.waypoints[self.current_order]) < self.current_suborder or \
-                self.waypoints[self.current_order][self.current_suborder] == None:
+        waypoint = self.get_curr_waypoint()
+        if waypoint == None:
             rospy.logerr("no waypoint set")
             self.set_local_setpoint.publish(self.local_position)
         else:
-            waypoint = self.waypoints[self.current_order][self.current_suborder]
             waypoint_x, waypoint_y, waypoint_heading = waypoint[0], waypoint[1], waypoint[2]
             rospy.loginfo("setting setpoint: {0, 1, 2}".format(waypoint_x, waypoint_y, waypoint_heading))
 
@@ -240,8 +244,7 @@ class WaypointPilot():
             pose.header.stamp = rospy.now()
             pose.header.frame_id = '/local_origin'
             pose.pose = Pose()
-            pose.pose.position = Point(x = waypoint_x + self.init_local_position.pose.position.x, 
-                y = waypoint_y + self.init_local_position.pose.position.y, z = 0)
+            pose.pose.position = Point(x = waypoint_x, y = waypoint_y, z = 0)
             pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0, 0, waypoint_heading))
             self.set_local_setpoint.publish(pose)
 
