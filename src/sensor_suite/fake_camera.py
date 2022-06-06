@@ -7,7 +7,7 @@ import cv2 as cv
 import rospy
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
-CAMERA_TOPIC = 'zed/rgb/image_rect_color'
+CAMERA_TOPIC = '/zed2i/zed_node/rgb/image_rect_color' #'zed/rgb/image_rect_color'
 CAMERA_FRAME = 'map'
 
 
