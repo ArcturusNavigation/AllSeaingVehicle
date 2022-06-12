@@ -102,7 +102,7 @@ class ClusterNode {
     sync_.registerCallback(
         boost::bind(&ClusterNode::pcCallback,this, _1, _2));
     object_pub_ =
-        nh_.advertise<sensor_suite::Object>("/sensor_suite/object", 1);
+        nh_.advertise<sensor_suite::ObjectArray>("/sensor_suite/objects", 1);
     marker_pub_ =
         nh_.advertise<visualization_msgs::MarkerArray>("/sensor_suite/markers",
                                                         1);
@@ -130,6 +130,7 @@ class ClusterNode {
     std::cout << "Found " << clusters.size() << " clusters." << std::endl;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(
         new pcl::PointCloud<pcl::PointXYZ>);
+    sensor_suite::ObjectArray objects;
     visualization_msgs::MarkerArray markers; 
     // Loop through every point in each cluster and project to bounding box
     int min_count = 0;  // minimum points in cluster labelled as one object to
@@ -162,10 +163,12 @@ class ClusterNode {
                     // https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-  
       int label = getRegion(px, bbox_msg);
       sensor_suite::Object new_object;
-      // new_object.point = centroid_point; TODO: Finish
+      new_object.pos.x = centroid_point.x; //TODO: Finish
+      new_object.pos.y = centroid_point.y;
+      new_object.pos.z = centroid_point.z;
       new_object.label = label;
       new_object.num_points = cloud->points.size();
-      object_pub_.publish(new_object);
+      objects.objects.push_back(new_object);
       visualization_msgs::Marker marker; 
       marker.header.frame_id = "world";
       marker.header.stamp = ros::Time::now();
@@ -190,6 +193,7 @@ class ClusterNode {
       marker.lifetime = ros::Duration(0.5);
       markers.markers.push_back(marker);
     }
+    object_pub_.publish(objects);
     marker_pub_.publish(markers);
     return;
   }
