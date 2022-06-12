@@ -7,7 +7,7 @@ from geom_helper import angle_from_dir
 import numpy as np
 import skimage
 
-SEARCH_DIST = 0.5
+SEARCH_DIST = 0.25
 
 class LocalPlanner():
     def __init__(self):
@@ -61,7 +61,7 @@ class LocalPlanner():
 
         return obstacle
 
-    def adjust_point(self, dir, point):
+    def adjust_point_side(self, dir, point):
         perp = np.array([dir[1], -dir[0]])
 
         valid_waypoint = None
@@ -83,6 +83,22 @@ class LocalPlanner():
 
         return valid_waypoint
 
+    def adjust_point_back(self, dir, point):
+        valid_waypoint = None
+
+        for i in range(1, 100):
+            test = point - dir * i * SEARCH_DIST
+
+            if self.occupancy[self.convert(test[1]), self.convert(test[0])] == 0:
+                valid_waypoint = test
+                break
+        
+        if valid_waypoint is None:
+            rospy.logerr("Could not find valid waypoint")
+            return point
+
+        return valid_waypoint
+
     def raw_waypoint_callback(self, data):
         (x, y, heading, order) = (data.x, data.y, data.heading, data.order)
 
@@ -96,8 +112,8 @@ class LocalPlanner():
         target_dir = target - self.pos
         target_dir /= np.linalg.norm(target_dir)
 
-        # if the target is inside of an obstacle, move it out
-        target = self.adjust_point(target, target_dir)
+        # if the target is inside of an obstacle, stop at the earliest point before the obstacle
+        target = self.adjust_point_back(target, target_dir)
 
         # check if the line between boat and target goes through any obstacles
         obstacle = self.find_obstacle(target)
@@ -107,7 +123,7 @@ class LocalPlanner():
             return
         
         # create a temporary waypoint to the side of the obstacle
-        valid_waypoint = self.adjust_point(target, target_dir)
+        valid_waypoint = self.adjust_point_side(target, target_dir)
         
         dir = target - valid_waypoint
         dir /= np.linalg.norm(dir)
