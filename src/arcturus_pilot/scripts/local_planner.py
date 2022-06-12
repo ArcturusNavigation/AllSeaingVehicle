@@ -32,7 +32,10 @@ class LocalPlanner():
     def convert(self, x):
         return int(round(x / GRID_RESOLUTION))
 
-    def find_obstacle(self, x, y):
+    def find_obstacle(self, target):
+        x = target[0]
+        y = target[1]
+
         # draw line from current pos to (x, y) and see if it intersects with anything on the occupancy grid
         rr, cc = skimage.draw.polygon_perimeter(
             [self.convert(self.pos[1]), self.convert(y), self.convert(self.pos[1])],
@@ -58,28 +61,14 @@ class LocalPlanner():
 
         return obstacle
 
-    def raw_waypoint_callback(self, data):
-        (x, y, heading, order) = (data.x, data.y, data.heading, data.order)
-        if self.order + 1 != order or self.occupancy is None:
-            self.processed_waypoint_pub.publish(ProcessedWaypoint(x, y, heading, order, False))
-            return
-        
-        obstacle = self.find_obstacle(x, y)
-
-        if obstacle == None:
-            self.processed_waypoint_pub.publish(ProcessedWaypoint(x, y, heading, order, False))
-            return
-        
-        dir = np.array(data.x - self.pos[0], data.y - self.pos[1])
-        dir /= np.linalg.norm(dir)
-
+    def adjust_point(self, dir, point):
         perp = np.array([dir[1], -dir[0]])
 
         valid_waypoint = None
 
         for i in range(1, 100):
-            test_1 = obstacle + perp * i * SEARCH_DIST
-            test_2 = obstacle - perp * i * SEARCH_DIST
+            test_1 = point + perp * i * SEARCH_DIST
+            test_2 = point - perp * i * SEARCH_DIST
 
             if self.occupancy[self.convert(test_1[1]), self.convert(test_1[0])] == 0:
                 valid_waypoint = test_1
@@ -90,10 +79,37 @@ class LocalPlanner():
         
         if valid_waypoint is None:
             rospy.logerr("Could not find valid waypoint")
+            return point
+
+        return valid_waypoint
+
+    def raw_waypoint_callback(self, data):
+        (x, y, heading, order) = (data.x, data.y, data.heading, data.order)
+
+        # if the target is not our next immediate point, don't process it
+        if self.order + 1 != order or self.occupancy is None:
+            self.processed_waypoint_pub.publish(ProcessedWaypoint(x, y, heading, order, False))
+            return
+
+        target = np.array([x, y])
+
+        target_dir = target - self.pos
+        target_dir /= np.linalg.norm(target_dir)
+
+        # if the target is inside of an obstacle, move it out
+        target = self.adjust_point(target, target_dir)
+
+        # check if the line between boat and target goes through any obstacles
+        obstacle = self.find_obstacle(target)
+
+        if obstacle == None:
             self.processed_waypoint_pub.publish(ProcessedWaypoint(x, y, heading, order, False))
             return
         
-        dir = np.array(x, y) - valid_waypoint
+        # create a temporary waypoint to the side of the obstacle
+        valid_waypoint = self.adjust_point(target, target_dir)
+        
+        dir = target - valid_waypoint
         dir /= np.linalg.norm(dir)
         heading = angle_from_dir(dir)
         self.processed_waypoint_pub.publish(ProcessedWaypoint(valid_waypoint[0], valid_waypoint[1], heading, order, True))

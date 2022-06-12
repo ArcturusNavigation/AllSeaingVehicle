@@ -2,7 +2,6 @@
 
 import rospy
 import tf
-import tf2_ros
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
 from sensor_msgs.msg import Imu

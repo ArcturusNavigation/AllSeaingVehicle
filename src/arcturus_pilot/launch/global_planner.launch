@@ -1,5 +1,0 @@
-<launch>
-    <node name="planner" pkg="global_planner" type="planner">
-        <rosparam file="$(find arcturus_pilot)/launch/global_costmap_params.yaml" command="load" />
-    </node>
-</launch>

@@ -1,6 +1,0 @@
-image: willow-2010-02-18-0.10.pgm
-resolution: 0.100000
-origin: [0.00000, 0.0000, 0.000000]
-negate: 0
-occupied_thresh: 0.2
-free_thresh: 0.01
