@@ -17,12 +17,15 @@
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/search/search.h>
-#include <pcl/segmentation/region_growing.h>
-#include <pcl/segmentation/sac_segmentation.h>
+// #include <pcl/segmentation/region_growing.h>
+// #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/passthrough.h>
-#include <pcl/segmentation/region_growing_rgb.h>
+// #include <pcl/segmentation/region_growing_rgb.h>
+#include <pcl/segmentation/extract_clusters.h>
 #include "pcl_ros/point_cloud.h"
 
+#include "visualization_msgs/Marker.h"
+#include "visualization_msgs/MarkerArray.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_suite/LabeledBoundingBox2D.h"
 #include "sensor_suite/LabeledBoundingBox2DArray.h"
@@ -45,17 +48,19 @@ class ClusterNode {
       bbox_sub_;
   ros::Publisher pcl_pub_;
   ros::Publisher object_pub_;
+  ros::Publisher marker_pub_;
   tf::TransformListener listener_;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr buffer_;
   pcl::IndicesPtr indices_;
   pcl::search::Search<pcl::PointXYZ>::Ptr tree_;
-  pcl::PointCloud<pcl::Normal>::Ptr normals_;
+  // pcl::PointCloud<pcl::Normal>::Ptr normals_;
 
   pcl::ExtractIndices<pcl::PointXYZ> extract;
-  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
-  pcl::SACSegmentation<pcl::PointXYZ> seg;
-  pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
+  // pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normal_estimator;
+  // pcl::SACSegmentation<pcl::PointXYZ> seg;
+  // pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
+  pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec_;
   pcl::PointCloud<pcl::PointXYZ>::iterator iter;
 
  private:
@@ -64,66 +69,75 @@ class ClusterNode {
   typedef message_filters::sync_policies::ApproximateTime<
       sensor_msgs::PointCloud2, sensor_suite::LabeledBoundingBox2DArray>
       SyncPolicy;
-  typedef message_filters::Synchronizer<SyncPolicy> Sync;
-  boost::shared_ptr<Sync> sync_;
+  // typedef message_filters::Synchronizer<SyncPolicy> Sync;
+  message_filters::Synchronizer<SyncPolicy> sync_;
 
  public:
   ClusterNode(ros::NodeHandle n)
       : nh_(n),
         indices_(new std::vector<int>),
-        pcl_sub_(nh_, "/sensor_suite/raw_cloud", 1),
+        pcl_sub_(nh_, "/velodyne_points2", 1),
         bbox_sub_(nh_, "/sensor_suite/bounding_boxes", 1),
+        sync_(SyncPolicy(10), pcl_sub_,bbox_sub_),
         buffer_(new pcl::PointCloud<pcl::PointXYZ>) {
     // calculate basis vectors for projections
 
     // 1080 = image height
-    float f = (float)1080 / 1000.;
-    vector up = newVector(0, 0, 1);
-    w = scale(1 / qsize(viewDirection), viewDirection);
-    u = scale(1 / qsize(qcross(up, w)), qcross(up, w));
-    v = qcross(w, u);
-    e = newVector(800 * f, 100 * f, 0);
-    viewDirection = newVector(-1, 0, 0);
-    normal_estimator.setSearchMethod(tree_);
-    normal_estimator.setKSearch(50);
-    reg.setSmoothnessThreshold(3.0 / 180.0 * M_PI);
-    reg.setCurvatureThreshold(1.0);
+    // float f = (float)1080 / 1000.;
+    // vector up = newVector(0, 0, 1);
+    // w = scale(1 / qsize(viewDirection), viewDirection);
+    // u = scale(1 / qsize(qcross(up, w)), qcross(up, w));
+    // v = qcross(w, u);
+    // e = newVector(800 * f, 100 * f, 0);
+    // viewDirection = newVector(-1, 0, 0);
+    tree_.reset(new pcl::search::KdTree<pcl::PointXYZ>);
+    ec_.setClusterTolerance(.5); // 50 cm 
+    ec_.setMinClusterSize(3);
+    ec_.setMaxClusterSize(100);
+    ec_.setSearchMethod(tree_);
+
 
     // Initiate subscribers and publishers
-    sync_.reset(new Sync(SyncPolicy(10), pcl_sub_, bbox_sub_));
-    sync_->registerCallback(
-        boost::bind(&ClusterNode::pcCallback, this, _1, _2));
+    // sync_.reset(new Sync(SyncPolicy(10), pcl_sub_, bbox_sub_));
+    sync_.registerCallback(
+        boost::bind(&ClusterNode::pcCallback,this, _1, _2));
     object_pub_ =
         nh_.advertise<sensor_suite::Object>("/sensor_suite/object", 1);
-
+    marker_pub_ =
+        nh_.advertise<visualization_msgs::MarkerArray>("/sensor_suite/markers",
+                                                        1);
     // Clear point_cloud pointers
     // TODO: Move to initialization List
-    normals_.reset(new pcl::PointCloud<pcl::Normal>);
-    tree_.reset(new pcl::search::KdTree<pcl::PointXYZ>);
+    // normals_.reset(new pcl::PointCloud<pcl::Normal>);
     buffer_->header.frame_id = "world";
+    std::cout << "Initialized!" << std::endl;
   }
 
   void pcCallback(
       const sensor_msgs::PointCloud2ConstPtr& pcl_msg,
       const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
+    // std::cout << "Callback!" << std::endl;
     pcl::fromROSMsg(*pcl_msg, *buffer_);
     // pcl::removeNaNFromPointCloud(buffer_);  TODO // Source:
     // https://github.com/daviddoria/Examples/blob/master/c%2B%2B/PCL/Filters/RemoveNaNFromPointCloud/RemoveNaNFromPointCloud.cpp
-    normal_estimator.setInputCloud(buffer_);
-    reg.setInputCloud(buffer_);
+    ec_.setInputCloud(buffer_);
     extract.setInputCloud(buffer_);
-    reg.setIndices(indices_);
+    // ec_.setIndices(indices_);
 
-    normal_estimator.compute(*normals_);
+    // normal_estimator.compute(*normals_);
     std::vector<pcl::PointIndices> clusters;
-    reg.extract(clusters);
+    ec_.extract(clusters);
+    std::cout << "Found " << clusters.size() << " clusters." << std::endl;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(
         new pcl::PointCloud<pcl::PointXYZ>);
-
+    visualization_msgs::MarkerArray markers; 
     // Loop through every point in each cluster and project to bounding box
     int min_count = 0;  // minimum points in cluster labelled as one object to
                         // avoid nosie TODO: Use
+    int id = 0;
     for (auto cluster : clusters) {
+      // std::cout << "Another Cluster" << std::endl;
+      // std::cout << "Cluster size: " << cluster.indices.size() << std::endl;
       pcl::PointIndices::Ptr cluster_indices(new pcl::PointIndices);
       cluster_indices->indices = cluster.indices;
       extract.setIndices(cluster_indices);
@@ -152,7 +166,31 @@ class ClusterNode {
       new_object.label = label;
       new_object.num_points = cloud->points.size();
       object_pub_.publish(new_object);
+      visualization_msgs::Marker marker; 
+      marker.header.frame_id = "world";
+      marker.header.stamp = ros::Time::now();
+      marker.ns = "course_objects";
+      marker.id = id++;
+      marker.type = visualization_msgs::Marker::CUBE;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.pose.position.x = centroid_point.x;
+      marker.pose.position.y = centroid_point.y;
+      marker.pose.position.z = centroid_point.z;
+      marker.pose.orientation.x = 0.0;
+      marker.pose.orientation.y = 0.0;
+      marker.pose.orientation.z = 0.0;
+      marker.pose.orientation.w = 1.0;
+      marker.scale.x = .2;
+      marker.scale.y = .2;
+      marker.scale.z = .2;
+      marker.color.r = 0.0f;
+      marker.color.g = 1.0f;
+      marker.color.b = 0.0f;
+      marker.color.a = 1.0f;
+      marker.lifetime = ros::Duration(0.5);
+      markers.markers.push_back(marker);
     }
+    marker_pub_.publish(markers);
     return;
   }
   // TODO: Finish this function

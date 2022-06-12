@@ -26,12 +26,11 @@ class SegmentationNode {
   ros::Publisher box_pub_;
 
  private:
-  sensor_suite::LabeledBoundingBox2DArray box_array_;
   cv::Mat img_; 
 
  public:
   SegmentationNode(ros::NodeHandle n) : nh_(n) {
-    img_sub_ = nh_.subscribe("/zed2i/rgb/image_rect_color", 1,
+    img_sub_ = nh_.subscribe("/zed2i/zed_node/rgb/image_rect_color", 1,
                              &SegmentationNode::imgCallback, this);
     img_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/image", 1);
     box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>(
@@ -80,6 +79,7 @@ class SegmentationNode {
     cv::drawContours(img_, contours_green, -1, cv::Scalar(0, 255, 0), 2);
     cv::drawContours(img_, contours_yellow, -1, cv::Scalar(255, 255, 0), 2);
     // Create bounding boxes for each contour
+    sensor_suite::LabeledBoundingBox2DArray box_array;
     for (int i = 0; i < contours_red.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_red[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 0, 255), 2);
@@ -89,7 +89,7 @@ class SegmentationNode {
       box.width = rect.width;
       box.height = rect.height;
       box.label = 1;  // TODO: Change to Enum
-      box_array_.boxes.push_back(box);
+      box_array.boxes.push_back(box);
     }
     for (int i = 0; i < contours_green.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_green[i]);
@@ -100,7 +100,7 @@ class SegmentationNode {
       box.width = rect.width;
       box.height = rect.height;
       box.label = 2;
-      box_array_.boxes.push_back(box);
+      box_array.boxes.push_back(box);
     }
     for (int i = 0; i < contours_yellow.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_yellow[i]);
@@ -111,9 +111,10 @@ class SegmentationNode {
       box.width = rect.width;
       box.height = rect.height;
       box.label = 3;
-      box_array_.boxes.push_back(box);
+      box_array.boxes.push_back(box);
     }
-    box_pub_.publish(box_array_);
+    box_array.header.stamp = msg->header.stamp;
+    box_pub_.publish(box_array);
     img_pub_.publish(cv_ptr->toImageMsg());
   }
 };
@@ -132,37 +133,36 @@ class SegmentationClusterNode {
  private:
   cv::Mat img_;
   cv::Mat depth_;
-  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image,sensor_msgs::CameraInfo>
+  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::CameraInfo>
       SyncPolicy;
   typedef message_filters::Synchronizer<SyncPolicy> Sync;
   boost::shared_ptr<Sync> sync_;
 
  public:
   SegmentationClusterNode(ros::NodeHandle n) : nh_(n), img_sub_(nh_, "/zed2i/zed_node/rgb/image_rect_color", 1),
-                                               depth_sub_(nh_, "/zed2i/zed_node/depth/depth_registered", 1),
                                                info_sub_(nh_, "/zed2i/zed_node/rgb/camera_info", 1)
                                                {
     object_pub_ = nh_.advertise<sensor_suite::ObjectArray>("/sensor_suite/objects", 1);
     box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>("/sensor_suite/bounding_boxes", 1);
     img_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/segmented_image", 1);
-    sync_.reset(new Sync(SyncPolicy(10), img_sub_, depth_sub_,info_sub_));
-    sync_->registerCallback(boost::bind(&SegmentationClusterNode::imgCallback, this, _1, _2,_3));
+    sync_.reset(new Sync(SyncPolicy(10), img_sub_, info_sub_));
+    sync_->registerCallback(boost::bind(&SegmentationClusterNode::imgCallback, this, _1, _2));
 
   }
 
-  void imgCallback(const sensor_msgs::ImageConstPtr& img_msg, const sensor_msgs::ImageConstPtr& depth_msg,const sensor_msgs::CameraInfoConstPtr& info_msg) {
+  void imgCallback(const sensor_msgs::ImageConstPtr& img_msg, const sensor_msgs::CameraInfoConstPtr& info_msg) {
     cam_model_.fromCameraInfo(info_msg);
     cv_bridge::CvImagePtr cv_ptr;
-    cv_bridge::CvImagePtr depth_ptr;
+    // cv_bridge::CvImagePtr depth_ptr;
     try {
       cv_ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::BGR8);
-      depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1);
+      // depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1);
     } catch (cv_bridge::Exception& e) {
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
     img_ = cv_ptr->image;
-    depth_ = depth_ptr->image;
+    // depth_ = depth_ptr->image;
     // cam_model_.fromCameraInfo(info_msg);
     // Convert from BGR8 to HSV
     cv::cvtColor(img_, img_, cv::COLOR_BGR2HSV);
@@ -187,7 +187,7 @@ class SegmentationClusterNode {
                       CV_CHAIN_APPROX_SIMPLE);
     }
     // Create bounding boxes and objects for each contour
-    sensor_suite::LabeledBoundingBox2DArray box_array_;
+    sensor_suite::LabeledBoundingBox2DArray box_array;
     sensor_suite::ObjectArray object_array_;
     for(int i = 0; i < 3; i++){
       for(int j = 0; j < colored_contours[i].size(); j++){
@@ -200,7 +200,7 @@ class SegmentationClusterNode {
           box.width = rect.width;
           box.height = rect.height;
           box.label = i + 1;  // TODO: Change to Enum
-          box_array_.boxes.push_back(box);
+          box_array.boxes.push_back(box);
           sensor_suite::Object object;
           cv::Point3d point = cam_model_.projectPixelTo3dRay(cv::Point2d(rect.x + rect.width / 2, rect.y + 3*rect.height / 4));
           object.point.x = point.x;
@@ -216,7 +216,7 @@ class SegmentationClusterNode {
       }
       // cv::drawContours(img_, colored_contours[i], -1, colors[i], 4);
     }
-    box_pub_.publish(box_array_);
+    box_pub_.publish(box_array);
     object_pub_.publish(object_array_);
     img_pub_.publish(cv_ptr->toImageMsg());
   }
@@ -242,7 +242,7 @@ class SegmentationClusterNode {
 int main(int argc, char** argv) {
   ros::init(argc, argv, "segmentation_node");
   ros::NodeHandle nh;
-  SegmentationClusterNode segmentation_node(nh);
+  SegmentationNode segmentation_node(nh);
   ros::spin();
   return 0;
 }
