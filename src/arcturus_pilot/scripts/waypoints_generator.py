@@ -158,25 +158,27 @@ def main():
     curr_state = None    
     search_data = None
 
+    find_seat_target = None
+    water_gun_status = None
+    skeeball_status = None
+
     waypoint_pub = rospy.publisher('arcturus_pilot/raw_waypoint', RawWaypoint, queue_size=10)
     reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/waypoint_reached', WaypointReached, reached_waypoint_callback)
     pose_sub = rospy.Subscriber('arcturus_pilot/pose', PoseStamped, pose_callback)
     objects_sub = rospy.Subscriber('sensor_suite/objects', ObjectArray, objects_callback)
 
-    def search(next_state, search_behavior=SearchBehavior.SKIP):
-        """
-        Given the next desired state, sets up searching for the next state 
-        """
-        nonlocal curr_state
-        nonlocal search_data
+    # TODO replace these placeholders
+    find_seat_ready_pub = rospy.Publisher('find_seat/ready', None, queue_size = 10)
+    water_gun_ready_pub = rospy.Publisher('water_gun/ready', None, queue_size = 10)
+    skeeball_ready_pub = rospy.Publisher('skeeball/ready', None, queue_size = 10)
 
-        curr_state = State.SEARCH
-        search_data = SearchData(next_state, search_behavior, curr_pos, curr_heading)
-        rospy.Timer(rospy.duration(SEARCH_TIMEOUT), search_timeout, True)
+    find_seat_target_sub = rospy.Subscriber('find_seat/target', None, find_seat_target_callback)
+    water_gun_status_sub = rospy.Subscriber('water_gun/status', None, water_gun_status_callback)
+    skeeball_status_sub = rospy.Subscriber('skeeball/status', None, skeeball_status_callback)
 
-    def search_timeout():
-        nonlocal curr_state
-        curr_state = search_data.next_state
+    #############################################################
+    ################## STATE MACHINE MANAGEMENT #################
+    #############################################################
 
     def go_next_state():
         """
@@ -206,6 +208,25 @@ def main():
         elif curr_state == State.RETURN:
             curr_state = State.FINISHED
 
+    def search(next_state, search_behavior=SearchBehavior.SKIP):
+        """
+        Given the next desired state, sets up searching for the next state 
+        """
+        nonlocal curr_state
+        nonlocal search_data
+
+        curr_state = State.SEARCH
+        search_data = SearchData(next_state, search_behavior, curr_pos, curr_heading)
+        rospy.Timer(rospy.duration(SEARCH_TIMEOUT), search_timeout, True)
+
+    def search_timeout():
+        nonlocal curr_state
+        curr_state = search_data.next_state
+
+    #############################################################
+    ################## ROS SUBSCRIBER CALLBACKS #################
+    #############################################################
+
     def objects_callback(data):
         nonlocal curr_objects
         curr_objects = np.zeros((0, 3))
@@ -225,6 +246,22 @@ def main():
         nonlocal last_waypoint_visited
         nonlocal curr_state
         last_waypoint_visited = data.order
+
+    def find_seat_target_callback(data):
+        nonlocal find_seat_target
+        find_seat_target = data.pos
+
+    def skeeball_status_callback(data):
+        nonlocal skeeball_status
+        skeeball_status = data.status
+    
+    def water_gun_status_callback(data):
+        nonlocal water_gun_status
+        water_gun_status = data.status
+        
+    #############################################################
+    ################# WAYPOINT SENDING FUNCTIONS ################
+    #############################################################
 
     def find_index(waypoint_id):
         for ix, waypoint in enumerate(waypoints_sent):
@@ -260,13 +297,17 @@ def main():
         heading_dir = dir if np.linalg.norm(curr_pos - test_pos) > np.linalg.norm(curr_pos - test_neg) else -dir
 
         send_waypoint(midpoint, heading_dir, waypoint_id)
-    
 
     def is_last_visited(waypoint_id):
         return last_waypoint_visited != -1 and waypoints_sent[last_waypoint_visited][1] == waypoint_id
 
-    # start up initial state
     search(State.CHANNEL, SearchBehavior.FORWARD)
+        
+    #############################################################
+    ################## STATE MACHINE MAIN LOOP ##################
+    #############################################################
+    
+    # start up initial state
     
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
@@ -397,10 +438,12 @@ def main():
             else:
                 send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat0')
 
-                # TODO wait for / somehow calculate waypoint for which dock to go to
-                find_seat_target = np.array([0, 0])
-                send_waypoint(find_seat_target, FIND_SEAT_DIR, 'find_seat1')
-                send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat2')
+                if is_last_visited('find_seat0'):
+                    find_seat_ready_pub.publish(None)
+
+                if find_seat_target != None:
+                    send_waypoint(find_seat_target, FIND_SEAT_DIR, 'find_seat1')
+                    send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat2')
                     
                 if is_last_visited('find_seat2'):
                     go_next_state()
@@ -419,12 +462,9 @@ def main():
                 send_waypoint(water_blast_pos, WATER_BLAST_DIR, 'water_blast1')
 
                 if is_last_visited('water_blast1'):
-                    # TODO send signal for water blaster to go
-                    pass
+                    water_gun_ready_pub.publish(None)
                 
-                # TODO receive signal when water blaster is finished
-                water_blast_signal = True
-                if water_blast_signal:
+                if water_gun_status != None:
                     send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast2')
                     
                 if is_last_visited('water_blast2'):
@@ -444,12 +484,9 @@ def main():
                 send_waypoint(skeeball_pos, SKEEBALL_DIR, 'skeeball1')
 
                 if is_last_visited('skeeball1'):
-                    # TODO send signal for skeeball to go
-                    pass
+                    skeeball_ready_pub.publish(None)
                 
-                # TODO receive signal when skeeball is finished
-                skeeball_signal = True
-                if skeeball_signal:
+                if skeeball_status != None:
                     send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball2')
                     
                 if is_last_visited('skeeball2'):
