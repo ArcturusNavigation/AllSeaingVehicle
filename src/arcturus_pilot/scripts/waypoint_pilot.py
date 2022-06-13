@@ -13,7 +13,7 @@ from arcturus_pilot.srv import GoToWaypoint, GoToWaypointResponse
 from six.moves import xrange
 
 ACCEPTANCE_RADIUS = 0.2
-USE_FAKE_GPS_FROM_ZED = True
+USE_FAKE_GPS_FROM_ZED = False
 
 # see https://mavlink.io/en/messages/common.html#MAV_STATE
 MAV_STATE_ENUM = {

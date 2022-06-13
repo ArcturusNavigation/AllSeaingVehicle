@@ -15,7 +15,7 @@ class LocalPlanner():
         self.processed_waypoint_pub = rospy.Publisher('arcturus_pilot/processed_waypoint', ProcessedWaypoint)
         self.reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/waypoint_reached', WaypointReached, self.reached_waypoint_callback)
         self.pose_sub = rospy.Subscriber('arcturus_pilot/pose', PoseStamped, self.pose_callback)
-        self.occupancy_sub = rospy.Subscriber('sensor_suite/occupancy', OccupancyGrid, self.occupancy_callback)
+        self.occupancy_sub = rospy.Subscriber('/occupancy_grid', OccupancyGrid, self.occupancy_callback)
 
         self.occupancy = None
         self.occupancy_width = 0

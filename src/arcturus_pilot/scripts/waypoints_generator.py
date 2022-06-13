@@ -4,7 +4,8 @@ import rospy
 import numpy as np
 from enum import Enum
 from arcturus_pilot.msg import RawWaypoint, WaypointReached
-from object_types import ObjectType
+from sensor_suite.msg import ObjectArray
+from object_types import ObjectType, getObjectType
 from geometry_msgs.msg import PoseStamped
 from geom_helper import angle_from_dir, sort_buoys_by_dir
 from tf import euler_from_quaternion
@@ -160,7 +161,7 @@ def main():
     waypoint_pub = rospy.publisher('arcturus_pilot/raw_waypoint', RawWaypoint, queue_size=10)
     reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/waypoint_reached', WaypointReached, reached_waypoint_callback)
     pose_sub = rospy.Subscriber('arcturus_pilot/pose', PoseStamped, pose_callback)
-    objects_sub = rospy.Subscriber('sensor_suite/objects', ObjectList, objects_callback)
+    objects_sub = rospy.Subscriber('sensor_suite/objects', ObjectArray, objects_callback)
 
     def search(next_state, search_behavior=SearchBehavior.SKIP):
         """
@@ -207,21 +208,11 @@ def main():
 
     def objects_callback(data):
         nonlocal curr_objects
-        visible_buoys = data.buoys
-        # prev_buoys = curr_objects
         curr_objects = np.zeros((0, 3))
 
-        for buoy in visible_buoys:
-            curr_objects = np.append(curr_objects, [[buoy.type, buoy.x, buoy.y]], axis=0)
-
-        # for prev_buoy in prev_buoys:
-        #     matched = False
-        #     for cur_buoy in visible_buoys:
-        #         if prev_buoy[0] == cur_buoy[0] and np.linalg.norm(prev_buoy - cur_buoy) < BUOY_DIST_THRESHOLD:
-        #             matched = True
-        #             break
-        #     if not matched:
-        #         np.append(curr_objects, prev_buoy[np.newaxis, :], axis=0)
+        for object in data.objects:
+            curr_objects = np.append(curr_objects, [[getObjectType(object.label, object.task_label), 
+                object.pos.x, object.pos.y]], axis=0)
 
     def pose_callback(data):
         nonlocal curr_pos
