@@ -1,23 +1,38 @@
+#include "math.h"
+
 #include "cv_bridge/cv_bridge.h"
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
 #include "sensor_suite/LabeledBoundingBox2D.h"
 #include "sensor_suite/LabeledBoundingBox2DArray.h"
+#include <sensor_suite/Object.h>
+#include "sensor_suite/ObjectArray.h"
+#include <image_geometry/pinhole_camera_model.h>
+
+#include <message_filters/subscriber.h>
+#include <message_filters/sync_policies/approximate_time.h>
+#include <message_filters/synchronizer.h>
+
+// TODO
+// Refactor so each new segmentation node extends base class 
+// Add enums for colors for more readable array access
+
 
 class SegmentationNode {
  protected:
   ros::NodeHandle nh_;
   ros::Subscriber img_sub_;
+  ros::Publisher img_pub_;
   ros::Publisher box_pub_;
 
  private:
-  sensor_suite::LabeledBoundingBox2DArray box_array_;
-  cv::Mat img_;
+  cv::Mat img_; 
 
  public:
   SegmentationNode(ros::NodeHandle n) : nh_(n) {
-    img_sub_ = nh_.subscribe("/sensor_suite/image", 1,
+    img_sub_ = nh_.subscribe("/zed2i/zed_node/rgb/image_rect_color", 1,
                              &SegmentationNode::imgCallback, this);
+    img_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/image", 1);
     box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>(
         "/sensor_suite/bounding_boxes", 1);
   }
@@ -60,7 +75,11 @@ class SegmentationNode {
                      CV_CHAIN_APPROX_SIMPLE);
     cv::findContours(thresh_yellow, contours_yellow, CV_RETR_EXTERNAL,
                      CV_CHAIN_APPROX_SIMPLE);
+    cv::drawContours(img_, contours_red, -1, cv::Scalar(0, 0, 255), 2);
+    cv::drawContours(img_, contours_green, -1, cv::Scalar(0, 255, 0), 2);
+    cv::drawContours(img_, contours_yellow, -1, cv::Scalar(255, 255, 0), 2);
     // Create bounding boxes for each contour
+    sensor_suite::LabeledBoundingBox2DArray box_array;
     for (int i = 0; i < contours_red.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_red[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 0, 255), 2);
@@ -70,7 +89,7 @@ class SegmentationNode {
       box.width = rect.width;
       box.height = rect.height;
       box.label = 1;  // TODO: Change to Enum
-      box_array_.boxes.push_back(box);
+      box_array.boxes.push_back(box);
     }
     for (int i = 0; i < contours_green.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_green[i]);
@@ -81,7 +100,7 @@ class SegmentationNode {
       box.width = rect.width;
       box.height = rect.height;
       box.label = 2;
-      box_array_.boxes.push_back(box);
+      box_array.boxes.push_back(box);
     }
     for (int i = 0; i < contours_yellow.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_yellow[i]);
@@ -92,11 +111,134 @@ class SegmentationNode {
       box.width = rect.width;
       box.height = rect.height;
       box.label = 3;
-      box_array_.boxes.push_back(box);
+      box_array.boxes.push_back(box);
     }
-    box_pub_.publish(box_array_);
+    box_array.header.stamp = msg->header.stamp;
+    box_pub_.publish(box_array);
+    img_pub_.publish(cv_ptr->toImageMsg());
   }
 };
+
+// class SegmentationClusterNode {
+//  protected:
+//   ros::NodeHandle nh_;
+//   message_filters::Subscriber<sensor_msgs::Image> img_sub_;
+//   message_filters::Subscriber<sensor_msgs::Image> depth_sub_;
+//   message_filters::Subscriber<sensor_msgs::CameraInfo> info_sub_;
+//   ros::Publisher object_pub_;
+//   ros::Publisher box_pub_;
+//   ros::Publisher img_pub_;
+//   image_geometry::PinholeCameraModel cam_model_; 
+
+//  private:
+//   cv::Mat img_;
+//   cv::Mat depth_;
+//   typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::CameraInfo>
+//       SyncPolicy;
+//   typedef message_filters::Synchronizer<SyncPolicy> Sync;
+//   boost::shared_ptr<Sync> sync_;
+
+//  public:
+//   SegmentationClusterNode(ros::NodeHandle n) : nh_(n), img_sub_(nh_, "/zed2i/zed_node/rgb/image_rect_color", 1),
+//                                                info_sub_(nh_, "/zed2i/zed_node/rgb/camera_info", 1)
+//                                                {
+//     object_pub_ = nh_.advertise<sensor_suite::ObjectArray>("/sensor_suite/objects", 1);
+//     box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>("/sensor_suite/bounding_boxes", 1);
+//     img_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/segmented_image", 1);
+//     sync_.reset(new Sync(SyncPolicy(10), img_sub_, info_sub_));
+//     sync_->registerCallback(boost::bind(&SegmentationClusterNode::imgCallback, this, _1, _2));
+
+//   }
+
+//   void imgCallback(const sensor_msgs::ImageConstPtr& img_msg, const sensor_msgs::CameraInfoConstPtr& info_msg) {
+//     cam_model_.fromCameraInfo(info_msg);
+//     cv_bridge::CvImagePtr cv_ptr;
+//     // cv_bridge::CvImagePtr depth_ptr;
+//     try {
+//       cv_ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::BGR8);
+//       // depth_ptr = cv_bridge::toCvCopy(depth_msg, sensor_msgs::image_encodings::TYPE_32FC1);
+//     } catch (cv_bridge::Exception& e) {
+//       ROS_ERROR("cv_bridge exception: %s", e.what());
+//       return;
+//     }
+//     img_ = cv_ptr->image;
+//     // depth_ = depth_ptr->image;
+//     // cam_model_.fromCameraInfo(info_msg);
+//     // Convert from BGR8 to HSV
+//     cv::cvtColor(img_, img_, cv::COLOR_BGR2HSV);
+//     // Use erosion on Image:
+//     cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+//     cv::erode(img_, img_, element);
+//     // Use dilation on Image:
+//     cv::dilate(img_, img_, element);
+//     // Colour thresholding with each color
+//     cv::Mat thresholds[3];
+//     cv::inRange(img_, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255),
+//                 thresholds[0]);
+//     cv::inRange(img_, cv::Scalar(40, 100, 100), cv::Scalar(70, 255, 255),
+//                 thresholds[1]);
+//     cv::inRange(img_, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255),
+//                 thresholds[2]);
+//     // Get multiple contours on Image:
+//     std::vector<std::vector<cv::Point>> colored_contours[3]; 
+//     cv::Scalar colors[3] = {cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0)};
+//     for(int i = 0; i < 3; i++){
+//       cv::findContours(thresholds[i], colored_contours[i], CV_RETR_EXTERNAL,
+//                       CV_CHAIN_APPROX_SIMPLE);
+//     }
+//     // Create bounding boxes and objects for each contour
+//     sensor_suite::LabeledBoundingBox2DArray box_array;
+//     sensor_suite::ObjectArray object_array_;
+//     for(int i = 0; i < 3; i++){
+//       for(int j = 0; j < colored_contours[i].size(); j++){
+//       cv::Rect rect = cv::boundingRect(colored_contours[i][j]);
+//         if(isValidBox(&rect)){
+//           cv::rectangle(img_, rect, colors[i], 4);
+//           sensor_suite::LabeledBoundingBox2D box;
+//           box.x = rect.x;
+//           box.y = rect.y;
+//           box.width = rect.width;
+//           box.height = rect.height;
+//           box.label = i + 1;  // TODO: Change to Enum
+//           box_array.boxes.push_back(box);
+//           sensor_suite::Object object;
+//           cv::Point3d point = cam_model_.projectPixelTo3dRay(cv::Point2d(rect.x + rect.width / 2, rect.y + 3*rect.height / 4));
+//           object.point.x = point.x;
+//           object.point.y = point.y;
+//           object.point.z = point.z;
+//           object.label = i + 1;
+//           object.header = img_msg->header;
+//           object_array_.objects.push_back(object);
+//         }else{
+//           // colored_contours[i].erase(colored_contours[i].begin() + j);
+//           // j--;
+//         }
+//       }
+//       // cv::drawContours(img_, colored_contours[i], -1, colors[i], 4);
+//     }
+//     box_pub_.publish(box_array);
+//     object_pub_.publish(object_array_);
+//     img_pub_.publish(cv_ptr->toImageMsg());
+//   }
+
+//   bool isValidBox(cv::Rect* rect){
+//     if(rect->width*rect->height < 50){
+//       return false;
+//     }
+//     if(rect->width > rect->height){
+//       if (rect->width/rect->height > 2){
+//         return false; 
+//       }
+//     }
+//     else{
+//       if(rect->height/rect->width > 2){
+//         return false; 
+//       }
+//     }
+//     return true;
+//   }
+// };
+
 int main(int argc, char** argv) {
   ros::init(argc, argv, "segmentation_node");
   ros::NodeHandle nh;

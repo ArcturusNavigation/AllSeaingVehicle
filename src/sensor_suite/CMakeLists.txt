@@ -11,12 +11,14 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   sensor_msgs
+  visualization_msgs
   std_msgs
   genmsg
   message_generation 
   pcl_ros
   cv_bridge
   laser_geometry
+  image_geometry
 )
 
 ## System dependencies are found with CMake's conventions
@@ -58,6 +60,7 @@ add_message_files(
   LabeledBoundingBox2D.msg
   LabeledBoundingBox2DArray.msg
   Object.msg
+  ObjectArray.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -77,6 +80,7 @@ add_message_files(
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
+  visualization_msgs
   sensor_msgs#   std_msgs
 )
 
@@ -166,10 +170,9 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# catkin_install_python(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+catkin_install_python(PROGRAMS fake_camera.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
@@ -219,7 +222,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 add_executable(segmentation src/segmentation_node.cpp)
 target_link_libraries(segmentation ${OpenCV_LIBRARIES})
 target_link_libraries(segmentation ${catkin_LIBRARIES})
-add_dependencies(segmentation sensor_suite_generate_messages_cpp )
+add_dependencies(segmentation sensor_suite_generate_messages_cpp)
 
 add_executable(processor src/processor_nodes.cpp)
 target_link_libraries(processor ${catkin_LIBRARIES})
