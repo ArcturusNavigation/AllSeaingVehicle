@@ -82,7 +82,7 @@ class MappingNode:
         count = 0
         for obj in self.tracked_objects:
             marker = Marker()
-            marker.header.frame_id = 'world'
+            marker.header.frame_id = '/local_origin'
             marker.header.stamp = rospy.Time.now()
             marker.ns = 'objects'
             marker.id = count 
