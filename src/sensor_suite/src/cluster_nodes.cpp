@@ -3,6 +3,8 @@
 #include <sstream>
 #include <vector>
 
+#include "cv_bridge/cv_bridge.h"
+
 #include "geometry.h"
 #include "ros/ros.h"
 #include "tf/transform_listener.h"
@@ -18,10 +20,7 @@
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/search/search.h>
-// #include <pcl/segmentation/region_growing.h>
-// #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/passthrough.h>
-// #include <pcl/segmentation/region_growing_rgb.h>
 #include <pcl/segmentation/extract_clusters.h>
 #include "pcl_ros/transforms.h"
 
@@ -29,6 +28,7 @@
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
 #include "sensor_msgs/PointCloud2.h"
+#
 #include "sensor_suite/LabeledBoundingBox2D.h"
 #include "sensor_suite/LabeledBoundingBox2DArray.h"
 #include <sensor_suite/Object.h>
@@ -52,10 +52,13 @@ class ClusterNode {
   ros::Publisher pcl_pub_;
   ros::Publisher object_pub_;
   ros::Publisher marker_pub_;
+  ros::Publisher debug_pub_;
   tf::TransformListener listener_;
 
   image_geometry::PinholeCameraModel cam_model_;
-
+  sensor_msgs::CameraInfo cam_info_;
+  cv_bridge::CvImage debug_img_;
+  
   pcl::PointCloud<pcl::PointXYZ>::Ptr buffer_;
   pcl::IndicesPtr indices_;
   pcl::search::Search<pcl::PointXYZ>::Ptr tree_;
@@ -113,6 +116,7 @@ class ClusterNode {
     marker_pub_ =
         nh_.advertise<visualization_msgs::MarkerArray>("/sensor_suite/markers",
                                                         1);
+    debug_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/projection_img", 1);
     // Clear point_cloud pointers
     // TODO: Move to initialization List
     // normals_.reset(new pcl::PointCloud<pcl::Normal>);
@@ -120,8 +124,12 @@ class ClusterNode {
     std::cout << "Initialized!" << std::endl;
   }
   void setupCamera(const sensor_msgs::CameraInfoConstPtr& cam_info) {
+    cam_info_ = *cam_info;
+    debug_img_.header.frame_id = "camera";
+    debug_img_.encoding = "bgr8";
+    debug_img_.image = cv::Mat::zeros(cam_info->height, cam_info->width, CV_8UC3);
     cam_model_.fromCameraInfo(cam_info);
-    // cam_sub_.shutdown();
+    cam_sub_.shutdown();
   }
 
   void pcCallback(
@@ -129,6 +137,7 @@ class ClusterNode {
       const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
     // std::cout << "Callback!" << std::endl;
     pcl::fromROSMsg(*pcl_msg, *buffer_);
+    debug_img_.image.setTo(0);
     tf::StampedTransform pc_tf;
     listener_.lookupTransform("map","base_link",ros::Time(0),pc_tf);
     pcl_ros::transformPointCloud(*buffer_,*buffer_,pc_tf);
@@ -167,6 +176,7 @@ class ClusterNode {
         centroid.add(cloud->points[i]);
         }
       centroid.get(centroid_point);
+      centroid_point.z = 0;
       vector p;
       p.x = centroid_point.x;
       p.y = centroid_point.y;
@@ -182,6 +192,8 @@ class ClusterNode {
       listener_.transformPoint("camera", point, transformed_point);
       cv::Point3d cam_point(transformed_point.point.x, transformed_point.point.y, transformed_point.point.z);
       cv::Point2d px = cam_model_.project3dToPixel(cam_point);
+      std::cout << "Projected point: " << px.x << " " << px.y << std::endl;
+      markPixel(px, debug_img_.image);
       // pixel px = projectPointToImage(
       //       p, 1080,
       //       1920);  // Image sized based on
@@ -221,10 +233,18 @@ class ClusterNode {
     }
     object_pub_.publish(objects);
     marker_pub_.publish(markers);
+    debug_img_.header.stamp = ros::Time::now();
+    debug_pub_.publish(debug_img_);
     return;
   }
   // TODO: Finish this function
-
+  void markPixel(cv::Point2d px, cv::Mat& img) {
+    for(int i = std::max((int)(px.x-25),0); i < std::min((int)(px.x + 25),(int)(cam_info_.width)); i++){
+      for(int j = std::max((int)(px.y-25),0); j < std::min((int)(px.y + 25),(int)(cam_info_.height)); j++){
+        img.at<uchar>(j,i) = 255;
+      }
+    }
+  }
   // Loops through bounding boxes and returns the label of the bounding box
   int getRegion(
       cv::Point2d px,
@@ -326,7 +346,7 @@ class ClusterNode {
 
 //     std::vector<pcl::PointIndices> clusters;
 //     reg.extract(clusters);
-//     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
+//     pcl::PointCloud<pcl::PointXYZ RGB>::Ptr cloud(
 //         new pcl::PointCloud<pcl::PointXYZRGB>);
 
 //     // Loop through every point in each cluster and project to bounding box
