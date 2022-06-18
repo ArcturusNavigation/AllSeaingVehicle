@@ -167,6 +167,7 @@ catkin_install_python(PROGRAMS
   scripts/waypoint_pilot.py
   scripts/waypoints_generator.py
   scripts/waypoint_sim.py
+  scripts/tf2.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

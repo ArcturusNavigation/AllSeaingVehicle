@@ -2,7 +2,7 @@
 	<!-- vim: set ft=xml noet : -->
 	<!-- example launch script for ArduPilot based FCU's -->
 
-	<arg name="fcu_url" default="/dev/ttyUSB0" />
+	<arg name="fcu_url" default="udp://127.0.0.1:14551@14555" />
 	<arg name="gcs_url" default="" />
 	<arg name="tgt_system" default="1" />
 	<arg name="tgt_component" default="1" />
@@ -22,7 +22,4 @@
 		<arg name="fcu_protocol" value="$(arg fcu_protocol)" />
 		<arg name="respawn_mavros" value="$(arg respawn_mavros)" />
 	</include>
-
-	<!-- Override the fake gps settings to use the zed camera pose with covariance  -->
-	<param name="mavros/fake_gps/mocap_withcovariance" value="False" />
 </launch>
