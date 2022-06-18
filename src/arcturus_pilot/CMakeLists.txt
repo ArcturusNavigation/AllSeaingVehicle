@@ -56,8 +56,6 @@ add_message_files(
     RawWaypoint.msg
     ProcessedWaypoint.msg
     WaypointReached.msg
-    Buoy.msg
-    BuoyList.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -168,6 +166,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/waypoint_pilot.py
   scripts/waypoints_generator.py
+  scripts/waypoint_sim.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

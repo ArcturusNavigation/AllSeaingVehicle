@@ -42,8 +42,6 @@ class WaypointPilot():
         self.current_order = 0
 
     def run(self):
-        rospy.init_node('waypoint_pilot')
-
         service_timeout = 30
         rospy.loginfo("waiting for ROS services")
         try:
@@ -140,7 +138,7 @@ class WaypointPilot():
     def get_curr_waypoint(self):
         if self.temp_waypoint is not None:
             return self.temp_waypoint
-        if len(self.waypoints) < self.current_order:
+        if len(self.waypoints) <= self.current_order:
             return None
         return self.waypoints[self.current_order]
 
@@ -179,7 +177,7 @@ class WaypointPilot():
             self.temp_waypoint = (waypoint.x, waypoint.y, waypoint.heading)
             return
             
-        while len(self.waypoints < waypoint.order):
+        while len(self.waypoints) <= waypoint.order:
             self.waypoints.append(())
         self.waypoints[waypoint.order] = (waypoint.x, waypoint.y, waypoint.heading)
 
@@ -237,7 +235,7 @@ class WaypointPilot():
             self.set_local_setpoint.publish(self.local_position)
         else:
             waypoint_x, waypoint_y, waypoint_heading = waypoint[0], waypoint[1], waypoint[2]
-            rospy.loginfo("setting setpoint: {0, 1, 2}".format(waypoint_x, waypoint_y, waypoint_heading))
+            rospy.loginfo("setting setpoint: " + str(waypoint_x) + " " + str(waypoint_y) + " " + str(waypoint_heading))
 
             pose = PoseStamped()
             pose.header.stamp = rospy.now()
@@ -249,6 +247,7 @@ class WaypointPilot():
 
 if __name__ == '__main__':
     try:
+        rospy.init_node('waypoint_pilot')
         pilot = WaypointPilot()
         pilot.run()
     except rospy.ROSInterruptException:

@@ -1,8 +1,10 @@
-from arcturus_pilot.scripts.testing.occupancy_helper import GRID_RESOLUTION
+#!/usr/bin/env python
+
 import rospy
 from arcturus_pilot.msg import RawWaypoint, ProcessedWaypoint, WaypointReached
-from geometry_msgs.msg import PoseStamped, OccupancyGrid
-from tf import euler_from_quaternion
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import OccupancyGrid
+from tf.transformations import euler_from_quaternion
 from geom_helper import angle_from_dir
 import numpy as np
 import skimage
@@ -12,8 +14,9 @@ SEARCH_DIST = 0.25
 class LocalPlanner():
     def __init__(self):
         self.raw_waypoint_sub = rospy.Subscriber('arcturus_pilot/raw_waypoint', RawWaypoint, self.raw_waypoint_callback)
-        self.processed_waypoint_pub = rospy.Publisher('arcturus_pilot/processed_waypoint', ProcessedWaypoint)
+        self.processed_waypoint_pub = rospy.Publisher('arcturus_pilot/processed_waypoint', ProcessedWaypoint, queue_size=10)
         self.reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/waypoint_reached', WaypointReached, self.reached_waypoint_callback)
+        
         self.pose_sub = rospy.Subscriber('arcturus_pilot/pose', PoseStamped, self.pose_callback)
         self.occupancy_sub = rospy.Subscriber('/occupancy_grid', OccupancyGrid, self.occupancy_callback)
 
@@ -25,12 +28,11 @@ class LocalPlanner():
         self.heading = 0
         self.order = -1
 
-    def run():
-        rospy.init_node('local_planner')
+    def run(self):
         rospy.spin()
 
     def convert(self, x):
-        return int(round(x / GRID_RESOLUTION))
+        return int(round(x / self.occupancy_resolution))
 
     def find_obstacle(self, target):
         x = target[0]
@@ -145,5 +147,6 @@ class LocalPlanner():
         self.occupancy = np.array(data.data).reshape((self.occupancy_rows, self.occupancy_width))
 
 if __name__ == '__main__':
+    rospy.init_node('local_planner')
     local_planner = LocalPlanner()
     local_planner.run()
