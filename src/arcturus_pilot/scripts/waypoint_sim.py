@@ -172,6 +172,8 @@ class WaypointSim():
         
     def get_curr_waypoint(self):
         while self.current_order in self.skipped_waypoints:
+            # make sure the local planner is up to date with which waypoint is next
+            self.waypoint_reached_pub.publish(WaypointReached(self.current_order))
             self.current_order += 1
 
         if self.temp_waypoint is not None:
@@ -182,7 +184,7 @@ class WaypointSim():
 
     def step(self):
         waypoint, _ = self.get_curr_waypoint()
-        if waypoint == None:
+        if waypoint is None:
             rospy.logerr("no waypoint set")
             return
         else:
@@ -253,6 +255,7 @@ class WaypointSim():
             grid[obstacle_data] = 100
 
         occupancy_ros.data = np.ndarray.tolist(np.ndarray.flatten(grid))
+        self.occupancy_pub.publish(occupancy_ros)
 
     def send_info(self):
         self.send_objects()

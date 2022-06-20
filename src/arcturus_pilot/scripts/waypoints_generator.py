@@ -30,6 +30,8 @@ SEARCH_TIMEOUT = 15 # seconds the boat will spend searching before giving up and
 
 DOCK_TASKS_CLEARING_DIST = 3.0 # how far away from the dock task the boat will go before it stops to line up with the dock
 # direction vectors for the dock tasks that give the direction the boat should face to complete them 
+WATER_BLAST_DIST = 1.0 # how far away the boat should stop from the center of the water blast
+SKEEBALL_DIST = 1.0 # how far away the boat should stop from the center of the skeeball
 
 FIND_SEAT_DIR = np.array([1.0, 1.0])
 SKEEBALL_DIR = np.array([0.0, 1.0])
@@ -329,7 +331,7 @@ class WaypointGenerator():
         while not rospy.is_shutdown():
             objects = np.array(self.curr_objects)
 
-            rospy.logerr(str(self.curr_heading))
+            # rospy.logerr(str(self.curr_heading))
             # rospy.logerr(str(self.start_pos))
             # rospy.logerr(str(self.last_waypoint_visited))
 
@@ -479,7 +481,7 @@ class WaypointGenerator():
                     self.go_next_state()
                 else:
                     self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast0')
-                    self.send_waypoint(water_blast_pos, WATER_BLAST_DIR, 'water_blast1')
+                    self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * WATER_BLAST_DIST, WATER_BLAST_DIR, 'water_blast1')
 
                     if self.is_last_visited('water_blast1'):
                         self.water_gun_ready_pub.publish(Empty())
@@ -501,7 +503,7 @@ class WaypointGenerator():
                     self.go_next_state()
                 else:
                     self.send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball0')
-                    self.send_waypoint(skeeball_pos, SKEEBALL_DIR, 'skeeball1')
+                    self.send_waypoint(skeeball_pos - SKEEBALL_DIR * SKEEBALL_DIST, SKEEBALL_DIR, 'skeeball1')
 
                     if self.is_last_visited('skeeball1'):
                         self.skeeball_ready_pub.publish(Empty())
