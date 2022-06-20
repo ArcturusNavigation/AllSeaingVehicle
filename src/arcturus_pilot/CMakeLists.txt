@@ -55,7 +55,9 @@ add_message_files(
     FILES
     RawWaypoint.msg
     ProcessedWaypoint.msg
+    SkipWaypoint.msg
     WaypointReached.msg
+    VelocityCommand.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -166,6 +168,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/waypoint_pilot.py
   scripts/waypoints_generator.py
+  scripts/waypoint_sim.py
   scripts/tf2.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

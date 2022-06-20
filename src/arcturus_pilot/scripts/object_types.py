@@ -28,6 +28,8 @@ def getObjectType(label, task_label):
             return ObjectType.AVOID_RED
         elif label == 1:
             return ObjectType.AVOID_GREEN
+        else:
+            return ObjectType.OTHER
 
     elif task_label == 3 or label == 5:
         return ObjectType.FIND_SEAT

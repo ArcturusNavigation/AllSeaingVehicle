@@ -7,7 +7,8 @@ def angle_from_dir(dir):
     return np.arctan2(dir[1], dir[0])
 
 def quaternion_from_angle(angle):
-    return Quaternion(*tf.transformations.quaternion_from_euler(0, 0, angle))
+    q = tf.transformations.quaternion_from_euler(0, 0, angle)
+    return Quaternion(q[0], q[1], q[2], q[3])
 
 def quaternion_from_dir(dir):
     return quaternion_from_angle(angle_from_dir(dir))

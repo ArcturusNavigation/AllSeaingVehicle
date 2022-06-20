@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="arcturus_pilot" type="local_planner.py" name="local_planner"/>
+    <node pkg="arcturus_pilot" type="waypoints_generator.py" name="waypoints_generator"/>
+    <node pkg="arcturus_pilot" type="waypoint_sim.py" name="waypoint_sim"/>
+</launch>
