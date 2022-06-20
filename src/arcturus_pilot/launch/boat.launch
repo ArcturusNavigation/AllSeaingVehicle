@@ -1,0 +1,8 @@
+<launch>
+<include file=$(find zed_wrapper)/launch/zed2i.launch/>
+<include file=$(find sensor_suite)/launch/sensors.launch/>
+<include file=$(find arcturus_pilot)/launch/mavros.launch/>
+<include file=$(find arcturus_pilot)/launch/planner.launch/>
+<node pkg="mapping_suite" type="object_tracker.py" name="object_tracker"/>
+<node pkg="arcturus_pilot" type="tf2.py" name="transform_publisher"|/>
+</launch>
