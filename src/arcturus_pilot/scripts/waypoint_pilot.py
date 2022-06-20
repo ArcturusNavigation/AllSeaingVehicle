@@ -5,10 +5,12 @@ import tf
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
 from sensor_msgs.msg import Imu
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist
 
-from arcturus_pilot.msg import ProcessedWaypoint, WaypointReached
+from arcturus_pilot.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint, VelocityCommand
 from arcturus_pilot.srv import GoToWaypoint, GoToWaypointResponse
+
+from geom_helper import quaternion_from_angle
 
 from six.moves import xrange
 
@@ -38,12 +40,12 @@ class WaypointPilot():
         self.set_mode_srv = None
 
         self.waypoints = []
+        self.skipped_waypoints = []
         self.temp_waypoint = None
+        self.temp_twist = None
         self.current_order = 0
 
     def run(self):
-        rospy.init_node('waypoint_pilot')
-
         service_timeout = 30
         rospy.loginfo("waiting for ROS services")
         try:
@@ -68,14 +70,19 @@ class WaypointPilot():
         }
 
         rospy.Subscriber('arcturus_pilot/processed_waypoint', ProcessedWaypoint, self.waypoint_callback)
+        rospy.Subscriber('arcturus_pilot/waypoint_skip', SkipWaypoint, self.waypoint_skip_callback)
+        rospy.Subscriber('arcturus_pilot/velocity_command', VelocityCommand, self.velocity_command_callback)
         self.send_waypoint_reached = rospy.Publisher('arcturus_pilot/waypoint_reached', WaypointReached, queue_size=5)
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
+        self.set_velocity = rospy.Publisher('mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=5)
         self.send_pose = rospy.Publisher('arcturus_pilot/pose', PoseStamped, queue_size=5)
         self.position_transform_broadcaster = tf.TransformBroadcaster()
 
         if USE_FAKE_GPS_FROM_ZED:
             rospy.Subscriber('zed/zed_node/pose_with_covariance', PoseWithCovarianceStamped, self.zed_pose_callback)
             self.send_fake_gps = rospy.Publisher('mavros/mocap/pose_cov', PoseWithCovarianceStamped, queue_size=5)
+
+        rospy.Subscriber('/clicked_point', Point, self.clicked_point_callback)
 
         self.wait_for_topics(60)
         self.set_mode("Guided", 5)
@@ -131,23 +138,35 @@ class WaypointPilot():
         if not self.sub_topics_ready['imu']:
             self.sub_topics_ready['imu'] = True
 
+    def clicked_point_callback(self, data):
+        q = [self.local_position.pose.orientation.x, self.local_position.pose.orientation.y, self.local_position.pose.orientation.z, self.local_position.pose.orientation.w]
+        self.waypoints = [[(data.point.x, data.point.y, tf.transformations.euler_from_quaternion(q)[2])]]
+        self.current_order = 0
+        self.temp_waypoint = None
+
     def go_to_waypoint(self, req):
         self.waypoints = [[(self.local_position.pose.position.x + req.x, 
             self.local_position.pose.position.y + req.y, req.heading)]]
         self.current_order = 0
+        self.temp_waypoint = None
         return GoToWaypointResponse()
 
     def get_curr_waypoint(self):
+        while self.current_order in self.skipped_waypoints:
+            # make sure the local planner is up to date with which waypoint is next
+            self.waypoint_reached_pub.publish(WaypointReached(self.current_order))
+            self.current_order += 1
+
         if self.temp_waypoint is not None:
             return self.temp_waypoint
-        if len(self.waypoints) < self.current_order:
+        if len(self.waypoints) <= self.current_order:
             return None
         return self.waypoints[self.current_order]
 
     # subscribes to the local position of the boat and updates the next
     # waypoint if the local position is within acceptance radius of current setpoint
     def local_position_callback(self, data):
-        if self.init_local_position == None:
+        if self.init_local_position is None:
             self.init_local_position = data
         self.local_position = data
 
@@ -179,9 +198,19 @@ class WaypointPilot():
             self.temp_waypoint = (waypoint.x, waypoint.y, waypoint.heading)
             return
             
-        while len(self.waypoints < waypoint.order):
+        while len(self.waypoints) <= waypoint.order:
             self.waypoints.append(())
         self.waypoints[waypoint.order] = (waypoint.x, waypoint.y, waypoint.heading)
+
+    def waypoint_skip_callback(self, waypoint_skip):
+        order = waypoint_skip.order
+        self.skipped_waypoints.append(order)
+
+    def velocity_command_callback(self, velocity_command):
+        if velocity_command.cancel:
+            self.temp_twist = None
+        else:
+            self.temp_twist = velocity_command.twist
 
     def zed_pose_callback(self, pose_with_cov):
         self.send_fake_gps.publish(pose_with_cov)
@@ -231,24 +260,29 @@ class WaypointPilot():
     # takes the current setpoint and sends it to the FCU
     # needs to be called at minimum 2 Hz
     def send_setpoint(self):
+        if self.temp_twist != None:
+            self.set_velocity.publish(self.temp_twist)
+            return
+
         waypoint = self.get_curr_waypoint()
-        if waypoint == None:
+        if waypoint is None:
             rospy.logerr("no waypoint set")
             self.set_local_setpoint.publish(self.local_position)
         else:
             waypoint_x, waypoint_y, waypoint_heading = waypoint[0], waypoint[1], waypoint[2]
-            rospy.loginfo("setting setpoint: {0, 1, 2}".format(waypoint_x, waypoint_y, waypoint_heading))
+            rospy.loginfo("setting setpoint: " + str(waypoint_x) + " " + str(waypoint_y) + " " + str(waypoint_heading))
 
             pose = PoseStamped()
             pose.header.stamp = rospy.now()
             pose.header.frame_id = '/local_origin'
             pose.pose = Pose()
             pose.pose.position = Point(x = waypoint_x, y = waypoint_y, z = 0)
-            pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0, 0, waypoint_heading))
+            pose.pose.orientation = quaternion_from_angle(waypoint_heading)
             self.set_local_setpoint.publish(pose)
 
 if __name__ == '__main__':
     try:
+        rospy.init_node('waypoint_pilot')
         pilot = WaypointPilot()
         pilot.run()
     except rospy.ROSInterruptException:

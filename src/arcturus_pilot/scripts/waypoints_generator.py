@@ -3,14 +3,14 @@
 import rospy
 import numpy as np
 from enum import Enum
-from arcturus_pilot.msg import RawWaypoint, WaypointReached
+from arcturus_pilot.msg import RawWaypoint, WaypointReached, SkipWaypoint
 from sensor_suite.msg import ObjectArray
-from object_types import ObjectType, getObjectType
-from geometry_msgs.msg import PoseStamped
-from geom_helper import angle_from_dir, sort_buoys_by_dir
-from tf import euler_from_quaternion
+from std_msgs.msg import Empty
+from geometry_msgs.msg import PoseStamped, Point
 
-from arcturus_pilot.msg import ObjectList
+from object_types import ObjectType, getObjectType
+from geom_helper import angle_from_dir, sort_buoys_by_dir
+from tf.transformations import euler_from_quaternion
 
 # TODO: investigate what happens when you try to send a waypoint to the boat that is behind it with the same heading
 # as the current boat. If the boat just tries to go backwards, then have to adjust the local planner code so that the
@@ -23,12 +23,15 @@ SNACK_RUN_BEYOND_GOAL_DIST = 3 # distance the boat will go past the snack run op
 
 
 SEARCH_EXPLORE_DIST = 5 # for the linear search behaviors, how far in a direction the search will go
-SEARCH_TURN_AROUND_RADIUS = 1 # radius of the circle used for turning around
+SEARCH_TURN_AROUND_FORWARD_RADIUS = 2 # radius of the circle used for turning around forward
+SEARCH_TURN_AROUND_BACKWARD_DIST = 2 # distance used for the turn around backward behavior
 SEARCH_CIRCLE_RADIUS = 2 # radius of the circle in the search circle behavior
 SEARCH_TIMEOUT = 15 # seconds the boat will spend searching before giving up and skipping the task
 
 DOCK_TASKS_CLEARING_DIST = 3.0 # how far away from the dock task the boat will go before it stops to line up with the dock
 # direction vectors for the dock tasks that give the direction the boat should face to complete them 
+WATER_BLAST_DIST = 1.0 # how far away the boat should stop from the center of the water blast
+SKEEBALL_DIST = 1.0 # how far away the boat should stop from the center of the skeeball
 
 FIND_SEAT_DIR = np.array([1.0, 1.0])
 SKEEBALL_DIR = np.array([0.0, 1.0])
@@ -52,16 +55,17 @@ class State(Enum):
 class SearchBehavior(Enum):
     STEER_RIGHT = 0,
     STEER_LEFT = 1,
-    FORWARD = 2,
+    FORWARD = 2, # TESTED
     CIRCLE = 3,
-    TURN_AROUND = 4,
-    SKIP = 5
+    TURN_AROUND_FORWARD = 4, # BROKEN (?)
+    TURN_AROUND_BACKWARD = 5, # TESTED
+    SKIP = 6
 
 class SearchData():
     def __init__(self, next_state, search_behavior, init_pos, init_heading):
         self.next_state = next_state
         self.search_behavior = search_behavior
-        self.init_pos = init_pos
+        self.init_pos = np.copy(init_pos)
         self.init_heading = init_heading
 
         if next_state == State.CHANNEL:
@@ -125,15 +129,26 @@ class SearchData():
                 target_pos = self.init_pos + np.array([np.cos(dir), np.sin(dir)]) * SEARCH_CIRCLE_RADIUS
                 waypoints.append((target_pos, heading, waypoints_id_prefix + str(i), False))
 
-        elif self.search_behavior == SearchBehavior.TURN_AROUND:
+        elif self.search_behavior == SearchBehavior.TURN_AROUND_FORWARD:
             target_heading_1 = self.init_heading + np.pi / 2
             dir_1 = self.init_heading + np.pi / 4
-            target_pos_1 = self.init_pos + np.array([np.cos(dir_1), np.sin(dir_1)]) * SEARCH_TURN_AROUND_RADIUS
+            target_pos_1 = self.init_pos + np.array([np.cos(dir_1), np.sin(dir_1)]) * SEARCH_TURN_AROUND_FORWARD_RADIUS
             waypoints.append((target_pos_1, target_heading_1, waypoints_id_prefix + '0', False))
 
             target_heading_2 = self.init_heading + np.pi
             dir_2 = self.init_heading + np.pi / 2
-            target_pos_2 = self.init_pos + np.array([np.cos(dir_2), np.sin(dir_2)]) * SEARCH_TURN_AROUND_RADIUS
+            target_pos_2 = self.init_pos + np.array([np.cos(dir_2), np.sin(dir_2)]) * SEARCH_TURN_AROUND_FORWARD_RADIUS
+            waypoints.append((target_pos_2, target_heading_2, waypoints_id_prefix + '1', False))
+
+        elif self.search_behavior == SearchBehavior.TURN_AROUND_BACKWARD:
+            target_heading_1 = self.init_heading + np.pi / 4
+            dir_1 = self.init_heading + np.pi / 4
+            target_pos_1 = self.init_pos - np.array([np.cos(dir_1), np.sin(dir_1)]) * SEARCH_TURN_AROUND_BACKWARD_DIST
+            waypoints.append((target_pos_1, target_heading_1, waypoints_id_prefix + '0', False))
+
+            target_heading_2 = self.init_heading + np.pi
+            dir_2 = self.init_heading + np.pi / 2
+            target_pos_2 = self.init_pos - np.array([np.cos(dir_2), np.sin(dir_2)]) * SEARCH_TURN_AROUND_BACKWARD_DIST
             waypoints.append((target_pos_2, target_heading_2, waypoints_id_prefix + '1', False))
 
         return waypoints
@@ -146,146 +161,146 @@ arcturus_pilot/waypoint_pilot
 Receives data from the sensor suite with the locations of all of the buoys (expected in the local_origin frame)
 All waypoints are sent in the local_origin frame
 """
-def main():
-    rospy.init_node('waypoints_generator')
-    
-    curr_pos = np.array([0, 0])
-    curr_heading = 0
-    last_waypoint_visited = -1
 
-    curr_objects = []
-    waypoints_sent = []
-    curr_state = None    
-    search_data = None
+class WaypointGenerator():
+    def __init__(self):
+        self.curr_pos = np.array([0, 0])
+        self.curr_heading = 0
+        self.start_pos = None
+        self.last_waypoint_visited = -1
 
-    find_seat_target = None
-    water_gun_status = None
-    skeeball_status = None
+        self.curr_objects = []
+        self.waypoints_sent = []
+        self.curr_state = None    
+        self.search_data = None
 
-    waypoint_pub = rospy.publisher('arcturus_pilot/raw_waypoint', RawWaypoint, queue_size=10)
-    reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/waypoint_reached', WaypointReached, reached_waypoint_callback)
-    pose_sub = rospy.Subscriber('arcturus_pilot/pose', PoseStamped, pose_callback)
-    objects_sub = rospy.Subscriber('sensor_suite/objects', ObjectArray, objects_callback)
+        self.find_seat_target = None
+        self.water_gun_status = None
+        self.skeeball_status = None
 
-    # TODO replace these placeholders
-    find_seat_ready_pub = rospy.Publisher('find_seat/ready', None, queue_size = 10)
-    water_gun_ready_pub = rospy.Publisher('water_gun/ready', None, queue_size = 10)
-    skeeball_ready_pub = rospy.Publisher('skeeball/ready', None, queue_size = 10)
+        self.waypoint_pub = rospy.Publisher('arcturus_pilot/raw_waypoint', RawWaypoint, queue_size=10)
+        self.reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/waypoint_reached', WaypointReached, self.reached_waypoint_callback)
+        self.waypoint_skip_pub = rospy.Publisher('arcturus_pilot/waypoint_skip', SkipWaypoint)
+        self.pose_sub = rospy.Subscriber('arcturus_pilot/pose', PoseStamped, self.pose_callback)
+        self.objects_sub = rospy.Subscriber('sensor_suite/objects', ObjectArray, self.objects_callback)
 
-    find_seat_target_sub = rospy.Subscriber('find_seat/target', None, find_seat_target_callback)
-    water_gun_status_sub = rospy.Subscriber('water_gun/status', None, water_gun_status_callback)
-    skeeball_status_sub = rospy.Subscriber('skeeball/status', None, skeeball_status_callback)
+        # TODO replace these placeholders
+        self.find_seat_ready_pub = rospy.Publisher('find_seat/ready', Empty, queue_size = 10)
+        self.water_gun_ready_pub = rospy.Publisher('water_gun/ready', Empty, queue_size = 10)
+        self.skeeball_ready_pub = rospy.Publisher('skeeball/ready', Empty, queue_size = 10)
+
+        self.find_seat_target_sub = rospy.Subscriber('find_seat/target', Point, self.find_seat_target_callback)
+        self.water_gun_status_sub = rospy.Subscriber('water_gun/status', Empty, self.water_gun_status_callback)
+        self.skeeball_status_sub = rospy.Subscriber('skeeball/status', Empty, self.skeeball_status_callback)
 
     #############################################################
     ################## STATE MACHINE MANAGEMENT #################
     #############################################################
 
-    def go_next_state():
+    def go_next_state(self):
         """
         Sets up the next state given our current state
         Defines our path through the course
         """
-        nonlocal curr_state
 
-        if curr_state == State.CHANNEL:
-            search(State.AVOID_CROWD, SearchBehavior.FORWARD)
+        if self.curr_state == State.CHANNEL:
+            self.search(State.AVOID_CROWD, SearchBehavior.FORWARD)
 
-        elif curr_state == State.AVOID_CROWD:
-            search(State.SNACK_RUN, SearchBehavior.STEER_RIGHT)
+        elif self.curr_state == State.AVOID_CROWD:
+            self.search(State.SNACK_RUN, SearchBehavior.STEER_RIGHT)
     
-        elif curr_state == State.SNACK_RUN:
-            search(State.SKEEBALL, SearchBehavior.FORWARD)
+        elif self.curr_state == State.SNACK_RUN:
+            self.search(State.FIND_SEAT, SearchBehavior.FORWARD)
 
-        elif curr_state == State.FIND_SEAT:
-            search(State.WATER_BLAST, SearchBehavior.TURN_AROUND)
+        elif self.curr_state == State.FIND_SEAT:
+            self.search(State.WATER_BLAST, SearchBehavior.TURN_AROUND_BACKWARD)
 
-        elif curr_state == State.WATER_BLAST:
-            search(State.SKEEBALL, SearchBehavior.STEER_RIGHT)
+        elif self.curr_state == State.WATER_BLAST:
+            self.search(State.SKEEBALL, SearchBehavior.STEER_RIGHT)
 
-        elif curr_state == State.SKEEBALL:
-            search(State.RETURN)
+        elif self.curr_state == State.SKEEBALL:
+            self.search(State.RETURN)
 
-        elif curr_state == State.RETURN:
-            curr_state = State.FINISHED
+        elif self.curr_state == State.RETURN:
+            self.curr_state = State.FINISHED
 
-    def search(next_state, search_behavior=SearchBehavior.SKIP):
+    def search(self, next_state, search_behavior=SearchBehavior.SKIP):
         """
         Given the next desired state, sets up searching for the next state 
         """
-        nonlocal curr_state
-        nonlocal search_data
 
-        curr_state = State.SEARCH
-        search_data = SearchData(next_state, search_behavior, curr_pos, curr_heading)
-        rospy.Timer(rospy.duration(SEARCH_TIMEOUT), search_timeout, True)
+        self.curr_state = State.SEARCH
+        self.search_data = SearchData(next_state, search_behavior, self.curr_pos, self.curr_heading)
+        rospy.Timer(rospy.Duration.from_sec(SEARCH_TIMEOUT), self.search_timeout_callback, True)
 
-    def search_timeout():
-        nonlocal curr_state
-        curr_state = search_data.next_state
+    def search_timeout_callback(self, data):
+        self.curr_state = self.search_data.next_state
 
     #############################################################
     ################## ROS SUBSCRIBER CALLBACKS #################
     #############################################################
 
-    def objects_callback(data):
-        nonlocal curr_objects
-        curr_objects = np.zeros((0, 3))
+    def objects_callback(self, data):
+        self.curr_objects = np.zeros((0, 3))
 
         for object in data.objects:
-            curr_objects = np.append(curr_objects, [[getObjectType(object.label, object.task_label), 
+            self.curr_objects = np.append(self.curr_objects, [[getObjectType(object.label, object.task_label), 
                 object.pos.x, object.pos.y]], axis=0)
 
-    def pose_callback(data):
-        nonlocal curr_pos
-        nonlocal curr_heading
-        curr_pos[0] = data.pose.position.x
-        curr_pos[1] = data.pose.position.y
-        curr_heading = euler_from_quaternion(data.pose.orientation)[2]
+    def pose_callback(self, data):
+        self.curr_pos[0] = data.pose.position.x
+        self.curr_pos[1] = data.pose.position.y
+        explicit_quat = [data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z, data.pose.orientation.w]
+        self.curr_heading = euler_from_quaternion(explicit_quat)[2]
+        # rospy.logerr(str(self.curr_heading))
 
-    def reached_waypoint_callback(data):
-        nonlocal last_waypoint_visited
-        nonlocal curr_state
-        last_waypoint_visited = data.order
+        if self.start_pos is None:
+            self.start_pos = np.copy(self.curr_pos)
 
-    def find_seat_target_callback(data):
-        nonlocal find_seat_target
-        find_seat_target = data.pos
+    def reached_waypoint_callback(self, data):
+        self.last_waypoint_visited = data.order
 
-    def skeeball_status_callback(data):
-        nonlocal skeeball_status
-        skeeball_status = data.status
+    def find_seat_target_callback(self, data):
+        self.find_seat_target = data
+
+    def skeeball_status_callback(self, data):
+        self.skeeball_status = True
     
-    def water_gun_status_callback(data):
-        nonlocal water_gun_status
-        water_gun_status = data.status
+    def water_gun_status_callback(self, data):
+        self.water_gun_status = True
         
     #############################################################
     ################# WAYPOINT SENDING FUNCTIONS ################
     #############################################################
 
-    def find_index(waypoint_id):
-        for ix, waypoint in enumerate(waypoints_sent):
+    def find_index(self, waypoint_id):
+        for ix, waypoint in enumerate(self.waypoints_sent):
             if waypoint[1] == waypoint_id:
                 return ix
         return -1
 
-    def send_waypoint(position, direction, waypoint_id, is_dir_vector=True):
+    def send_waypoint(self, position, direction, waypoint_id, is_dir_vector=True):
         """
         Send a waypoint to the arcturus_pilot node with the given position and direction.
         Checks if the waypoint is already visited to ensure the correct index is sent
         """
 
         # check if this was already sent as a waypoint
-        ix = find_index(waypoint_id)
+        ix = self.find_index(waypoint_id)
         if ix == -1:
-            waypoints_sent.append((position, waypoint_id))
-            ix = len(waypoints_sent) - 1
+            self.waypoints_sent.append((position, waypoint_id))
+            ix = len(self.waypoints_sent) - 1
         else:
-            waypoints_sent[ix] = (position, waypoint_id)
+            self.waypoints_sent[ix] = (position, waypoint_id)
 
-        waypoint_pub.publish(RawWaypoint(position[0], position[1], angle_from_dir(direction) if is_dir_vector else direction, ix))
+        self.waypoint_pub.publish(RawWaypoint(position[0], position[1], angle_from_dir(direction) if is_dir_vector else direction, ix))
     
-    def send_midpoint(buoy_1, buoy_2, waypoint_id):
+    def skip_waypoint(self, waypoint_id):
+        ix = self.find_index(waypoint_id)
+        if ix != -1:
+            self.waypoint_skip_pub.publish(SkipWaypoint(ix))
+
+    def send_midpoint(self, buoy_1, buoy_2, waypoint_id):
         """
         Send the midpoint of two buoys as a waypoint with a heading pointing away from the current position
         """
@@ -294,225 +309,237 @@ def main():
         dir = np.array([dir[1], -dir[0]])
         test_pos = midpoint + dir * 10
         test_neg = midpoint - dir * 10
-        heading_dir = dir if np.linalg.norm(curr_pos - test_pos) > np.linalg.norm(curr_pos - test_neg) else -dir
+        heading_dir = dir if np.linalg.norm(self.curr_pos - test_pos) > np.linalg.norm(self.curr_pos - test_neg) else -dir
 
-        send_waypoint(midpoint, heading_dir, waypoint_id)
+        self.send_waypoint(midpoint, heading_dir, waypoint_id)
 
-    def is_last_visited(waypoint_id):
-        return last_waypoint_visited != -1 and waypoints_sent[last_waypoint_visited][1] == waypoint_id
+    def is_last_visited(self, waypoint_id):
+        return self.last_waypoint_visited != -1 and self.waypoints_sent[self.last_waypoint_visited][1] == waypoint_id
 
-    search(State.CHANNEL, SearchBehavior.FORWARD)
         
     #############################################################
     ################## STATE MACHINE MAIN LOOP ##################
     #############################################################
+    def run(self):
+        # wait until we get some data about current position
+        rate = rospy.Rate(10)
+        while self.start_pos is None and not rospy.is_shutdown():
+            rate.sleep() 
+
+        self.search(State.CHANNEL, SearchBehavior.FORWARD)
     
-    # start up initial state
-    
-    rate = rospy.Rate(10)
-    while not rospy.is_shutdown():
-        objects = np.array(curr_objects)
+        while not rospy.is_shutdown():
+            objects = np.array(self.curr_objects)
 
-        if curr_state == State.CHANNEL:
-            red_buoys = []
-            green_buoys = []
+            # rospy.logerr(str(self.curr_heading))
+            # rospy.logerr(str(self.start_pos))
+            # rospy.logerr(str(self.last_waypoint_visited))
 
-            for object in objects:
-                if object[0] == ObjectType.CHANNEL_RED:
-                    red_buoys.append(object[1:])
-                elif object[0] == ObjectType.CHANNEL_GREEN:
-                    green_buoys.append(object[1:])
+            if self.curr_state == State.CHANNEL:
+                red_buoys = []
+                green_buoys = []
 
-            red_buoys = sorted(red_buoys, key=lambda buoy: np.linalg.norm(buoy - curr_pos))
-            green_buoys = sorted(green_buoys, key=lambda buoy: np.linalg.norm(buoy - curr_pos))
+                for object in objects:
+                    if object[0] == ObjectType.CHANNEL_RED:
+                        red_buoys.append(object[1:])
+                    elif object[0] == ObjectType.CHANNEL_GREEN:
+                        green_buoys.append(object[1:])
 
-            if len(red_buoys) >= 1 and len(green_buoys) >= 1:
-                send_midpoint(red_buoys[0], green_buoys[0], 'channel0')
-            if len(red_buoys) >= 2 and len(green_buoys) >= 2:
-                send_midpoint(red_buoys[1], green_buoys[1], 'channel1')
+                red_buoys = sorted(red_buoys, key=lambda buoy: np.linalg.norm(buoy - self.start_pos))
+                green_buoys = sorted(green_buoys, key=lambda buoy: np.linalg.norm(buoy - self.start_pos))
 
-            if is_last_visited('channel1'):
-                go_next_state()
-            
-        elif curr_state == State.AVOID_CROWD:
-            red_buoys = []
-            green_buoys = []
+                if len(red_buoys) >= 1 and len(green_buoys) >= 1:
+                    self.send_midpoint(red_buoys[0], green_buoys[0], 'channel0')
+                if len(red_buoys) >= 2 and len(green_buoys) >= 2:
+                    self.send_midpoint(red_buoys[1], green_buoys[1], 'channel1')
 
-            for object in objects:
-                if object[0] == ObjectType.AVOID_RED:
-                    red_buoys.append(object[1:])
-                elif object[0] == ObjectType.AVOID_GREEN:
-                    green_buoys.append(object[1:])
+                if self.is_last_visited('channel1'):
+                    self.go_next_state()
+                
+            elif self.curr_state == State.AVOID_CROWD:
+                red_buoys = []
+                green_buoys = []
 
-            # if we haven't found anything, then just skip (should never happen tbh)
-            if len(red_buoys) == 0 or len(green_buoys) == 0:
-                go_next_state()
-            else:
-                sorted_red = sort_buoys_by_dir(np.array(red_buoys))
-                sorted_green = sort_buoys_by_dir(np.array(green_buoys))
+                for object in objects:
+                    if object[0] == ObjectType.AVOID_RED:
+                        red_buoys.append(object[1:])
+                    elif object[0] == ObjectType.AVOID_GREEN:
+                        green_buoys.append(object[1:])
 
-                num_waypoints = min(len(sorted_red), len(sorted_green))
-                for i in range(num_waypoints):
-                    send_midpoint(sorted_red[i], sorted_green[i], 'avoid_crowd' + str(i))
+                # if we haven't found anything, then just skip (should never happen tbh)
+                if len(red_buoys) == 0 or len(green_buoys) == 0:
+                    self.go_next_state()
+                else:
+                    sorted_red = sort_buoys_by_dir(np.array(red_buoys))
+                    sorted_green = sort_buoys_by_dir(np.array(green_buoys))
 
-                if is_last_visited('avoid_crowd' + str(num_waypoints - 1)):
-                    go_next_state()
+                    num_waypoints = min(len(sorted_red), len(sorted_green))
+                    for i in range(num_waypoints):
+                        self.send_midpoint(sorted_red[i], sorted_green[i], 'avoid_crowd' + str(i))
 
-        elif curr_state == State.SNACK_RUN:
-            red_buoy = None
-            green_buoy = None
-            mark_buoy = None
+                    if self.is_last_visited('avoid_crowd' + str(num_waypoints - 1)):
+                        self.go_next_state()
 
-            for object in objects:
-                if object[0] == ObjectType.SNACK_RED:
-                    red_buoy = object[1:]
-                elif object[0] == ObjectType.SNACK_GREEN:
-                    green_buoy = object[1:]
-                elif object[0] == ObjectType.SNACK_BLUE:
-                    mark_buoy = object[1:]
+            elif self.curr_state == State.SNACK_RUN:
+                red_buoy = None
+                green_buoy = None
+                mark_buoy = None
 
-            # if we haven't found anything, then just skip
-            if red_buoy == None and green_buoy == None:
-                go_next_state()
-            else:
-                # estimate the red position using green buoy
-                if red_buoy == None:
-                    red_buoy = green_buoy - np.array(3.0)
+                for object in objects:
+                    if object[0] == ObjectType.SNACK_RED:
+                        red_buoy = object[1:]
+                    elif object[0] == ObjectType.SNACK_GREEN:
+                        green_buoy = object[1:]
+                    elif object[0] == ObjectType.SNACK_BLUE:
+                        mark_buoy = object[1:]
 
-                # estimate the red position using green buoy
-                if green_buoy == None:
-                    green_buoy = red_buoy + np.array(3.0)
+                # if we haven't found anything, then just skip
+                if red_buoy is None and green_buoy is None:
+                    self.go_next_state()
+                else:
+                    # estimate the red position using green buoy
+                    if red_buoy is None:
+                        red_buoy = green_buoy - np.array(3.0)
 
-                midpoint = (red_buoy + green_buoy) / 2.0
-                dir = red_buoy - green_buoy
-                dir /= np.linalg.norm(dir)
-                perp = np.array([-dir[1], dir[0]])
+                    # estimate the red position using green buoy
+                    if green_buoy is None:
+                        green_buoy = red_buoy + np.array(3.0)
 
-                # estimate the position of the mark buoy (might have to change depending on the course)
-                if mark_buoy == None:
-                    second_perp = np.copy(perp)
-                    if np.linalg.norm(curr_pos - (midpoint + perp)) > np.linalg.norm(curr_pos - (midpoint - perp)):
-                        second_perp *= -1
-                    mark_buoy = midpoint - perp * 15.0 # estimate as 15 meters along the perpendicular pointing away from the current position
-
-                positions = []
-                directions = []
-
-                if np.linalg.norm(mark_buoy - (midpoint + perp)) > np.linalg.norm(mark_buoy - (midpoint - perp)):
-                    perp *= -1
-
-                positions.append(midpoint - perp * SNACK_RUN_BEYOND_GOAL_DIST)
-                positions.append(midpoint)
-                positions.append(midpoint + perp * SNACK_RUN_BEYOND_GOAL_DIST)
-
-                positions.append(mark_buoy + dir * SNACK_RUN_MARKER_CLEARANCE_DIST)
-                positions.append(mark_buoy + perp * SNACK_RUN_MARKER_CLEARANCE_DIST)
-                positions.append(mark_buoy - dir * SNACK_RUN_MARKER_CLEARANCE_DIST)
-
-                positions.append(midpoint)
-                positions.append(midpoint - perp * SNACK_RUN_BEYOND_GOAL_DIST)
-
-                for curr_pos, next_pos in zip(positions[:-1], positions[1:]):
-                    dir = next_pos - curr_pos
+                    midpoint = (red_buoy + green_buoy) / 2.0
+                    dir = red_buoy - green_buoy
                     dir /= np.linalg.norm(dir)
-                    directions.append(dir)
-                directions.append(-perp)
+                    perp = np.array([-dir[1], dir[0]])
 
-                last_ix = -1
-                for ix, (point, direction) in enumerate(zip(positions, directions)):
-                    send_waypoint(point, direction, 'snack_run' + str(ix))
-                    last_ix = ix
+                    # estimate the position of the mark buoy (might have to change depending on the course)
+                    if mark_buoy is None:
+                        second_perp = np.copy(perp)
+                        if np.linalg.norm(self.curr_pos - (midpoint + perp)) > np.linalg.norm(self.curr_pos - (midpoint - perp)):
+                            second_perp *= -1
+                        mark_buoy = midpoint - perp * 15.0 # estimate as 15 meters along the perpendicular pointing away from the current position
 
-                if is_last_visited('snack_run' + str(last_ix)):
-                    go_next_state()
+                    positions = []
+                    directions = []
 
-        elif curr_state == State.FIND_SEAT:
-            find_seat_pos = None
+                    if np.linalg.norm(mark_buoy - (midpoint + perp)) > np.linalg.norm(mark_buoy - (midpoint - perp)):
+                        perp *= -1
 
-            for object in objects:
-                if object[0] == ObjectType.FIND_SEAT:
-                    find_seat_pos = object[1:]
-            
-            if find_seat_pos == None:
-                go_next_state()
-            else:
-                send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat0')
+                    positions.append(midpoint - perp * SNACK_RUN_BEYOND_GOAL_DIST)
+                    positions.append(midpoint)
+                    positions.append(midpoint + perp * SNACK_RUN_BEYOND_GOAL_DIST)
 
-                if is_last_visited('find_seat0'):
-                    find_seat_ready_pub.publish(None)
+                    positions.append(mark_buoy + dir * SNACK_RUN_MARKER_CLEARANCE_DIST)
+                    positions.append(mark_buoy + perp * SNACK_RUN_MARKER_CLEARANCE_DIST)
+                    positions.append(mark_buoy - dir * SNACK_RUN_MARKER_CLEARANCE_DIST)
 
-                if find_seat_target != None:
-                    send_waypoint(find_seat_target, FIND_SEAT_DIR, 'find_seat1')
-                    send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat2')
-                    
-                if is_last_visited('find_seat2'):
-                    go_next_state()
+                    positions.append(midpoint)
+                    positions.append(midpoint - perp * SNACK_RUN_BEYOND_GOAL_DIST)
 
-        elif curr_state == State.WATER_BLAST:
-            water_blast_pos = None
+                    for self.curr_pos, next_pos in zip(positions[:-1], positions[1:]):
+                        dir = next_pos - self.curr_pos
+                        dir /= np.linalg.norm(dir)
+                        directions.append(dir)
+                    directions.append(-perp)
 
-            for object in objects:
-                if object[0] == ObjectType.WATER_BLAST:
-                    water_blast_pos = object[1:]
-            
-            if water_blast_pos == None:
-                go_next_state()
-            else:
-                send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast0')
-                send_waypoint(water_blast_pos, WATER_BLAST_DIR, 'water_blast1')
+                    last_ix = -1
+                    for ix, (point, direction) in enumerate(zip(positions, directions)):
+                        self.send_waypoint(point, direction, 'snack_run' + str(ix))
+                        last_ix = ix
 
-                if is_last_visited('water_blast1'):
-                    water_gun_ready_pub.publish(None)
+                    if self.is_last_visited('snack_run' + str(last_ix)):
+                        self.go_next_state()
+
+            elif self.curr_state == State.FIND_SEAT:
+                find_seat_pos = None
+
+                for object in objects:
+                    if object[0] == ObjectType.FIND_SEAT:
+                        find_seat_pos = object[1:]
                 
-                if water_gun_status != None:
-                    send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast2')
-                    
-                if is_last_visited('water_blast2'):
-                    go_next_state()
+                if find_seat_pos is None:
+                    self.go_next_state()
+                else:
+                    self.send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat0')
 
-        elif curr_state == State.SKEEBALL:
-            skeeball_pos = None
+                    if self.is_last_visited('find_seat0'):
+                        self.find_seat_ready_pub.publish(Empty())
 
-            for object in objects:
-                if object[0] == ObjectType.SKEEBALL:
-                    skeeball_pos = object[1:]
-            
-            if skeeball_pos == None:
-                go_next_state()
-            else:
-                send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball0')
-                send_waypoint(skeeball_pos, SKEEBALL_DIR, 'skeeball1')
+                    if self.find_seat_target != None:
+                        self.send_waypoint((self.find_seat_target.x, self.find_seat_target.y), FIND_SEAT_DIR, 'find_seat1')
+                        self.send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat2')
+                        
+                    if self.is_last_visited('find_seat2'):
+                        self.go_next_state()
 
-                if is_last_visited('skeeball1'):
-                    skeeball_ready_pub.publish(None)
+            elif self.curr_state == State.WATER_BLAST:
+                water_blast_pos = None
+
+                for object in objects:
+                    if object[0] == ObjectType.WATER_BLAST:
+                        water_blast_pos = object[1:]
                 
-                if skeeball_status != None:
-                    send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball2')
+                if water_blast_pos is None:
+                    self.go_next_state()
+                else:
+                    self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast0')
+                    self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * WATER_BLAST_DIST, WATER_BLAST_DIR, 'water_blast1')
+
+                    if self.is_last_visited('water_blast1'):
+                        self.water_gun_ready_pub.publish(Empty())
                     
-                if is_last_visited('skeeball2'):
-                    go_next_state()
+                    if self.water_gun_status != None:
+                        self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast2')
+                        
+                    if self.is_last_visited('water_blast2'):
+                        self.go_next_state()
 
-        elif curr_state == State.RETURN:
-            return_buoys = []
-            for object in objects:
-                if object[0] == ObjectType.RETURN:
-                    return_buoys.append(object[1:])
+            elif self.curr_state == State.SKEEBALL:
+                skeeball_pos = None
 
-            if len(return_buoys) < 2:
-                go_next_state()
-            else:
-                send_midpoint(return_buoys[0], return_buoys[1], 'return')
+                for object in objects:
+                    if object[0] == ObjectType.SKEEBALL:
+                        skeeball_pos = object[1:]
+                
+                if skeeball_pos is None:
+                    self.go_next_state()
+                else:
+                    self.send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball0')
+                    self.send_waypoint(skeeball_pos - SKEEBALL_DIR * SKEEBALL_DIST, SKEEBALL_DIR, 'skeeball1')
 
-                if is_last_visited('return'):
-                    go_next_state()
-        elif curr_state == State.SEARCH:
-            if search_data.has_found_targets(objects):
-                curr_state = search_data.next_state
-            else:
-                for waypoint_data in search_data.get_waypoints():
-                    send_waypoint(*waypoint_data)
+                    if self.is_last_visited('skeeball1'):
+                        self.skeeball_ready_pub.publish(Empty())
+                    
+                    if self.skeeball_status != None:
+                        self.send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball2')
+                        
+                    if self.is_last_visited('skeeball2'):
+                        self.go_next_state()
 
-        rate.sleep()
+            elif self.curr_state == State.RETURN:
+                return_buoys = []
+                for object in objects:
+                    if object[0] == ObjectType.RETURN:
+                        return_buoys.append(object[1:])
+
+                if len(return_buoys) < 2:
+                    self.go_next_state()
+                else:
+                    self.send_midpoint(return_buoys[0], return_buoys[1], 'return')
+
+                    if self.is_last_visited('return'):
+                        self.go_next_state()
+                        
+            elif self.curr_state == State.SEARCH:
+                if self.search_data.has_found_targets(objects):
+                    for waypoint_data in self.search_data.get_waypoints():
+                        self.skip_waypoint(waypoint_data[2])
+                    self.curr_state = self.search_data.next_state
+                else:
+                    for waypoint_data in self.search_data.get_waypoints():
+                        self.send_waypoint(waypoint_data[0], waypoint_data[1], waypoint_data[2], waypoint_data[3])
+
+            rate.sleep()
 
 if __name__ == '__main__':
-    main()
+    rospy.init_node('waypoints_generator')
+    waypoint_generator = WaypointGenerator()
+    waypoint_generator.run()
