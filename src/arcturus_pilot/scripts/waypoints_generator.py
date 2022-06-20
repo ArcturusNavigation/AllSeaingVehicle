@@ -23,12 +23,15 @@ SNACK_RUN_BEYOND_GOAL_DIST = 3 # distance the boat will go past the snack run op
 
 
 SEARCH_EXPLORE_DIST = 5 # for the linear search behaviors, how far in a direction the search will go
-SEARCH_TURN_AROUND_RADIUS = 1 # radius of the circle used for turning around
+SEARCH_TURN_AROUND_FORWARD_RADIUS = 2 # radius of the circle used for turning around forward
+SEARCH_TURN_AROUND_BACKWARD_DIST = 2 # distance used for the turn around backward behavior
 SEARCH_CIRCLE_RADIUS = 2 # radius of the circle in the search circle behavior
 SEARCH_TIMEOUT = 15 # seconds the boat will spend searching before giving up and skipping the task
 
 DOCK_TASKS_CLEARING_DIST = 3.0 # how far away from the dock task the boat will go before it stops to line up with the dock
 # direction vectors for the dock tasks that give the direction the boat should face to complete them 
+WATER_BLAST_DIST = 1.0 # how far away the boat should stop from the center of the water blast
+SKEEBALL_DIST = 1.0 # how far away the boat should stop from the center of the skeeball
 
 FIND_SEAT_DIR = np.array([1.0, 1.0])
 SKEEBALL_DIR = np.array([0.0, 1.0])
@@ -52,16 +55,17 @@ class State(Enum):
 class SearchBehavior(Enum):
     STEER_RIGHT = 0,
     STEER_LEFT = 1,
-    FORWARD = 2,
+    FORWARD = 2, # TESTED
     CIRCLE = 3,
-    TURN_AROUND = 4,
-    SKIP = 5
+    TURN_AROUND_FORWARD = 4, # BROKEN (?)
+    TURN_AROUND_BACKWARD = 5, # TESTED
+    SKIP = 6
 
 class SearchData():
     def __init__(self, next_state, search_behavior, init_pos, init_heading):
         self.next_state = next_state
         self.search_behavior = search_behavior
-        self.init_pos = init_pos
+        self.init_pos = np.copy(init_pos)
         self.init_heading = init_heading
 
         if next_state == State.CHANNEL:
@@ -115,8 +119,6 @@ class SearchData():
             waypoints.append((target_pos, target_heading, waypoints_id_prefix + '0', False))
 
         elif self.search_behavior == SearchBehavior.FORWARD:
-            rospy.logerr(str(self.init_pos))
-            rospy.logerr(str(self.init_heading))
             target_pos = self.init_pos + np.array([np.cos(self.init_heading), np.sin(self.init_heading)]) * SEARCH_EXPLORE_DIST
             waypoints.append((target_pos, self.init_heading, waypoints_id_prefix + '0', False))
 
@@ -127,15 +129,26 @@ class SearchData():
                 target_pos = self.init_pos + np.array([np.cos(dir), np.sin(dir)]) * SEARCH_CIRCLE_RADIUS
                 waypoints.append((target_pos, heading, waypoints_id_prefix + str(i), False))
 
-        elif self.search_behavior == SearchBehavior.TURN_AROUND:
+        elif self.search_behavior == SearchBehavior.TURN_AROUND_FORWARD:
             target_heading_1 = self.init_heading + np.pi / 2
             dir_1 = self.init_heading + np.pi / 4
-            target_pos_1 = self.init_pos + np.array([np.cos(dir_1), np.sin(dir_1)]) * SEARCH_TURN_AROUND_RADIUS
+            target_pos_1 = self.init_pos + np.array([np.cos(dir_1), np.sin(dir_1)]) * SEARCH_TURN_AROUND_FORWARD_RADIUS
             waypoints.append((target_pos_1, target_heading_1, waypoints_id_prefix + '0', False))
 
             target_heading_2 = self.init_heading + np.pi
             dir_2 = self.init_heading + np.pi / 2
-            target_pos_2 = self.init_pos + np.array([np.cos(dir_2), np.sin(dir_2)]) * SEARCH_TURN_AROUND_RADIUS
+            target_pos_2 = self.init_pos + np.array([np.cos(dir_2), np.sin(dir_2)]) * SEARCH_TURN_AROUND_FORWARD_RADIUS
+            waypoints.append((target_pos_2, target_heading_2, waypoints_id_prefix + '1', False))
+
+        elif self.search_behavior == SearchBehavior.TURN_AROUND_BACKWARD:
+            target_heading_1 = self.init_heading + np.pi / 4
+            dir_1 = self.init_heading + np.pi / 4
+            target_pos_1 = self.init_pos - np.array([np.cos(dir_1), np.sin(dir_1)]) * SEARCH_TURN_AROUND_BACKWARD_DIST
+            waypoints.append((target_pos_1, target_heading_1, waypoints_id_prefix + '0', False))
+
+            target_heading_2 = self.init_heading + np.pi
+            dir_2 = self.init_heading + np.pi / 2
+            target_pos_2 = self.init_pos - np.array([np.cos(dir_2), np.sin(dir_2)]) * SEARCH_TURN_AROUND_BACKWARD_DIST
             waypoints.append((target_pos_2, target_heading_2, waypoints_id_prefix + '1', False))
 
         return waypoints
@@ -200,7 +213,7 @@ class WaypointGenerator():
             self.search(State.FIND_SEAT, SearchBehavior.FORWARD)
 
         elif self.curr_state == State.FIND_SEAT:
-            self.search(State.WATER_BLAST, SearchBehavior.TURN_AROUND)
+            self.search(State.WATER_BLAST, SearchBehavior.TURN_AROUND_BACKWARD)
 
         elif self.curr_state == State.WATER_BLAST:
             self.search(State.SKEEBALL, SearchBehavior.STEER_RIGHT)
@@ -238,7 +251,7 @@ class WaypointGenerator():
         self.curr_pos[0] = data.pose.position.x
         self.curr_pos[1] = data.pose.position.y
         explicit_quat = [data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z, data.pose.orientation.w]
-        # self.curr_heading = euler_from_quaternion(explicit_quat)[2]
+        self.curr_heading = euler_from_quaternion(explicit_quat)[2]
         # rospy.logerr(str(self.curr_heading))
 
         if self.start_pos is None:
@@ -251,10 +264,10 @@ class WaypointGenerator():
         self.find_seat_target = data
 
     def skeeball_status_callback(self, data):
-        self.skeeball_status = data.status
+        self.skeeball_status = True
     
     def water_gun_status_callback(self, data):
-        self.water_gun_status = data.status
+        self.water_gun_status = True
         
     #############################################################
     ################# WAYPOINT SENDING FUNCTIONS ################
@@ -318,6 +331,7 @@ class WaypointGenerator():
         while not rospy.is_shutdown():
             objects = np.array(self.curr_objects)
 
+            # rospy.logerr(str(self.curr_heading))
             # rospy.logerr(str(self.start_pos))
             # rospy.logerr(str(self.last_waypoint_visited))
 
@@ -450,7 +464,7 @@ class WaypointGenerator():
                         self.find_seat_ready_pub.publish(Empty())
 
                     if self.find_seat_target != None:
-                        self.send_waypoint(self.find_seat_target, FIND_SEAT_DIR, 'find_seat1')
+                        self.send_waypoint((self.find_seat_target.x, self.find_seat_target.y), FIND_SEAT_DIR, 'find_seat1')
                         self.send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat2')
                         
                     if self.is_last_visited('find_seat2'):
@@ -467,7 +481,7 @@ class WaypointGenerator():
                     self.go_next_state()
                 else:
                     self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast0')
-                    self.send_waypoint(water_blast_pos, WATER_BLAST_DIR, 'water_blast1')
+                    self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * WATER_BLAST_DIST, WATER_BLAST_DIR, 'water_blast1')
 
                     if self.is_last_visited('water_blast1'):
                         self.water_gun_ready_pub.publish(Empty())
@@ -489,7 +503,7 @@ class WaypointGenerator():
                     self.go_next_state()
                 else:
                     self.send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball0')
-                    self.send_waypoint(skeeball_pos, SKEEBALL_DIR, 'skeeball1')
+                    self.send_waypoint(skeeball_pos - SKEEBALL_DIR * SKEEBALL_DIST, SKEEBALL_DIR, 'skeeball1')
 
                     if self.is_last_visited('skeeball1'):
                         self.skeeball_ready_pub.publish(Empty())

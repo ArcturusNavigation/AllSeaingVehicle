@@ -77,8 +77,8 @@ class WaypointSim():
             ((3, 4), 23.0, 29.0),
 
             ((5, 3), 56.0, 31.0),
-            ((6, 5), 50.0, 10.0),
-            ((7, 6), 32.0, 14.0),
+            ((6, 6), 49.0, 8.0),
+            ((7, 5), 32.0, 14.0),
 
             ((4, 7), 17.0, 14.0),
             ((4, 7), 17.0, 7.0),
@@ -90,7 +90,7 @@ class WaypointSim():
         self.boat_heading = np.pi / 2
         self.other_obstacles = [
             [(53.0, 40.0), (62.0, 23.0), (60.0, 21.0), (51.0, 38.0)],
-            [(54.0, 13.0), (54.0, 7.0), (48.0, 7.0), (48.0, 13.0)],
+            [(50.0, 9.0), (50.0, 7.0), (48.0, 7.0), (48.0, 9.0)],
             [(34.0, 19.0), (34.0, 10.0), (30.0, 10.0), (30.0, 19.0)]
         ]
 
@@ -172,6 +172,8 @@ class WaypointSim():
         
     def get_curr_waypoint(self):
         while self.current_order in self.skipped_waypoints:
+            # make sure the local planner is up to date with which waypoint is next
+            self.waypoint_reached_pub.publish(WaypointReached(self.current_order))
             self.current_order += 1
 
         if self.temp_waypoint is not None:
@@ -182,7 +184,7 @@ class WaypointSim():
 
     def step(self):
         waypoint, _ = self.get_curr_waypoint()
-        if waypoint == None:
+        if waypoint is None:
             rospy.logerr("no waypoint set")
             return
         else:
@@ -253,6 +255,7 @@ class WaypointSim():
             grid[obstacle_data] = 100
 
         occupancy_ros.data = np.ndarray.tolist(np.ndarray.flatten(grid))
+        self.occupancy_pub.publish(occupancy_ros)
 
     def send_info(self):
         self.send_objects()
