@@ -153,6 +153,8 @@ class WaypointPilot():
 
     def get_curr_waypoint(self):
         while self.current_order in self.skipped_waypoints:
+            # make sure the local planner is up to date with which waypoint is next
+            self.waypoint_reached_pub.publish(WaypointReached(self.current_order))
             self.current_order += 1
 
         if self.temp_waypoint is not None:
@@ -164,7 +166,7 @@ class WaypointPilot():
     # subscribes to the local position of the boat and updates the next
     # waypoint if the local position is within acceptance radius of current setpoint
     def local_position_callback(self, data):
-        if self.init_local_position == None:
+        if self.init_local_position is None:
             self.init_local_position = data
         self.local_position = data
 
@@ -263,7 +265,7 @@ class WaypointPilot():
             return
 
         waypoint = self.get_curr_waypoint()
-        if waypoint == None:
+        if waypoint is None:
             rospy.logerr("no waypoint set")
             self.set_local_setpoint.publish(self.local_position)
         else:
