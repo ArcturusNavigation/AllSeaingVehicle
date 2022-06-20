@@ -138,7 +138,8 @@ class LocalPlanner():
     def pose_callback(self, data):
         self.pos[0] = data.pose.position.x
         self.pos[1] = data.pose.position.y
-        self.heading = euler_from_quaternion(data.pose.orientation)[2]
+        explicit_quat = [data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z, data.pose.orientation.w]
+        self.heading = euler_from_quaternion(explicit_quat)[2]
 
     def occupancy_callback(self, data):
         self.occupancy_width = data.info.width

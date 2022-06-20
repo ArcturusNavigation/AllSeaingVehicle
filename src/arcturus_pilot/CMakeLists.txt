@@ -55,7 +55,9 @@ add_message_files(
     FILES
     RawWaypoint.msg
     ProcessedWaypoint.msg
+    SkipWaypoint.msg
     WaypointReached.msg
+    VelocityCommand.msg
 )
 
 ## Generate services in the 'srv' folder

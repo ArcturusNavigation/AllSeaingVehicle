@@ -5,10 +5,12 @@ import tf
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
 from sensor_msgs.msg import Imu
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist
 
-from arcturus_pilot.msg import ProcessedWaypoint, WaypointReached
+from arcturus_pilot.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint, VelocityCommand
 from arcturus_pilot.srv import GoToWaypoint, GoToWaypointResponse
+
+from geom_helper import quaternion_from_angle
 
 from six.moves import xrange
 
@@ -38,7 +40,9 @@ class WaypointPilot():
         self.set_mode_srv = None
 
         self.waypoints = []
+        self.skipped_waypoints = []
         self.temp_waypoint = None
+        self.temp_twist = None
         self.current_order = 0
 
     def run(self):
@@ -66,14 +70,19 @@ class WaypointPilot():
         }
 
         rospy.Subscriber('arcturus_pilot/processed_waypoint', ProcessedWaypoint, self.waypoint_callback)
+        rospy.Subscriber('arcturus_pilot/waypoint_skip', SkipWaypoint, self.waypoint_skip_callback)
+        rospy.Subscriber('arcturus_pilot/velocity_command', VelocityCommand, self.velocity_command_callback)
         self.send_waypoint_reached = rospy.Publisher('arcturus_pilot/waypoint_reached', WaypointReached, queue_size=5)
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
+        self.set_velocity = rospy.Publisher('mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=5)
         self.send_pose = rospy.Publisher('arcturus_pilot/pose', PoseStamped, queue_size=5)
         self.position_transform_broadcaster = tf.TransformBroadcaster()
 
         if USE_FAKE_GPS_FROM_ZED:
             rospy.Subscriber('zed/zed_node/pose_with_covariance', PoseWithCovarianceStamped, self.zed_pose_callback)
             self.send_fake_gps = rospy.Publisher('mavros/mocap/pose_cov', PoseWithCovarianceStamped, queue_size=5)
+
+        rospy.Subscriber('/clicked_point', Point, self.clicked_point_callback)
 
         self.wait_for_topics(60)
         self.set_mode("Guided", 5)
@@ -129,13 +138,23 @@ class WaypointPilot():
         if not self.sub_topics_ready['imu']:
             self.sub_topics_ready['imu'] = True
 
+    def clicked_point_callback(self, data):
+        q = [self.local_position.pose.orientation.x, self.local_position.pose.orientation.y, self.local_position.pose.orientation.z, self.local_position.pose.orientation.w]
+        self.waypoints = [[(data.point.x, data.point.y, tf.transformations.euler_from_quaternion(q)[2])]]
+        self.current_order = 0
+        self.temp_waypoint = None
+
     def go_to_waypoint(self, req):
         self.waypoints = [[(self.local_position.pose.position.x + req.x, 
             self.local_position.pose.position.y + req.y, req.heading)]]
         self.current_order = 0
+        self.temp_waypoint = None
         return GoToWaypointResponse()
 
     def get_curr_waypoint(self):
+        while self.current_order in self.skipped_waypoints:
+            self.current_order += 1
+
         if self.temp_waypoint is not None:
             return self.temp_waypoint
         if len(self.waypoints) <= self.current_order:
@@ -180,6 +199,16 @@ class WaypointPilot():
         while len(self.waypoints) <= waypoint.order:
             self.waypoints.append(())
         self.waypoints[waypoint.order] = (waypoint.x, waypoint.y, waypoint.heading)
+
+    def waypoint_skip_callback(self, waypoint_skip):
+        order = waypoint_skip.order
+        self.skipped_waypoints.append(order)
+
+    def velocity_command_callback(self, velocity_command):
+        if velocity_command.cancel:
+            self.temp_twist = None
+        else:
+            self.temp_twist = velocity_command.twist
 
     def zed_pose_callback(self, pose_with_cov):
         self.send_fake_gps.publish(pose_with_cov)
@@ -229,6 +258,10 @@ class WaypointPilot():
     # takes the current setpoint and sends it to the FCU
     # needs to be called at minimum 2 Hz
     def send_setpoint(self):
+        if self.temp_twist != None:
+            self.set_velocity.publish(self.temp_twist)
+            return
+
         waypoint = self.get_curr_waypoint()
         if waypoint == None:
             rospy.logerr("no waypoint set")
@@ -242,7 +275,7 @@ class WaypointPilot():
             pose.header.frame_id = '/local_origin'
             pose.pose = Pose()
             pose.pose.position = Point(x = waypoint_x, y = waypoint_y, z = 0)
-            pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0, 0, waypoint_heading))
+            pose.pose.orientation = quaternion_from_angle(waypoint_heading)
             self.set_local_setpoint.publish(pose)
 
 if __name__ == '__main__':

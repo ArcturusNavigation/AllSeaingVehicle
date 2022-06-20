@@ -3,10 +3,10 @@
 import rospy
 import numpy as np
 from enum import Enum
-from arcturus_pilot.msg import RawWaypoint, WaypointReached
+from arcturus_pilot.msg import RawWaypoint, WaypointReached, SkipWaypoint
 from sensor_suite.msg import ObjectArray
 from std_msgs.msg import Empty
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Point
 
 from object_types import ObjectType, getObjectType
 from geom_helper import angle_from_dir, sort_buoys_by_dir
@@ -115,6 +115,8 @@ class SearchData():
             waypoints.append((target_pos, target_heading, waypoints_id_prefix + '0', False))
 
         elif self.search_behavior == SearchBehavior.FORWARD:
+            rospy.logerr(str(self.init_pos))
+            rospy.logerr(str(self.init_heading))
             target_pos = self.init_pos + np.array([np.cos(self.init_heading), np.sin(self.init_heading)]) * SEARCH_EXPLORE_DIST
             waypoints.append((target_pos, self.init_heading, waypoints_id_prefix + '0', False))
 
@@ -151,6 +153,7 @@ class WaypointGenerator():
     def __init__(self):
         self.curr_pos = np.array([0, 0])
         self.curr_heading = 0
+        self.start_pos = None
         self.last_waypoint_visited = -1
 
         self.curr_objects = []
@@ -164,6 +167,7 @@ class WaypointGenerator():
 
         self.waypoint_pub = rospy.Publisher('arcturus_pilot/raw_waypoint', RawWaypoint, queue_size=10)
         self.reached_waypoint_sub = rospy.Subscriber('arcturus_pilot/waypoint_reached', WaypointReached, self.reached_waypoint_callback)
+        self.waypoint_skip_pub = rospy.Publisher('arcturus_pilot/waypoint_skip', SkipWaypoint)
         self.pose_sub = rospy.Subscriber('arcturus_pilot/pose', PoseStamped, self.pose_callback)
         self.objects_sub = rospy.Subscriber('sensor_suite/objects', ObjectArray, self.objects_callback)
 
@@ -172,7 +176,7 @@ class WaypointGenerator():
         self.water_gun_ready_pub = rospy.Publisher('water_gun/ready', Empty, queue_size = 10)
         self.skeeball_ready_pub = rospy.Publisher('skeeball/ready', Empty, queue_size = 10)
 
-        self.find_seat_target_sub = rospy.Subscriber('find_seat/target', Empty, self.find_seat_target_callback)
+        self.find_seat_target_sub = rospy.Subscriber('find_seat/target', Point, self.find_seat_target_callback)
         self.water_gun_status_sub = rospy.Subscriber('water_gun/status', Empty, self.water_gun_status_callback)
         self.skeeball_status_sub = rospy.Subscriber('skeeball/status', Empty, self.skeeball_status_callback)
 
@@ -193,7 +197,7 @@ class WaypointGenerator():
             self.search(State.SNACK_RUN, SearchBehavior.STEER_RIGHT)
     
         elif self.curr_state == State.SNACK_RUN:
-            self.search(State.SKEEBALL, SearchBehavior.FORWARD)
+            self.search(State.FIND_SEAT, SearchBehavior.FORWARD)
 
         elif self.curr_state == State.FIND_SEAT:
             self.search(State.WATER_BLAST, SearchBehavior.TURN_AROUND)
@@ -233,13 +237,18 @@ class WaypointGenerator():
     def pose_callback(self, data):
         self.curr_pos[0] = data.pose.position.x
         self.curr_pos[1] = data.pose.position.y
-        self.curr_heading = euler_from_quaternion(data.pose.orientation)[2]
+        explicit_quat = [data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z, data.pose.orientation.w]
+        # self.curr_heading = euler_from_quaternion(explicit_quat)[2]
+        # rospy.logerr(str(self.curr_heading))
+
+        if self.start_pos is None:
+            self.start_pos = np.copy(self.curr_pos)
 
     def reached_waypoint_callback(self, data):
         self.last_waypoint_visited = data.order
 
     def find_seat_target_callback(self, data):
-        self.find_seat_target = data.pos
+        self.find_seat_target = data
 
     def skeeball_status_callback(self, data):
         self.skeeball_status = data.status
@@ -273,6 +282,11 @@ class WaypointGenerator():
 
         self.waypoint_pub.publish(RawWaypoint(position[0], position[1], angle_from_dir(direction) if is_dir_vector else direction, ix))
     
+    def skip_waypoint(self, waypoint_id):
+        ix = self.find_index(waypoint_id)
+        if ix != -1:
+            self.waypoint_skip_pub.publish(SkipWaypoint(ix))
+
     def send_midpoint(self, buoy_1, buoy_2, waypoint_id):
         """
         Send the midpoint of two buoys as a waypoint with a heading pointing away from the current position
@@ -294,11 +308,18 @@ class WaypointGenerator():
     ################## STATE MACHINE MAIN LOOP ##################
     #############################################################
     def run(self):
+        # wait until we get some data about current position
+        rate = rospy.Rate(10)
+        while self.start_pos is None and not rospy.is_shutdown():
+            rate.sleep() 
+
         self.search(State.CHANNEL, SearchBehavior.FORWARD)
     
-        rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             objects = np.array(self.curr_objects)
+
+            # rospy.logerr(str(self.start_pos))
+            # rospy.logerr(str(self.last_waypoint_visited))
 
             if self.curr_state == State.CHANNEL:
                 red_buoys = []
@@ -310,8 +331,8 @@ class WaypointGenerator():
                     elif object[0] == ObjectType.CHANNEL_GREEN:
                         green_buoys.append(object[1:])
 
-                red_buoys = sorted(red_buoys, key=lambda buoy: np.linalg.norm(buoy - self.curr_pos))
-                green_buoys = sorted(green_buoys, key=lambda buoy: np.linalg.norm(buoy - self.curr_pos))
+                red_buoys = sorted(red_buoys, key=lambda buoy: np.linalg.norm(buoy - self.start_pos))
+                green_buoys = sorted(green_buoys, key=lambda buoy: np.linalg.norm(buoy - self.start_pos))
 
                 if len(red_buoys) >= 1 and len(green_buoys) >= 1:
                     self.send_midpoint(red_buoys[0], green_buoys[0], 'channel0')
@@ -359,15 +380,15 @@ class WaypointGenerator():
                         mark_buoy = object[1:]
 
                 # if we haven't found anything, then just skip
-                if red_buoy == None and green_buoy == None:
+                if red_buoy is None and green_buoy is None:
                     self.go_next_state()
                 else:
                     # estimate the red position using green buoy
-                    if red_buoy == None:
+                    if red_buoy is None:
                         red_buoy = green_buoy - np.array(3.0)
 
                     # estimate the red position using green buoy
-                    if green_buoy == None:
+                    if green_buoy is None:
                         green_buoy = red_buoy + np.array(3.0)
 
                     midpoint = (red_buoy + green_buoy) / 2.0
@@ -376,7 +397,7 @@ class WaypointGenerator():
                     perp = np.array([-dir[1], dir[0]])
 
                     # estimate the position of the mark buoy (might have to change depending on the course)
-                    if mark_buoy == None:
+                    if mark_buoy is None:
                         second_perp = np.copy(perp)
                         if np.linalg.norm(self.curr_pos - (midpoint + perp)) > np.linalg.norm(self.curr_pos - (midpoint - perp)):
                             second_perp *= -1
@@ -420,7 +441,7 @@ class WaypointGenerator():
                     if object[0] == ObjectType.FIND_SEAT:
                         find_seat_pos = object[1:]
                 
-                if find_seat_pos == None:
+                if find_seat_pos is None:
                     self.go_next_state()
                 else:
                     self.send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat0')
@@ -442,7 +463,7 @@ class WaypointGenerator():
                     if object[0] == ObjectType.WATER_BLAST:
                         water_blast_pos = object[1:]
                 
-                if water_blast_pos == None:
+                if water_blast_pos is None:
                     self.go_next_state()
                 else:
                     self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast0')
@@ -464,7 +485,7 @@ class WaypointGenerator():
                     if object[0] == ObjectType.SKEEBALL:
                         skeeball_pos = object[1:]
                 
-                if skeeball_pos == None:
+                if skeeball_pos is None:
                     self.go_next_state()
                 else:
                     self.send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball0')
@@ -495,10 +516,12 @@ class WaypointGenerator():
                         
             elif self.curr_state == State.SEARCH:
                 if self.search_data.has_found_targets(objects):
+                    for waypoint_data in self.search_data.get_waypoints():
+                        self.skip_waypoint(waypoint_data[2])
                     self.curr_state = self.search_data.next_state
                 else:
                     for waypoint_data in self.search_data.get_waypoints():
-                        self.send_waypoint(*waypoint_data)
+                        self.send_waypoint(waypoint_data[0], waypoint_data[1], waypoint_data[2], waypoint_data[3])
 
             rate.sleep()
 

@@ -5,10 +5,11 @@ import numpy as np
 import skimage
 from geom_helper import quaternion_from_angle
 import pygame
+import random
 
 from geometry_msgs.msg import PoseStamped, Point
 from nav_msgs.msg import OccupancyGrid
-from arcturus_pilot.msg import ProcessedWaypoint, WaypointReached
+from arcturus_pilot.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint
 from sensor_suite.msg import Object, ObjectArray
 
 ACCEPTANCE_RADIUS = 0.2
@@ -19,7 +20,7 @@ MAP_HEIGHT = 55
 CAMERA_DIST = 30
 
 BUOY_RADIUS = 2.0 # m (inflated radius)
-STEP_SIZE = 3
+STEP_SIZE = 1
 STEP_SIZE_HEADING = np.pi / 6
 
 OCCUPANCY_WIDTH = int(MAP_WIDTH / OCCUPANCY_RESOLUTION)
@@ -28,29 +29,80 @@ OCCUPANCY_HEIGHT = int(MAP_HEIGHT / OCCUPANCY_RESOLUTION)
 def convert(x):
     return int(round(x / OCCUPANCY_RESOLUTION))
 
+def convert_image_coords(x, y):
+    return x / 5, 55 - y / 5
+
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 
 def get_screen_coords(x, y):
-    return int(x / MAP_WIDTH * SCREEN_WIDTH), int(SCREEN_HEIGHT - y / MAP_WIDTH * SCREEN_HEIGHT)
+    return int((x / MAP_WIDTH) * SCREEN_WIDTH), int(SCREEN_HEIGHT - (y / MAP_WIDTH) * SCREEN_HEIGHT)
 
 class WaypointSim():
     def __init__(self):
         self.objects = [
+            ((0, 1), 6.0, 16.0),
+            ((1, 1), 10.0, 16.0),
+            ((0, 1), 6.0, 34.0),
+            ((1, 1), 10.0, 34.0),
 
+            ((0, 2), 7.0, 44.0),
+            ((1, 2), 11.0, 43.0),
+            ((0, 2), 11.0, 49.0),
+            ((1, 2), 12.0, 46.0),
+            ((0, 2), 16.0, 50.0),
+            ((1, 2), 16.0, 46.0),
+            ((0, 2), 20.0, 48.0),
+            ((1, 2), 20.0, 44.0),
+            ((0, 2), 24.0, 47.0),
+            ((1, 2), 24.0, 43.0),
+            ((0, 2), 28.0, 47.0),
+            ((1, 2), 28.0, 43.0),
+            ((0, 2), 34.0, 48.0),
+            ((1, 2), 34.0, 44.0),
+            ((0, 2), 39.0, 47.0),
+            ((1, 2), 38.0, 43.0),
+            ((0, 2), 44.0, 43.0),
+            ((1, 2), 40.0, 40.0),
+            ((0, 2), 46.0, 39.0),
+            ((1, 2), 42.0, 37.0),
+
+            ((2, 2), 10.0, 48.0),
+            ((2, 2), 24.0, 44.0),
+            ((2, 2), 38.0, 45.0),
+            ((2, 2), 42.0, 39.0),
+
+            ((0, 4), 38.0, 26.0),
+            ((1, 4), 38.0, 31.0),
+            ((3, 4), 23.0, 29.0),
+
+            ((5, 3), 56.0, 31.0),
+            ((6, 5), 50.0, 10.0),
+            ((7, 6), 32.0, 14.0),
+
+            ((4, 7), 17.0, 14.0),
+            ((4, 7), 17.0, 7.0),
+        ]
+        random.shuffle(self.objects)
+
+        self.seen = [False] * len(self.objects)
+        self.boat_pos = np.array(convert_image_coords(40, 220), dtype=np.float32)
+        self.boat_heading = np.pi / 2
+        self.other_obstacles = [
+            [(53.0, 40.0), (62.0, 23.0), (60.0, 21.0), (51.0, 38.0)],
+            [(54.0, 13.0), (54.0, 7.0), (48.0, 7.0), (48.0, 13.0)],
+            [(34.0, 19.0), (34.0, 10.0), (30.0, 10.0), (30.0, 19.0)]
         ]
 
-        self.boat_pos = np.array([0, 0], dtype=np.float32)
-        self.boat_heading = 0
-        self.other_obstacles = []
-
         self.waypoint_sub = rospy.Subscriber('arcturus_pilot/processed_waypoint', ProcessedWaypoint, self.waypoint_callback)
-        self.pose_pub = rospy.Publisher('arcuturus_pilot/pose', PoseStamped, queue_size=10)
+        self.pose_pub = rospy.Publisher('arcturus_pilot/pose', PoseStamped, queue_size=10)
         self.objects_pub = rospy.Publisher('sensor_suite/objects', ObjectArray, queue_size=5)
         self.occupancy_pub = rospy.Publisher('/occupancy_grid', OccupancyGrid, queue_size=5)
-        self.waypoint_reached_pub = rospy.Publisher('arcuturus_pilot/waypoint_reached', WaypointReached, queue_size=10)
+        self.waypoint_reached_pub = rospy.Publisher('arcturus_pilot/waypoint_reached', WaypointReached, queue_size=10)
+        rospy.Subscriber('arcturus_pilot/waypoint_skip', SkipWaypoint, self.waypoint_skip_callback)
 
         self.waypoints = []
+        self.skipped_waypoints = []
         self.temp_waypoint = None
         self.current_order = 0
 
@@ -64,28 +116,45 @@ class WaypointSim():
             self.draw()
             self.send_info()
             while True:
+                running = True
                 key_pressed = False
                 for event in pygame.event.get():
                     if event.type == pygame.KEYDOWN:
                         key_pressed = True
                         break
-                if key_pressed:
+                    elif event.type == pygame.QUIT:
+                        running = False
+                        break
+                if key_pressed or not running or rospy.is_shutdown():
                     break
+            if not running:
+                break
 
     def draw(self):
         self.screen.fill((255, 255, 255))
-        pygame.draw.circle(self.screen, (0, 0, 255), get_screen_coords(self.boat_pos[0], self.boat_pos[1]), 20)
+        pygame.draw.circle(self.screen, (0, 0, 255), get_screen_coords(self.boat_pos[0], self.boat_pos[1]), 5)
 
-        waypoint = self.get_curr_waypoint()
+        waypoint, status = self.get_curr_waypoint()
         if waypoint != None:
-            pygame.draw.circle(self.screen, (255, 0, 255), get_screen_coords(waypoint[0], waypoint[1]), 5)
+            pygame.draw.circle(self.screen, (255, 0, 255) if status else (0, 0, 0), get_screen_coords(waypoint[0], waypoint[1]), 5)
         for object in self.objects:
             x, y = object[1], object[2]
-            pygame.draw.circle(self.screen, (255, 0, 0), get_screen_coords(x, y), 10)
+            color = (0, 0, 0)
+            if object[0][0] == 0:
+                color = (255, 0, 0)
+            elif object[0][0] == 1:
+                color = (0, 255, 0)
+            elif object[0][0] == 2:
+                color = (255, 255, 0)
+            elif object[0][0] == 3:
+                color = (0, 0, 255)
+            pygame.draw.circle(self.screen, color, get_screen_coords(x, y), 5)
 
         for obstacle in self.other_obstacles:
             converted_obstacle = [get_screen_coords(x, y) for (x, y) in obstacle]
             pygame.draw.polygon(self.screen, (255, 0, 0), converted_obstacle)
+
+        pygame.display.flip()
 
     def waypoint_callback(self, waypoint):
         if waypoint.is_temp:
@@ -94,17 +163,25 @@ class WaypointSim():
             
         while len(self.waypoints) <= waypoint.order:
             self.waypoints.append(())
+
         self.waypoints[waypoint.order] = (waypoint.x, waypoint.y, waypoint.heading)
+
+    def waypoint_skip_callback(self, waypoint_skip):
+        order = waypoint_skip.order
+        self.skipped_waypoints.append(order)
         
     def get_curr_waypoint(self):
+        while self.current_order in self.skipped_waypoints:
+            self.current_order += 1
+
         if self.temp_waypoint is not None:
-            return self.temp_waypoint
+            return self.temp_waypoint, True
         if len(self.waypoints) <= self.current_order:
-            return None
-        return self.waypoints[self.current_order]
+            return None, False
+        return self.waypoints[self.current_order], False
 
     def step(self):
-        waypoint = self.get_curr_waypoint()
+        waypoint, _ = self.get_curr_waypoint()
         if waypoint == None:
             rospy.logerr("no waypoint set")
             return
@@ -139,16 +216,17 @@ class WaypointSim():
     def send_objects(self):
         object_list = []
         # TODO: implement the FOV
-        for object in self.objects:
-            if np.linalg.norm(np.array([object[1], object[2]]) - self.boat_pos) > CAMERA_DIST:
-                continue
+        for ix, object in enumerate(self.objects):
+            if np.linalg.norm(np.array([object[1], object[2]]) - self.boat_pos) <= CAMERA_DIST:
+                self.seen[ix] = True
 
-            object_ros = Object()
-            object_ros.label = object[0][0]
-            object_ros.task_label = object[0][1]
-            object_ros.pos = Point(object[1], object[2], 0)
+            if self.seen[ix]:
+                object_ros = Object()
+                object_ros.label = object[0][0]
+                object_ros.task_label = object[0][1]
+                object_ros.pos = Point(object[1], object[2], 0)
 
-            object_list.append(object_ros)
+                object_list.append(object_ros)
         
         object_list_ros = ObjectArray()
         object_list_ros.objects = object_list
@@ -165,7 +243,7 @@ class WaypointSim():
         grid = np.zeros((OCCUPANCY_HEIGHT, OCCUPANCY_WIDTH), dtype=np.int8)
 
         for object in self.objects:
-            object_data = skimage.draw.ellipse(convert(object[1]), convert(object[0]), 
+            object_data = skimage.draw.ellipse(convert(object[2]), convert(object[1]), 
                 BUOY_RADIUS, BUOY_RADIUS, shape=(OCCUPANCY_HEIGHT, OCCUPANCY_WIDTH))
             grid[object_data] = 100
 
@@ -189,5 +267,9 @@ class WaypointSim():
 
 if __name__ == '__main__':
     rospy.init_node('waypoint_sim')
+    rospy.logerr(MAP_WIDTH)
+    rospy.logerr(MAP_HEIGHT)
+    rospy.logerr(SCREEN_WIDTH)
+    rospy.logerr(SCREEN_HEIGHT)
     waypoint_sim = WaypointSim()
     waypoint_sim.run()
