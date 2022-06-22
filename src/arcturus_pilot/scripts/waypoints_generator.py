@@ -17,7 +17,6 @@ from tf.transformations import euler_from_quaternion
 # intermediate waypoints have the correct heading. If not, then have to redo the code for generating waypoints to get
 # out of dock
 
-BUOY_DIST_THRESHOLD = 1 # distance buoys have to be from each other to be considered the same buoy
 SNACK_RUN_MARKER_CLEARANCE_DIST = 1 # distance the boat will attempt to go past the snack run marker
 SNACK_RUN_BEYOND_GOAL_DIST = 3 # distance the boat will go past the snack run opening / closing
 
@@ -279,7 +278,7 @@ class WaypointGenerator():
                 return ix
         return -1
 
-    def send_waypoint(self, position, direction, waypoint_id, is_dir_vector=True):
+    def send_waypoint(self, position, direction, waypoint_id, is_dir_vector=True, ignore_local_planner=False):
         """
         Send a waypoint to the arcturus_pilot node with the given position and direction.
         Checks if the waypoint is already visited to ensure the correct index is sent
@@ -293,7 +292,7 @@ class WaypointGenerator():
         else:
             self.waypoints_sent[ix] = (position, waypoint_id)
 
-        self.waypoint_pub.publish(RawWaypoint(position[0], position[1], angle_from_dir(direction) if is_dir_vector else direction, ix))
+        self.waypoint_pub.publish(RawWaypoint(position[0], position[1], angle_from_dir(direction) if is_dir_vector else direction, ix, ignore_local_planner))
     
     def skip_waypoint(self, waypoint_id):
         ix = self.find_index(waypoint_id)
@@ -458,16 +457,23 @@ class WaypointGenerator():
                 if find_seat_pos is None:
                     self.go_next_state()
                 else:
-                    self.send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat0')
+                    self.send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST,
+                        FIND_SEAT_DIR, 'find_seat0')
 
                     if self.is_last_visited('find_seat0'):
                         self.find_seat_ready_pub.publish(Empty())
 
                     if self.find_seat_target != None:
-                        self.send_waypoint((self.find_seat_target.x, self.find_seat_target.y), FIND_SEAT_DIR, 'find_seat1')
-                        self.send_waypoint(find_seat_pos - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST, FIND_SEAT_DIR, 'find_seat2')
+                        self.send_waypoint((self.find_seat_target.x - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST,
+                            self.find_seat_target.y - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST), 
+                            FIND_SEAT_DIR, 'find_seat1')
+                        self.send_waypoint((self.find_seat_target.x, self.find_seat_target.y), 
+                            FIND_SEAT_DIR, 'find_seat2', True)
+                        self.send_waypoint((self.find_seat_target.x - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST,
+                            self.find_seat_target.y - FIND_SEAT_DIR * DOCK_TASKS_CLEARING_DIST), 
+                            FIND_SEAT_DIR, 'find_seat3')
                         
-                    if self.is_last_visited('find_seat2'):
+                    if self.is_last_visited('find_seat3'):
                         self.go_next_state()
 
             elif self.curr_state == State.WATER_BLAST:
@@ -480,14 +486,17 @@ class WaypointGenerator():
                 if water_blast_pos is None:
                     self.go_next_state()
                 else:
-                    self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast0')
-                    self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * WATER_BLAST_DIST, WATER_BLAST_DIR, 'water_blast1')
+                    self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST,
+                        WATER_BLAST_DIR, 'water_blast0')
+                    self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * WATER_BLAST_DIST,
+                        WATER_BLAST_DIR, 'water_blast1', True)
 
                     if self.is_last_visited('water_blast1'):
                         self.water_gun_ready_pub.publish(Empty())
                     
                     if self.water_gun_status != None:
-                        self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST, WATER_BLAST_DIR, 'water_blast2')
+                        self.send_waypoint(water_blast_pos - WATER_BLAST_DIR * DOCK_TASKS_CLEARING_DIST,
+                            WATER_BLAST_DIR, 'water_blast2')
                         
                     if self.is_last_visited('water_blast2'):
                         self.go_next_state()
@@ -502,14 +511,17 @@ class WaypointGenerator():
                 if skeeball_pos is None:
                     self.go_next_state()
                 else:
-                    self.send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball0')
-                    self.send_waypoint(skeeball_pos - SKEEBALL_DIR * SKEEBALL_DIST, SKEEBALL_DIR, 'skeeball1')
+                    self.send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST,
+                        SKEEBALL_DIR, 'skeeball0')
+                    self.send_waypoint(skeeball_pos - SKEEBALL_DIR * SKEEBALL_DIST,
+                        SKEEBALL_DIR, 'skeeball1', True)
 
                     if self.is_last_visited('skeeball1'):
                         self.skeeball_ready_pub.publish(Empty())
                     
                     if self.skeeball_status != None:
-                        self.send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST, SKEEBALL_DIR, 'skeeball2')
+                        self.send_waypoint(skeeball_pos - SKEEBALL_DIR * DOCK_TASKS_CLEARING_DIST,
+                            SKEEBALL_DIR, 'skeeball2')
                         
                     if self.is_last_visited('skeeball2'):
                         self.go_next_state()

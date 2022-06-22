@@ -13,13 +13,13 @@ from arcturus_pilot.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint
 from sensor_suite.msg import Object, ObjectArray
 
 ACCEPTANCE_RADIUS = 0.2
-OCCUPANCY_RESOLUTION = 0.5
+OCCUPANCY_RESOLUTION = 0.1
 MAP_WIDTH = 70
 MAP_HEIGHT = 55
 
 CAMERA_DIST = 30
 
-BUOY_RADIUS = 2.0 # m (inflated radius)
+BUOY_RADIUS = 0.5 # m (inflated radius)
 STEP_SIZE = 1
 STEP_SIZE_HEADING = np.pi / 6
 
@@ -91,7 +91,7 @@ class WaypointSim():
         self.other_obstacles = [
             [(53.0, 40.0), (62.0, 23.0), (60.0, 21.0), (51.0, 38.0)],
             [(50.0, 9.0), (50.0, 7.0), (48.0, 7.0), (48.0, 9.0)],
-            [(34.0, 19.0), (34.0, 10.0), (30.0, 10.0), (30.0, 19.0)]
+            [(33.0, 13.0), (33.0, 15.0), (30.0, 15.0), (30.0, 13.0)]
         ]
 
         self.waypoint_sub = rospy.Subscriber('arcturus_pilot/processed_waypoint', ProcessedWaypoint, self.waypoint_callback)
@@ -135,6 +135,7 @@ class WaypointSim():
         pygame.draw.circle(self.screen, (0, 0, 255), get_screen_coords(self.boat_pos[0], self.boat_pos[1]), 5)
 
         waypoint, status = self.get_curr_waypoint()
+        # rospy.logerr(str(waypoint))
         if waypoint != None:
             pygame.draw.circle(self.screen, (255, 0, 255) if status else (0, 0, 0), get_screen_coords(waypoint[0], waypoint[1]), 5)
         for object in self.objects:
@@ -238,6 +239,7 @@ class WaypointSim():
     def send_occupancy(self):
         occupancy_ros = OccupancyGrid()
         occupancy_ros.header.stamp = rospy.Time.now()
+        occupancy_ros.header.frame_id = 'map'
         occupancy_ros.info.resolution = OCCUPANCY_RESOLUTION
         occupancy_ros.info.width = OCCUPANCY_WIDTH
         occupancy_ros.info.height = OCCUPANCY_HEIGHT
@@ -246,7 +248,7 @@ class WaypointSim():
 
         for object in self.objects:
             object_data = skimage.draw.ellipse(convert(object[2]), convert(object[1]), 
-                BUOY_RADIUS, BUOY_RADIUS, shape=(OCCUPANCY_HEIGHT, OCCUPANCY_WIDTH))
+                convert(BUOY_RADIUS), convert(BUOY_RADIUS), shape=(OCCUPANCY_HEIGHT, OCCUPANCY_WIDTH))
             grid[object_data] = 100
 
         for obstacle in self.other_obstacles:
@@ -263,6 +265,7 @@ class WaypointSim():
         
         pose = PoseStamped()
         pose.header.stamp = rospy.Time.now()
+        pose.header.frame_id = '/map'
         pose.pose.position = Point(x = self.boat_pos[0], y = self.boat_pos[1], z = 0)
         pose.pose.orientation = quaternion_from_angle(self.boat_heading)
 
@@ -270,9 +273,9 @@ class WaypointSim():
 
 if __name__ == '__main__':
     rospy.init_node('waypoint_sim')
-    rospy.logerr(MAP_WIDTH)
-    rospy.logerr(MAP_HEIGHT)
-    rospy.logerr(SCREEN_WIDTH)
-    rospy.logerr(SCREEN_HEIGHT)
+    # rospy.logerr(MAP_WIDTH)
+    # rospy.logerr(MAP_HEIGHT)
+    # rospy.logerr(SCREEN_WIDTH)
+    # rospy.logerr(SCREEN_HEIGHT)
     waypoint_sim = WaypointSim()
     waypoint_sim.run()
