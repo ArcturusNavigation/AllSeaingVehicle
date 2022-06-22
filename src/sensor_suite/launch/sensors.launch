@@ -1,4 +1,8 @@
 <launch>
-<node pkg="sensor_suite" type="segmentation" name="segmentation_node"/>
-<node pkg="sensor_suite" type="cluster" name="clustering_node"/>
+<include file="$(find zed_wrapper)/launch/zed2i.launch">
+<!-- <arg name="openni_depth_mode" value="1"/> -->
+</include>
+<include file="$(find velodyne_pointcloud)/launch/32e_points.launch">
+<arg name="calibration" value="$(find sensor_suite)/32db.yaml"/>
+</include>
 </launch>

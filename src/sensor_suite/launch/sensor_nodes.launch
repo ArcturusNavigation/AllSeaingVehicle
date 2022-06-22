@@ -1,0 +1,4 @@
+<launch>
+<node pkg="sensor_suite" type="segmentation" name="segmentation_node"/>
+<node pkg="sensor_suite" type="cluster" name="clustering_node"/>
+</launch>
