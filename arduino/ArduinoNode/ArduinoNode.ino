@@ -28,8 +28,8 @@ ros::Subscriber angle_sub("skeeball/angle", &angle_cb);
 ros::Subscriber safety_sub("/arcturus_pilot/off", &safety_cb);
 
 //Relay pins and switches
-int pump_relay = 10;
-int thruster_relay = 11;
+int pump_relay = 11;
+int thruster_relay = 12;
 bool pump_switch = false;
 bool thruster_switch = true;
 
@@ -125,7 +125,8 @@ void safety_cb(const std_msgs::Bool& safety){
 ******************************/
 void setup()
 {
-
+  Serial.begin(9600);
+  pinMode(kill_pin, OUTPUT);
 
   angle1_servo.attach(angle1_pin);
   angle2_servo.attach(angle2_pin);
@@ -150,13 +151,7 @@ void setup()
   nh.subscribe(release_sub);
   nh.subscribe(extend_sub);
   nh.subscribe(angle_sub);
-
-  if(thruster_switch){
-    digitalWrite(thruster_relay, HIGH);
-  }
-  else{
-    digitalWrite(thruster_relay, LOW);
-  }
+  
 }
 
 void loop()
