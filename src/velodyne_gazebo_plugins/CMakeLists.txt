@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(velodyne_gazebo_plugins)
 
+# Compile as C++14(required for pcl)
+add_compile_options(-std=c++11)
+
+# Check for C++14
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
@@ -42,9 +49,9 @@ target_link_libraries(gazebo_ros_velodyne_gpu_laser
 target_compile_definitions(gazebo_ros_velodyne_gpu_laser PRIVATE GAZEBO_GPU_RAY=1)
 
 install(TARGETS gazebo_ros_velodyne_laser gazebo_ros_velodyne_gpu_laser
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 
 install(DIRECTORY include/${PROJECT_NAME}/
-        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )
