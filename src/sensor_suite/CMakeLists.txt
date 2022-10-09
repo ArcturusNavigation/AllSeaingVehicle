@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(sensor_suite)
 
 # Compile as C++14(required for pcl)
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++14)
 
 # Check for C++14
 set(CMAKE_CXX_STANDARD 14)
