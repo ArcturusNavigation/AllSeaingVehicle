@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="sensor_suite" type="segmentation" name="segmentation_node"/>
+    <node pkg="sensor_suite" type="cluster" name="cluster_node"/>
+    <node pkg="arcturus_pilot" type="tf2.py" name="transform_node"/>
+</launch>

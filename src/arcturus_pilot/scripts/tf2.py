@@ -7,12 +7,16 @@ import rospy
 from geometry_msgs.msg import Transform 
 import tf
 
-SENSORS = {'camera': {'frame_id': 'base_link', 
-'position': [0, -0.01, 2], 
-'orientation':  tf.transformations.quaternion_from_euler(-1.57, -1.57, 0)
-}, 'velodyne': {'frame_id': 'base_link', 
-'position': [0, 0, 0.095455], 
-'orientation': tf.transformations.quaternion_from_euler(0, -0, 0)}}
+SENSORS = {#'camera': {'frame_id': 'base_link', 
+# 'position': [0, -0.01, 2], 
+# 'orientation':  tf.transformations.quaternion_from_euler(-1.57, -1.57, 0)
+# }, 'velodyne': {'frame_id': 'base_link', 
+# 'position': [0, 0, 0.095455], 
+# 'orientation': tf.transformations.quaternion_from_euler(0, -0, 0)},
+'camera_to_velodyne_temp':{'frame_id': 'velodyne', # Placeholder until base_link frame issues are fixed
+'position':[0, -.01, 2.0-.095455],
+'orientation': tf.transformations.quaternion_from_euler(0, -0, 0)
+}} 
 def broadcast_sensor_poses():
     br = tf.TransformBroadcaster()
     for sensor in SENSORS:
@@ -20,10 +24,8 @@ def broadcast_sensor_poses():
 
 if __name__ == '__main__':
     rospy.init_node('tf_broadcaster')
-    rate = rospy.Rate(10)
-    while not rospy.is_shutdown():
-        broadcast_sensor_poses()
-        rate.sleep()
+    broadcast_sensor_poses()
+    rospy.spin()
     
 
 

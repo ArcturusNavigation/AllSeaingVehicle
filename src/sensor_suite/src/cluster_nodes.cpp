@@ -84,7 +84,7 @@ class ClusterNode {
   ClusterNode(ros::NodeHandle n)
       : nh_(n),
         indices_(new std::vector<int>),
-        pcl_sub_(nh_, "/velodyne_points2", 1),
+        pcl_sub_(nh_, "/velodyne_points", 1),
         bbox_sub_(nh_, "/sensor_suite/bounding_boxes", 1),
         sync_(SyncPolicy(10), pcl_sub_,bbox_sub_),
         buffer_(new pcl::PointCloud<pcl::PointXYZ>) {
@@ -125,7 +125,7 @@ class ClusterNode {
   }
   void setupCamera(const sensor_msgs::CameraInfoConstPtr& cam_info) {
     cam_info_ = *cam_info;
-    debug_img_.header.frame_id = "camera";
+    debug_img_.header.frame_id = "camera_to_velodyne_temp";
     debug_img_.encoding = "bgr8";
     debug_img_.image = cv::Mat::zeros(cam_info->height, cam_info->width, CV_8UC3);
     cam_model_.fromCameraInfo(cam_info);
@@ -135,12 +135,12 @@ class ClusterNode {
   void pcCallback(
       const sensor_msgs::PointCloud2ConstPtr& pcl_msg,
       const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
-    // std::cout << "Callback!" << std::endl;
+    std::cout << "Callback!" << std::endl;
     pcl::fromROSMsg(*pcl_msg, *buffer_);
     debug_img_.image.setTo(0);
     tf::StampedTransform pc_tf;
-    listener_.lookupTransform("map","base_link",ros::Time(0),pc_tf);
-    pcl_ros::transformPointCloud(*buffer_,*buffer_,pc_tf);
+    // listener_.lookupTransform("map","base_link",ros::Time(0),pc_tf);
+    // pcl_ros::transformPointCloud(*buffer_,*buffer_,pc_tf);
     // pcl::removeNaNFromPointCloud(buffer_);  TODO // Source:
     // https://github.com/daviddoria/Examples/blob/master/c%2B%2B/PCL/Filters/RemoveNaNFromPointCloud/RemoveNaNFromPointCloud.cpp
     ec_.setInputCloud(buffer_);
@@ -185,11 +185,11 @@ class ClusterNode {
       point.point.x = p.x;
       point.point.y = p.y;
       point.point.z = p.z;
-      point.header.frame_id = "map";
+      point.header.frame_id = "velodyne";
       point.header.stamp = ros::Time(0);
       geometry_msgs::PointStamped transformed_point;
       // Transform point with cam_Tf
-      listener_.transformPoint("camera", point, transformed_point);
+      listener_.transformPoint("camera_to_velodyne_temp", point, transformed_point);
       cv::Point3d cam_point(transformed_point.point.x, transformed_point.point.y, transformed_point.point.z);
       cv::Point2d px = cam_model_.project3dToPixel(cam_point);
       std::cout << "Projected point: " << px.x << " " << px.y << std::endl;

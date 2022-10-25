@@ -120,7 +120,7 @@ generate_messages(
 # # DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 
-  # INCLUDE_DIRS include
+  INCLUDE_DIRS include
   # LIBRARIES sensor_suite
   CATKIN_DEPENDS message_runtime # roscpp rospy sensor_msgs std_msgs pcl_ros pcl
 
@@ -135,7 +135,7 @@ catkin_package(
 # # Your package locations should be listed before other locations
 include_directories(
 
-  # include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 

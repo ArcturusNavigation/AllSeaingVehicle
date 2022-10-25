@@ -3,6 +3,8 @@
 #include "cv_bridge/cv_bridge.h"
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
+#include "sensor_msgs/image_encodings.h"
+
 #include "sensor_suite/LabeledBoundingBox2D.h"
 #include "sensor_suite/LabeledBoundingBox2DArray.h"
 #include <sensor_suite/Object.h>
@@ -113,8 +115,11 @@ class SegmentationNode {
       box.label = 3;
       box_array.boxes.push_back(box);
     }
-    box_array.header.stamp = msg->header.stamp;
+    box_array.header.stamp = ros::Time::now();
     box_pub_.publish(box_array);
+    std_msgs::Header header; 
+    header.stamp = ros::Time::now();
+    cv_ptr->header = header; 
     img_pub_.publish(cv_ptr->toImageMsg());
   }
 };
