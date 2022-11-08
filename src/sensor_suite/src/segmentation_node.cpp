@@ -1,5 +1,7 @@
 #include "math.h"
 
+#include <sl/Camera.hpp>
+
 #include "cv_bridge/cv_bridge.h"
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
@@ -47,7 +49,10 @@ class SegmentationNode {
       return;
     }
     img_ = cv_ptr->image;
-    // Convert from BGR8 to HSV
+    processImg2d(&img_);
+  }
+  void processImg2D(cv::Mat *img){
+ // Convert from BGR8 to HSV
     cv::cvtColor(img_, img_, cv::COLOR_BGR2HSV);
     // Use erosion on Image:
     cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
@@ -122,12 +127,50 @@ class SegmentationNode {
     cv_ptr->header = header; 
     img_pub_.publish(cv_ptr->toImageMsg());
   }
+  //TODO 
+  void processImg3D(cv:: Mat *img){
+
+  }
 };
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "segmentation_node");
   ros::NodeHandle nh;
   SegmentationNode segmentation_node(nh);
-  ros::spin();
+  ros::Rate loop_rate(30);
+  	// Create ZED objects
+    Camera zed;
+
+    sl::InitParameters init_parameters;
+    init_parameters.sdk_verbose = true;
+    init_parameters.camera_resolution= sl::RESOLUTION::HD720;
+    init_parameters.depth_mode = sl::DEPTH_MODE::NONE; // no depth computation required here
+    parseArgs(argc,argv, init_parameters);
+
+    // Open the camera
+    auto returned_state = zed.open(init_parameters);
+    if (returned_state != ERROR_CODE::SUCCESS) {
+        print("Camera Open", returned_state, "Exit program.");
+        return EXIT_FAILURE;
+    }
+  while(ros::ok()){
+    returned_state = zed.grab();
+    if (returned_state == ERROR_CODE::SUCCESS) {
+        // Retrieve left image
+        zed.retrieveImage(zed_image, VIEW::LEFT);
+
+        // Convert sl::Mat to cv::Mat (share buffer)
+        cv::Mat cvImage = cv::Mat((int) zed_image.getHeight(), (int) zed_image.getWidth(), CV_8UC4, zed_image.getPtr<sl::uchar1>(sl::MEM::CPU));
+
+        segmentation_node.processImg2D(&cvImage);
+    }else {
+        print("Error during capture : ", returned_state);
+        break;
+    }
+    ros::spinOnce();
+    loop_rate.sleep();
+
+  }
+
   return 0;
 }

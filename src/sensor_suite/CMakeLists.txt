@@ -8,7 +8,11 @@ add_compile_options(-std=c++14)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(LINK_SHARED_ZED "Link with the ZED SDK shared executable" ON)
+
+if (NOT LINK_SHARED_ZED AND MSVC)
+    message(FATAL_ERROR "LINK_SHARED_ZED OFF : ZED SDK static libraries not available on Windows")
+endif()
 
 # # Find catkin macros and libraries
 # # if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -26,6 +30,10 @@ find_package(catkin REQUIRED COMPONENTS
   laser_geometry
   image_geometry
 )
+
+find_package(ZED 3 REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(CUDA ${ZED_CUDA_VERSION} REQUIRED)
 
 # # System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -139,6 +147,11 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+
+include_directories(${CUDA_INCLUDE_DIRS})
+include_directories(${ZED_INCLUDE_DIRS})
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 # Declare a C++ library
 # add_library(${PROJECT_NAME}
 # src/${PROJECT_NAME}/sensor_suite.cpp
@@ -222,11 +235,15 @@ catkin_install_python(PROGRAMS fake_camera.py
 
 # # Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-find_package(OpenCV)
-include_directories(${OpenCV_INCLUDE_DIRS})
+# find_package(OpenCV)
+# include_directories(${OpenCV_INCLUDE_DIRS})
+
+link_directories(${ZED_LIBRARY_DIR})
+link_directories(${CUDA_LIBRARY_DIRS})
 
 add_executable(segmentation src/segmentation_node.cpp)
 target_link_libraries(segmentation ${OpenCV_LIBRARIES})
+target_link_libraries(segmentation ${ZED_LIBS})
 target_link_libraries(segmentation ${catkin_LIBRARIES})
 add_dependencies(segmentation sensor_suite_generate_messages_cpp)
 
