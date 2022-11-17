@@ -10,8 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(LINK_SHARED_ZED "Link with the ZED SDK shared executable" ON)
 
-if (NOT LINK_SHARED_ZED AND MSVC)
-    message(FATAL_ERROR "LINK_SHARED_ZED OFF : ZED SDK static libraries not available on Windows")
+if(NOT LINK_SHARED_ZED AND MSVC)
+  message(FATAL_ERROR "LINK_SHARED_ZED OFF : ZED SDK static libraries not available on Windows")
 endif()
 
 # # Find catkin macros and libraries
@@ -129,6 +129,7 @@ generate_messages(
 catkin_package(
 
   INCLUDE_DIRS include
+
   # LIBRARIES sensor_suite
   CATKIN_DEPENDS message_runtime # roscpp rospy sensor_msgs std_msgs pcl_ros pcl
 
@@ -146,7 +147,6 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
 )
-
 
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${ZED_INCLUDE_DIRS})
@@ -237,15 +237,19 @@ catkin_install_python(PROGRAMS fake_camera.py
 # catkin_add_nosetests(test)
 # find_package(OpenCV)
 # include_directories(${OpenCV_INCLUDE_DIRS})
-
 link_directories(${ZED_LIBRARY_DIR})
 link_directories(${CUDA_LIBRARY_DIRS})
 
 add_executable(segmentation src/segmentation_node.cpp)
 target_link_libraries(segmentation ${OpenCV_LIBRARIES})
-target_link_libraries(segmentation ${ZED_LIBS})
 target_link_libraries(segmentation ${catkin_LIBRARIES})
 add_dependencies(segmentation sensor_suite_generate_messages_cpp)
+
+add_executable(zed src/zed_node.cpp)
+target_link_libraries(zed ${OpenCV_LIBRARIES})
+target_link_libraries(zed ${ZED_LIBS})
+target_link_libraries(zed ${catkin_LIBRARIES})
+add_dependencies(zed sensor_suite_generate_messages_cpp)
 
 add_executable(processor src/processor_nodes.cpp)
 target_link_libraries(processor ${catkin_LIBRARIES})
