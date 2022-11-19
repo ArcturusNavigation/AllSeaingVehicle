@@ -1,8 +1,12 @@
 #include "math.h"
 
+#include <sl/Camera.hpp>
+
 #include "cv_bridge/cv_bridge.h"
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
+#include "sensor_msgs/image_encodings.h"
+
 #include "sensor_suite/LabeledBoundingBox2D.h"
 #include "sensor_suite/LabeledBoundingBox2DArray.h"
 #include <sensor_suite/Object.h>
@@ -44,6 +48,9 @@ class SegmentationNode {
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
+    processImg2D(cv_ptr);
+  }
+  void processImg2D(cv_bridge::CvImagePtr cv_ptr){
     img_ = cv_ptr->image;
     // Convert from BGR8 to HSV
     cv::cvtColor(img_, img_, cv::COLOR_BGR2HSV);
@@ -113,9 +120,16 @@ class SegmentationNode {
       box.label = 3;
       box_array.boxes.push_back(box);
     }
-    box_array.header.stamp = msg->header.stamp;
+    box_array.header.stamp = ros::Time::now();
     box_pub_.publish(box_array);
+    std_msgs::Header header; 
+    header.stamp = ros::Time::now();
+    cv_ptr->header = header; 
     img_pub_.publish(cv_ptr->toImageMsg());
+  }
+  //TODO 
+  void processImg3D(cv:: Mat *img){
+
   }
 };
 

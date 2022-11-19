@@ -1,3 +1,6 @@
+#########
+#ROS
+#########
 devel/
 logs/
 build/
@@ -51,3 +54,7 @@ qtcreator-*
 CATKIN_IGNORE
 
 *.bag
+#########
+#Miscellaneous
+#########
+*.deb
