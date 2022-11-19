@@ -48,10 +48,10 @@ class SegmentationNode {
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    img_ = cv_ptr->image;
-    processImg2d(&img_);
+    processImg2D(cv_ptr);
   }
-  void processImg2D(cv::Mat *img){
+  void processImg2D(cv_bridge::CvImagePtr cv_ptr){
+    img_ = cv_ptr->image;
     // Convert from BGR8 to HSV
     cv::cvtColor(img_, img_, cv::COLOR_BGR2HSV);
     // Use erosion on Image:
