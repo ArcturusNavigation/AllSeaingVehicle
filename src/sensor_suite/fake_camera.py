@@ -21,8 +21,20 @@ class FakeCamera:
 
     def parse(self, src):
         if os.path.isfile(src):
-            raise NotImplementedError(
-                "Video files are not yet supported")  # TODO
+            vid = cv.VideoCapture(src)
+            frameNum = 0
+            vidPath = os.path.join(os.path.dirname(src), '..', 'vidFrames')
+            while(True):
+                success, frame = vid.read()
+                if success:
+                    cv.imwrite(os.path.join(vidPath, 'frame_{frameNum}'), frame)
+                else:
+                    break
+                frameNum += 1
+            vid.release()
+            return [cv.imread(os.path.join(vidPath, f)) for f in os.listdir(src) if f.endswith((".jpg", ".png"))]
+            #raise NotImplementedError(
+                #"Video files are not yet supported")  #TODO
         elif os.path.isdir(src):
             return [cv.imread(os.path.join(src, f)) for f in os.listdir(src) if f.endswith((".jpg", ".png"))]
         raise ValueError("Invalid source: {}".format(src))
