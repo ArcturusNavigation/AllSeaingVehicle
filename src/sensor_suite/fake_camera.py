@@ -20,6 +20,7 @@ class FakeCamera:
         self.frame_time = 1.0 / frame_rate
 
     def parse(self, src):
+        print(os.path.isdir(src))
         if os.path.isfile(src):
             vid = cv.VideoCapture(src)
             frameNum = 0
@@ -32,7 +33,7 @@ class FakeCamera:
                     break
                 frameNum += 1
             vid.release()
-            return [cv.imread(os.path.join(vidPath, f)) for f in os.listdir(src) if f.endswith((".jpg", ".png"))]
+            return [cv.imread(os.path.join(vidPath, f)) for f in os.listdir(vidPath) if f.endswith((".jpg", ".png"))]
             #raise NotImplementedError(
                 #"Video files are not yet supported")  #TODO
         elif os.path.isdir(src):
