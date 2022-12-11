@@ -22,6 +22,7 @@ class FakeCamera:
     def parse(self, src):
         print(os.path.isdir(src))
         print(os.path.isdir('/src/sensor_suite/images/redoverlays'))
+        print(os.path.abspath('/src/sensor_suite/images/redoverlays'))
         if os.path.isfile(src):
             vid = cv.VideoCapture(src)
             frameNum = 0
