@@ -23,6 +23,8 @@ class FakeCamera:
         print(os.path.isdir(src))
         print(os.path.isdir('/src/sensor_suite/images/redoverlays'))
         print(os.path.abspath('/src/sensor_suite/images/redoverlays'))
+        print(os.path.abspath('/Users/alexanderzhang/arcturus_docker/home/AllSeaingVehicle/src/sensor_suite/images/redoverlays'))
+        print(os.path.isdir('/Users/alexanderzhang/arcturus_docker/home/AllSeaingVehicle/src/sensor_suite/images/redoverlays'))
         if os.path.isfile(src):
             vid = cv.VideoCapture(src)
             frameNum = 0
