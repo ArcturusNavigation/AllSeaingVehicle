@@ -51,6 +51,7 @@ class SegmentationNode {
     img_ = cv_ptr->image;
     processImg2d(&img_);
   }
+  
   void processImg2D(cv::Mat *img){
     // Convert from BGR8 to HSV
     cv::cvtColor(img_, img_, cv::COLOR_BGR2HSV);
