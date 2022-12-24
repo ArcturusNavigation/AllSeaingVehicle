@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   sensor_msgs
+  geometry_msgs
   visualization_msgs
   std_msgs
   genmsg
@@ -93,8 +94,9 @@ add_message_files(
 # # Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  visualization_msgs
+  # visualization_msgs
   sensor_msgs # std_msgs
+  # geometry_msgs
 )
 
 # ###############################################
@@ -246,6 +248,11 @@ target_link_libraries(segmentation ${catkin_LIBRARIES})
 add_dependencies(segmentation sensor_suite_generate_messages_cpp)
 
 add_executable(zed src/zed_node.cpp)
+if (LINK_SHARED_ZED)
+    SET(ZED_LIBS ${ZED_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_CUDART_LIBRARY})
+else()
+    SET(ZED_LIBS ${ZED_STATIC_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_LIBRARY})
+endif()
 target_link_libraries(zed ${OpenCV_LIBRARIES})
 target_link_libraries(zed ${ZED_LIBS})
 target_link_libraries(zed ${catkin_LIBRARIES})

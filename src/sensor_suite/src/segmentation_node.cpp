@@ -42,17 +42,16 @@ class SegmentationNode {
   }
   void imgCallback(const sensor_msgs::ImageConstPtr& msg) {
     cv_bridge::CvImagePtr cv_ptr;
-    try {
+    // try {
       cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-    } catch (cv_bridge::Exception& e) {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-    img_ = cv_ptr->image;
-    processImg2d(&img_);
+    // } catch (cv_bridge::Exception& e) {
+    //   ROS_ERROR("cv_bridge exception: %s", e.what());
+    //   return;
+    // }
+    processImg2D(cv_ptr);
   }
-  
-  void processImg2D(cv::Mat *img){
+  void processImg2D(cv_bridge::CvImagePtr cv_ptr){
+    img_ = cv_ptr->image;
     // Convert from BGR8 to HSV
     cv::cvtColor(img_, img_, cv::COLOR_BGR2HSV);
     // Use erosion on Image:
