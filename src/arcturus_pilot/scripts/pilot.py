@@ -4,15 +4,59 @@ import rospy
 import tf
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
+import numpy as np 
+
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist
 
 from arcturus_pilot.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint, VelocityCommand
 from arcturus_pilot.srv import GoToWaypoint, GoToWaypointResponse
+from sensor_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
 
-from geom_helper import quaternion_from_angle
+# from arcturus_pilot.geom_helper import quaternion_from_angle
 
 from six.moves import xrange
+import numpy as np
+from geometry_msgs.msg import Quaternion
+from sklearn.decomposition import PCA
+import tf
+
+def angle_from_dir(dir):
+    return np.arctan2(dir[1], dir[0])
+
+def quaternion_from_angle(angle):
+    q = tf.transformations.quaternion_from_euler(0, 0, angle)
+    return Quaternion(q[0], q[1], q[2], q[3])
+
+def quaternion_from_dir(dir):
+    return quaternion_from_angle(angle_from_dir(dir))
+
+def get_dir_vector(data):
+    pca = PCA(n_components=2)
+    pca.fit(data)
+    return pca.components_[0]
+
+def sort_buoys_by_dir(buoys):
+    data = np.array([[b[0], b[1]] for b in buoys])
+    # subtract mean to center the data
+    mean = data.mean(axis=0)
+    centered_data = data - mean
+
+    dir = get_dir_vector(centered_data)
+
+    # compute array of dot products
+    proj = np.einsum('ij,ij->i', centered_data, np.repeat(dir[np.newaxis, :], centered_data.shape[0], axis=0))
+
+    # testing code to instead return the projections of the data onto the line sorted by dot products
+    # proj = proj[proj.argsort()]
+    # return proj[:, np.newaxis] / np.dot(dir, dir) * np.repeat(dir[np.newaxis, :], centered_data.shape[0], axis=0) + mean
+
+    # sort the data by the dot products
+    sorted_data = centered_data[proj.argsort()]
+
+    # add back in the mean
+    return sorted_data + mean
+
 
 ACCEPTANCE_RADIUS = 0.2
 USE_FAKE_GPS_FROM_ZED = False
@@ -111,21 +155,16 @@ class WaypointPilot():
 
     def state_callback(self, data):
         if self.state.armed != data.armed:
-            rospy.loginfo("armed state changed from {0} to {1}".format(
-                self.state.armed, data.armed))
+            rospy.loginfo(f"armed state changed from {self.state.armed} to {data.armed}")
 
         if self.state.connected != data.connected:
-            rospy.loginfo("connected changed from {0} to {1}".format(
-                self.state.connected, data.connected))
+            rospy.loginfo("connected changed from {self.state.connected} to {data.connected}")
 
         if self.state.mode != data.mode:
-            rospy.loginfo("mode changed from {0} to {1}".format(
-                self.state.mode, data.mode))
+            rospy.loginfo("mode changed from {self.state.mode} to {data.mode}")
 
         if self.state.system_status != data.system_status:
-            rospy.loginfo("system_status changed from {0} to {1}".format(
-                MAV_STATE_ENUM[self.state.system_status],
-                MAV_STATE_ENUM[data.system_status]))
+            rospy.loginfo("system_status changed from {MAV_STATE_ENUM[self.state.system_status]} to {MAV_STATE_ENUM[data.system_status]}")
 
         self.state = data
 
@@ -170,7 +209,7 @@ class WaypointPilot():
             self.init_local_position = data
         self.local_position = data
 
-        rospy.loginfo("local position: {0, 1, 2}}".format(data.pose.position.x, data.pose.position.y, data.pose.position.z))
+        # rospy.loginfo(f"local position: {(data.pose.position.x, data.pose.position.y, data.pose.position.z)}")
 
         if not self.sub_topics_ready['local_pos']:
             self.sub_topics_ready['local_pos'] = True
@@ -221,7 +260,7 @@ class WaypointPilot():
         rate = rospy.Rate(loop_freq)
         for i in xrange(timeout * loop_freq):
             if self.state.armed == arm:
-                rospy.loginfo("set arm success in {0} seconds".format(i / loop_freq))
+                rospy.loginfo(f"set arm success in {i/loop_freq} seconds")
                 break
             else:
                 try:
@@ -242,12 +281,12 @@ class WaypointPilot():
         rate = rospy.Rate(loop_freq)
         for i in xrange(timeout * loop_freq):
             if self.state.mode == mode:
-                rospy.loginfo("set mode success in {0} seconds".format(i / loop_freq))
+                rospy.loginfo(f"set mode success in {i/loop_freq} seconds")
                 break
             else:
                 try:
                     res = self.set_mode_srv(0, mode)
-                    if not res.success:
+                    if not res.mode_sent:
                         rospy.logerr("failed to send mode command")
                 except rospy.ServiceException as e:
                     rospy.logerr(e)
@@ -262,15 +301,16 @@ class WaypointPilot():
     def send_setpoint(self):
         if self.temp_twist != None:
             self.set_velocity.publish(self.temp_twist)
+            rospy.loginfo(f"setting velocity: {self.temp_twist.linear.x} {self.temp_twist.angular.z}")
             return
 
         waypoint = self.get_curr_waypoint()
         if waypoint is None:
-            rospy.logerr("no waypoint set")
+            rospy.loginfo("no waypoint set")
             self.set_local_setpoint.publish(self.local_position)
         else:
             waypoint_x, waypoint_y, waypoint_heading = waypoint[0], waypoint[1], waypoint[2]
-            rospy.loginfo("setting setpoint: " + str(waypoint_x) + " " + str(waypoint_y) + " " + str(waypoint_heading))
+            rospy.loginfo(f"setting setpoint: {waypoint_x} {waypoint_y} {waypoint_heading}")
 
             pose = PoseStamped()
             pose.header.stamp = rospy.now()

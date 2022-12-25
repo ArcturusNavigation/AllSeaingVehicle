@@ -250,11 +250,7 @@ class ClusterNode {
       cv::Point2d px,
       const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
     for (int i = 0; i < bbox_msg->boxes.size(); i++) {
-      float min_x = bbox_msg->boxes[i].x - bbox_msg->boxes[i].width / 2;
-      float max_x = bbox_msg->boxes[i].x + bbox_msg->boxes[i].width / 2;
-      float min_y = bbox_msg->boxes[i].y - bbox_msg->boxes[i].height / 2;
-      float max_y = bbox_msg->boxes[i].y + bbox_msg->boxes[i].height / 2;
-      if (px.x > min_x && px.x < max_x && px.y > min_y && px.y < max_y) {
+      if (px.x >bbox_msg->boxes[i].min_x && px.x < bbox_msg->boxes[i].max_x && px.y > bbox_msg->boxes[i].min_y && px.y < bbox_msg->boxes[i].max_y) {
         return bbox_msg->boxes[i].label;
       }
     }

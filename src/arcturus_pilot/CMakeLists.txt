@@ -167,10 +167,12 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  scripts/waypoint_pilot.py
+  scripts/pilot.py
+  scripts/navigation_pilot.py 
   scripts/waypoints_generator.py
   scripts/waypoint_sim.py
   scripts/tf2.py
+  scripts/geom_helper.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

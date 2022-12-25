@@ -91,33 +91,33 @@ class SegmentationNode {
       cv::Rect rect = cv::boundingRect(contours_red[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 0, 255), 2);
       sensor_suite::LabeledBoundingBox2D box;
-      box.x = rect.x;
-      box.y = rect.y;
-      box.width = rect.width;
-      box.height = rect.height;
-      box.label = 1;  // TODO: Change to Enum
+      box.min_x = rect.x;
+      box.min_y = rect.y;
+      box.max_x = rect.x + rect.width;
+      box.max_y = rect.y + rect.height;
+      box.label = 3;  // TODO: Change to Enum
       box_array.boxes.push_back(box);
     }
     for (int i = 0; i < contours_green.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_green[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 255, 0), 2);
       sensor_suite::LabeledBoundingBox2D box;
-      box.x = rect.x;
-      box.y = rect.y;
-      box.width = rect.width;
-      box.height = rect.height;
-      box.label = 2;
+      box.min_x = rect.x;
+      box.min_y = rect.y;
+      box.max_x = rect.x + rect.width;
+      box.max_y = rect.y + rect.height;
+      box.label = 4;
       box_array.boxes.push_back(box);
     }
     for (int i = 0; i < contours_yellow.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_yellow[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 255, 255), 2);
       sensor_suite::LabeledBoundingBox2D box;
-      box.x = rect.x;
-      box.y = rect.y;
-      box.width = rect.width;
-      box.height = rect.height;
-      box.label = 3;
+      box.min_x = rect.x;
+      box.min_y = rect.y;
+      box.max_x = rect.x + rect.width;
+      box.max_y = rect.y + rect.height;
+      box.label = 5;
       box_array.boxes.push_back(box);
     }
     box_array.header.stamp = ros::Time::now();
