@@ -8,8 +8,8 @@ from sensor_suite.msg import ObjectArray
 from std_msgs.msg import Empty
 from geometry_msgs.msg import PoseStamped, Point
 
-from object_types import ObjectType, getObjectType
-from geom_helper import angle_from_dir, sort_buoys_by_dir
+from pilot_suite.object_types.roboboat import ObjectType, getObjectType
+from pilot_suite.geom_utils import angle_from_dir, sort_buoys_by_dir
 from tf.transformations import euler_from_quaternion
 
 # TODO: investigate what happens when you try to send a waypoint to the boat that is behind it with the same heading

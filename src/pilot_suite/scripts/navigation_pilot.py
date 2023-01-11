@@ -3,15 +3,17 @@ from collections import namedtuple
 
 import rospy 
 import numpy as np 
+from std_msgs.msg import String
 from geometry_msgs.msg import Twist 
 from pilot_suite.msg import VelocityCommand
+# from task_node import TaskNode
 from pilot_suite.task_node import TaskNode
+from pilot_suite.object_types.roboboat import Label
 
 from sensor_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
-
 class BuoyNavNode(TaskNode):
     def __init__(self,img_height, img_width):
-        super().__init__("buoy_tasks")
+        super().__init__("navigation_pilot")
         self.bbox_sub = rospy.Subscriber("/sensor_suite/bounding_boxes", LabeledBoundingBox2DArray, self.nav_callback)
         self.pub = rospy.Publisher("/pilot_suite/velocity_command", VelocityCommand, queue_size=10)
         self.img_height = img_height
@@ -37,7 +39,9 @@ class BuoyNavNode(TaskNode):
                         port_y = box_pos_y
                 else:
                     #TODO: Figure out what to do in this case
-                    print(f"WARNING: Red object found but not on port side ({(box_pos_x,box_pos_y)})")
+                    rospy.loginfo(f"WARNING: Red object found but not on port side ({(box_pos_x,box_pos_y)})")
+                    port_pos = box_pos_x 
+                    port_y = box_pos_y
             elif box.label in [Label.GREEN_POLE.value,Label.GREEN_BUOY.value]:
                 if box_pos_x > self.img_width/2: 
                     if box_pos_y > starboard_y:
@@ -45,7 +49,9 @@ class BuoyNavNode(TaskNode):
                         starboard_y = box_pos_y
                 else:
                     #TODO: Figure out what to do in this case
-                    print(f"WARNING: Green object found but not on starboard side ({(box_pos_x,box_pos_y)})")
+                    rospy.loginfo(f"WARNING: Green object found but not on starboard side ({(box_pos_x,box_pos_y)})")
+                    starboard_pos = box_pos_x
+                    starboard_y = box_pos_y
             elif box.label in [Label.YELLOW_BUOY.value, Label.BLACK_BUOY.value, Label.BLUE_BUOY.value]:
                 if box_pos_y > obstacle_y:
                     obstacle_pos = box_pos_x
@@ -56,10 +62,10 @@ class BuoyNavNode(TaskNode):
             midpoint_x = (port_pos + obstacle_pos)/2.0
         else:
             midpoint_x = (starboard_pos + obstacle_pos)/2.0
-        command_angle = np.arctan2(midpoint_x - self.img_width/2, self.img_height)
+        command_angle = -np.arctan2(midpoint_x - self.img_width/2, self.img_height)
         vel_command = VelocityCommand() 
         command = Twist()
-        command.angular.z = command_angle
+        command.angular.z = command_angle * 1.5
         command.linear.x = 10.0
         vel_command.twist = command
         vel_command.cancel = False
@@ -68,7 +74,7 @@ class BuoyNavNode(TaskNode):
 if __name__ == "__main__":
     try:
         rospy.init_node("navigation_pilot")
-        BuoyNavNode(480, 640) #TODO: Make these parameters
+        node = BuoyNavNode(480, 640) #TODO: Make these parameters
         rospy.spin()   
     except rospy.ROSInterruptException:
         pass   

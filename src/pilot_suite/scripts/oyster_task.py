@@ -9,7 +9,7 @@ from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 from pilot_suite.msg import VelocityCommand
 
-from task_node import TaskNode
+from pilot_suite.task_node import TaskNode
 
 class OysterTask(TaskNode):
     def __init__(self, detection_method= 'combined',bag_bounds=(250,300),flip_point= (360, 640)):
@@ -98,7 +98,7 @@ class OysterTask(TaskNode):
     def update_velocity(self, dist, angle):
         vel_command = VelocityCommand()
         vel_command.twist = Twist()
-        vel_command.twist.linear.x = 0.5
+        vel_command.twist.linear.x = 0.25
         vel_command.twist.angular.z = angle * 2
     
     def stop(self):

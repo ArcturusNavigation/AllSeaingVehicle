@@ -16,50 +16,13 @@ from pilot_suite.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint, Ve
 from pilot_suite.srv import GoToWaypoint, GoToWaypointResponse
 from sensor_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
 
-# from pilot_suite.geom_helper import quaternion_from_angle
+from pilot_suite.geom_utils import quaternion_from_angle
 
 from six.moves import xrange
 import numpy as np
 from geometry_msgs.msg import Quaternion
 from sklearn.decomposition import PCA
 import tf
-
-def angle_from_dir(dir):
-    return np.arctan2(dir[1], dir[0])
-
-def quaternion_from_angle(angle):
-    q = tf.transformations.quaternion_from_euler(0, 0, angle)
-    return Quaternion(q[0], q[1], q[2], q[3])
-
-def quaternion_from_dir(dir):
-    return quaternion_from_angle(angle_from_dir(dir))
-
-def get_dir_vector(data):
-    pca = PCA(n_components=2)
-    pca.fit(data)
-    return pca.components_[0]
-
-def sort_buoys_by_dir(buoys):
-    data = np.array([[b[0], b[1]] for b in buoys])
-    # subtract mean to center the data
-    mean = data.mean(axis=0)
-    centered_data = data - mean
-
-    dir = get_dir_vector(centered_data)
-
-    # compute array of dot products
-    proj = np.einsum('ij,ij->i', centered_data, np.repeat(dir[np.newaxis, :], centered_data.shape[0], axis=0))
-
-    # testing code to instead return the projections of the data onto the line sorted by dot products
-    # proj = proj[proj.argsort()]
-    # return proj[:, np.newaxis] / np.dot(dir, dir) * np.repeat(dir[np.newaxis, :], centered_data.shape[0], axis=0) + mean
-
-    # sort the data by the dot products
-    sorted_data = centered_data[proj.argsort()]
-
-    # add back in the mean
-    return sorted_data + mean
-
 
 ACCEPTANCE_RADIUS = 0.2
 USE_FAKE_GPS_FROM_ZED = False
@@ -95,7 +58,7 @@ ManagedTask = namedtuple('MangaedTask', ['start', 'timeout'])
 
 
 buoy_task = ProcessedTask()
-buoy_task.task_topic = "buoy_tasks"
+buoy_task.task_topic = "navigation_pilot"
 buoy_task.task_timeout = 60
 EXAMPLE_QUEUE = [buoy_task]
 
@@ -260,10 +223,10 @@ class Ardupilot():
         self.send_pose.publish(data)
         curr_waypoint = self.get_curr_waypoint()
         
-        if curr_waypoint is None or isinstance(curr_waypoint, Task):
+        if curr_waypoint is None or isinstance(curr_waypoint, ProcessedTask):
             return
 
-        dist_sq = (self.local_position.pose.x - curr_waypoint[0]) ** 2 + (self.local_position.pose.y - curr_waypoint[1]) ** 2
+        dist_sq = (self.local_position.pose.position.x - curr_waypoint[0]) ** 2 + (self.local_position.pose.position.y - curr_waypoint[1]) ** 2
         if dist_sq < ACCEPTANCE_RADIUS ** 2:
             if self.temp_waypoint != None:
                 self.temp_waypoint = None
@@ -330,7 +293,7 @@ class Ardupilot():
             
             try:
                 rate.sleep()
-            except rospy.RosException as e:
+            except rospy.ROSException as e:
                 rospy.logerr(e)
     
     def set_mode(self, mode, timeout):
@@ -351,15 +314,15 @@ class Ardupilot():
             
             try:
                 rate.sleep()
-            except rospy.RosException as e:
+            except rospy.ROSException as e:
                 rospy.logerr(e)
         
     def update_tasks(self):
         for task in self.task_manager:
-            if rospy.Time.now() - self.task_manager[task].start > self.task_manager[task].timeout:
-                self.toggle_task("-" + task)
+            if (rospy.Time.now() - self.task_manager[task].start).to_sec() > self.task_manager[task].timeout:
+                self.toggle_task.publish(String("-" + task))
                 del self.task_manager[task]
-                if self.temp_twist is not None: # In case, the task was a velocity controller 
+                if self.temp_twist is not None: # In case the task was a velocity controller 
                     self.temp_twist = None
                 rospy.loginfo(f"Task {task} timed out")
             
@@ -373,15 +336,15 @@ class Ardupilot():
 
         waypoint = self.get_curr_waypoint()
         if waypoint is None:
-            rospy.loginfo("no waypoint set")
+            # rospy.loginfo("no waypoint set")
             self.set_local_setpoint.publish(self.local_position)
-        elif isinstance(waypoint, Task):
+        elif isinstance(waypoint, ProcessedTask):
             task = waypoint.task_topic
             if task in self.task_manager:
                 rospy.loginfo(f"Task {task} already running")
             else:
-                self.task_manager[task] = ManagedTask(rospy.get_rostime(), waypoint.task_timeout)
-                self.toggle_task("+" + task)
+                self.task_manager[task] = ManagedTask(rospy.Time.now(), waypoint.task_timeout)
+                self.toggle_task.publish(String("+" + task))
             self.current_order += 1
             return 
         else:

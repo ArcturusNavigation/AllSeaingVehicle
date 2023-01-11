@@ -24,7 +24,7 @@ roslaunch_add_file_check(launch)
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -56,6 +56,7 @@ add_message_files(
     RawWaypoint.msg
     ProcessedWaypoint.msg
     SkipWaypoint.msg
+    ProcessedTask.msg
     WaypointReached.msg
     VelocityCommand.msg
 )
@@ -169,14 +170,11 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/ardupilot.py
   scripts/navigation_pilot.py
-  scripts/task_node.py
   scripts/oyster_task.py  
   scripts/roboboat_planner.py
   scripts/waypoint_sim.py
   scripts/tf2.py
-  scripts/geom_helper.py
   scripts/local_planner.py
-  scripts/object_types.py 
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

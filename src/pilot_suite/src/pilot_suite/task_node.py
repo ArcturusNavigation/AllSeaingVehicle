@@ -1,7 +1,7 @@
 import rospy 
 from std_msgs.msg import String
 
-class TaskNode:
+class TaskNode():
     def __init__(self, task_name, loop_freq=30):
         self.task_name = task_name 
         self.active = False 
@@ -11,7 +11,8 @@ class TaskNode:
 
     def toggle_callback(self, msg):
         if msg.data[1:] == self.task_name:
-            self.active = msg.data[0] == "+"
+            self.active = True #msg.data[0] == "+"
+        rospy.loginfo(f"Task {self.task_name} status switched to {self.active}")
 
     def complete(self):
         self.status_pub.publish(self.task_name) 

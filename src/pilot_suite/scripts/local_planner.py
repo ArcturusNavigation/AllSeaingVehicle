@@ -6,7 +6,7 @@ from geometry_msgs.msg import PoseStamped, PointStamped, Point
 from std_msgs.msg import Header
 from nav_msgs.msg import OccupancyGrid
 from tf.transformations import euler_from_quaternion
-from utils.geom_helper import angle_from_dir
+from pilot_suite.geom_utils import angle_from_dir
 import numpy as np
 import skimage
 
