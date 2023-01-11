@@ -1,0 +1,6 @@
+Test Run 1(bird's eye view)
+----------------------------
+2022-03-11-14-21-44.bag: Single cylindrical float bag(empty)
+2022-03-11-14-23-20.bag: Cylindrical float bag(full), Cylindrical flaot bag(empty)
+2022-03-11-14-24-39.bag: Single rectangular float bag(empty)
+2022-03-11-14-26-52.bag: Rectangular float bag(empty), Rectangular float bag(empty)

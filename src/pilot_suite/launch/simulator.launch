@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="pilot_suite" type="local_planner.py" name="local_planner"/>
+    <node pkg="pilot_suite" type="waypoints_generator.py" name="waypoints_generator"/>
+    <node pkg="pilot_suite" type="waypoint_sim.py" name="waypoint_sim"/>
+</launch>
