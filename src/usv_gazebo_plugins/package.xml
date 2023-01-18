@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>usv_gazebo_plugins</name>
-  <version>1.3.0</version>
+  <version>0.3.2</version>
   <description>
     Gazebo plugins for simulating Unmanned Surface Vehicles
     Originaly copied from https://github.com/bsb808/usv_gazebo_plugins
@@ -10,7 +10,7 @@
   <maintainer email="jriveroo@osrfoundation.org">Jose Luis Rivero</maintainer>
   <license>Apache 2.0</license>
   <url type="website">http://wiki.ros.org/usv_gazebo_plugins</url>
-  <url type="bugtracker">http://github.com/osrf/vrx/issues</url>
+  <url type="bugtracker">http://bitbucket.org/osrf/vmrc/issues</url>
   <author email="briansbingham@gmail.com">Brian Bingham</author>
   <author email="caguero@osrfoundation.org">Carlos Aguero</author>
   <buildtool_depend>catkin</buildtool_depend>
@@ -19,8 +19,5 @@
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
   <depend>eigen</depend>
-  <depend>xacro</depend>
-  <depend>wave_gazebo_plugins</depend>
-  <depend>usv_msgs</depend>
   <exec_depend>message_runtime</exec_depend>
 </package>
