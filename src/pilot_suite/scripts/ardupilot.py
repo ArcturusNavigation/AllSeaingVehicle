@@ -11,6 +11,7 @@ import numpy as np
 from std_msgs.msg import String 
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist
+import message_filters
 
 from pilot_suite.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint, VelocityCommand, ProcessedTask
 from pilot_suite.srv import GoToWaypoint, GoToWaypointResponse
@@ -107,7 +108,12 @@ class Ardupilot():
         
         rospy.Subscriber('mavros/state', State, self.state_callback)
         rospy.Subscriber('mavros/imu/data', Imu, self.imu_callback)
-        rospy.Subscriber('mavros/local_position/pose', PoseStamped, self.local_position_callback)
+        # rospy.Subscriber('mavros/local_position/pose', PoseStamped, self.local_position_callback)
+        pix_pos_sub = message_filters.Subscriber('mavros/local_position/pose', PoseStamped)
+        zed_pos_sub = message_filters.Subscriber('/zed2i/zed_node/pos', PoseStamped) #TODO: Get actual topic
+        ts = message_filters.ApproximateTimesynchronizer([pix_pos_sub, zed_pos_sub], 10, 0.1, allow_headerless=True)
+        ts.registerCallback(self.combined_pos_callback)
+
         self.sub_topics_ready = {
             key: False
             for key in ['state', 'imu', 'local_pos']
@@ -118,6 +124,7 @@ class Ardupilot():
         rospy.Subscriber('pilot_suite/velocity_command', VelocityCommand, self.velocity_command_callback)
         rospy.Subscriber('pilot_suite/processed_task', ProcessedTask, self.task_callback)
         rospy.Subscriber('pilot_suite/task_status', String, self.task_status_callback)
+
 
         self.send_waypoint_reached = rospy.Publisher('pilot_suite/waypoint_reached', WaypointReached, queue_size=5)
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
@@ -223,7 +230,7 @@ class Ardupilot():
         self.send_pose.publish(data)
         curr_waypoint = self.get_curr_waypoint()
         
-        if curr_waypoint is None or isinstance(curr_waypoint, ProcessedTask):
+        if curr_waypoint is None or isinstance(curr_waypoint, )ProcessedTask:
             return
 
         dist_sq = (self.local_position.pose.position.x - curr_waypoint[0]) ** 2 + (self.local_position.pose.position.y - curr_waypoint[1]) ** 2
@@ -234,6 +241,9 @@ class Ardupilot():
                 self.send_waypoint_reached.publish(WaypointReached(self.current_order))
                 self.current_order += 1
             self.update_controller()
+    
+    def combined_pos_callback(self, pixhawk_data, zed_data):
+        pass 
 
     # subscribes to incoming waypoints and adds them to a list in
     # the correct order to be processed
