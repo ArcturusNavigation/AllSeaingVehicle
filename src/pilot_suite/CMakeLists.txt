@@ -1,18 +1,8 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(sensor_suite)
+project(pilot_suite)
 
-# Compile as C++14(required for pcl)
-add_compile_options(-std=c++14)
-
-# Check for C++14
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-option(LINK_SHARED_ZED "Link with the ZED SDK shared executable" ON)
-
-if(NOT LINK_SHARED_ZED AND MSVC)
-  message(FATAL_ERROR "LINK_SHARED_ZED OFF : ZED SDK static libraries not available on Windows")
-endif()
+# # Compile as C++11, supported in ROS Kinetic and newer
+# add_compile_options(-std=c++11)
 
 # # Find catkin macros and libraries
 # # if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -20,20 +10,12 @@ endif()
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  sensor_msgs
-  visualization_msgs
   std_msgs
-  genmsg
+  mavros
   message_generation
-  pcl_ros
-  cv_bridge
-  laser_geometry
-  image_geometry
+  roslaunch
 )
-
-find_package(ZED 3 REQUIRED)
-find_package(OpenCV REQUIRED)
-find_package(CUDA ${ZED_CUDA_VERSION} REQUIRED)
+roslaunch_add_file_check(launch)
 
 # # System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -41,7 +23,7 @@ find_package(CUDA ${ZED_CUDA_VERSION} REQUIRED)
 # # Uncomment this if the package has a setup.py. This macro ensures
 # # modules and global scripts declared therein get installed
 # # See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+catkin_python_setup()
 
 # ###############################################
 # # Declare ROS messages, services and actions ##
@@ -67,21 +49,25 @@ find_package(CUDA ${ZED_CUDA_VERSION} REQUIRED)
 # #   * uncomment the generate_messages entry below
 # #   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
-# Generate messages in the 'msg' folder
+# # Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  LabeledBoundingBox2D.msg
-  LabeledBoundingBox2DArray.msg
-  Object.msg
-  ObjectArray.msg
+  RawWaypoint.msg
+  ProcessedWaypoint.msg
+  SkipWaypoint.msg
+  <<<<<<< HEAD:src/arcturus_pilot/CMakeLists.txt
+  =======
+  ProcessedTask.msg
+  >>>>>>> 351031eaa37bdb673668a5cb8e1ee8d050ae4dba:src/pilot_suite/CMakeLists.txt
+  WaypointReached.msg
+  VelocityCommand.msg
 )
 
 # # Generate services in the 'srv' folder
-# add_service_files(
-# FILES
-# Service1.srv
-# Service2.srv
-# )
+add_service_files(
+  FILES
+  GoToWaypoint.srv
+)
 
 # # Generate actions in the 'action' folder
 # add_action_files(
@@ -93,8 +79,8 @@ add_message_files(
 # # Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  visualization_msgs
-  sensor_msgs # std_msgs
+  std_msgs
+  geometry_msgs
 )
 
 # ###############################################
@@ -128,11 +114,16 @@ generate_messages(
 # # DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 
-  INCLUDE_DIRS include
+  # INCLUDE_DIRS include
+  <<<<<<< HEAD:src/arcturus_pilot/CMakeLists.txt
 
-  # LIBRARIES sensor_suite
-  CATKIN_DEPENDS message_runtime # roscpp rospy sensor_msgs std_msgs pcl_ros pcl
+  # LIBRARIES arcturus_pilot
+  =======
 
+  # LIBRARIES pilot_suite
+  >>>>>>> 351031eaa37bdb673668a5cb8e1ee8d050ae4dba:src/pilot_suite/CMakeLists.txt
+
+  # CATKIN_DEPENDS roscpp rospy std_msgs mavros message_runtime
   # DEPENDS system_lib
 )
 
@@ -144,28 +135,24 @@ catkin_package(
 # # Your package locations should be listed before other locations
 include_directories(
 
-  include
+  # include
   ${catkin_INCLUDE_DIRS}
 )
 
-include_directories(${CUDA_INCLUDE_DIRS})
-include_directories(${ZED_INCLUDE_DIRS})
-include_directories(${OpenCV_INCLUDE_DIRS})
-
-# Declare a C++ library
+# # Declare a C++ library
 # add_library(${PROJECT_NAME}
-# src/${PROJECT_NAME}/sensor_suite.cpp
+# src/${PROJECT_NAME}/arcturus_pilot.cpp
 # )
 
 # # Add cmake target dependencies of the library
 # # as an example, code may need to be generated before libraries
 # # either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-# add_dependencies(sensor_suite ${catkin_EXPORTED_TARGETS})
+
 # # Declare a C++ executable
 # # With catkin_make all packages are built within a single CMake context
 # # The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/sensor_suite_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/arcturus_pilot_node.cpp)
 
 # # Rename C++ executable without prefix
 # # The above recommended prefix causes long target names, the following renames the
@@ -191,7 +178,21 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 # # Mark executable scripts (Python etc.) for installation
 # # in contrast to setup.py, you can choose the destination
-catkin_install_python(PROGRAMS fake_camera.py
+catkin_install_python(PROGRAMS
+  <<<<<<< HEAD:src/arcturus_pilot/CMakeLists.txt
+  scripts/waypoint_pilot.py
+  scripts/waypoints_generator.py
+  scripts/waypoint_sim.py
+  scripts/tf2.py
+  =======
+  scripts/ardupilot.py
+  scripts/navigation_pilot.py
+  scripts/oyster_task.py
+  scripts/roboboat_planner.py
+  scripts/waypoint_sim.py
+  scripts/tf2.py
+  scripts/local_planner.py
+  >>>>>>> 351031eaa37bdb673668a5cb8e1ee8d050ae4dba:src/pilot_suite/CMakeLists.txt
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -228,41 +229,10 @@ catkin_install_python(PROGRAMS fake_camera.py
 # ############
 
 # # Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_sensor_suite.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_arcturus_pilot.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 # target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 # # Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-# find_package(OpenCV)
-# include_directories(${OpenCV_INCLUDE_DIRS})
-link_directories(${ZED_LIBRARY_DIR})
-link_directories(${CUDA_LIBRARY_DIRS})
-
-add_executable(segmentation src/segmentation_node.cpp)
-target_link_libraries(segmentation ${OpenCV_LIBRARIES})
-target_link_libraries(segmentation ${catkin_LIBRARIES})
-add_dependencies(segmentation sensor_suite_generate_messages_cpp)
-
-add_executable(zed src/zed_node.cpp)
-
-if(LINK_SHARED_ZED)
-  SET(ZED_LIBS ${ZED_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_CUDART_LIBRARY})
-else()
-  SET(ZED_LIBS ${ZED_STATIC_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_LIBRARY})
-endif()
-
-target_link_libraries(zed ${OpenCV_LIBRARIES})
-target_link_libraries(zed ${ZED_LIBS})
-target_link_libraries(zed ${catkin_LIBRARIES})
-add_dependencies(zed sensor_suite_generate_messages_cpp)
-
-add_executable(processor src/processor_nodes.cpp)
-target_link_libraries(processor ${catkin_LIBRARIES})
-add_dependencies(processor sensor_suite_generate_messages_cpp)
-
-add_executable(cluster src/cluster_nodes.cpp)
-target_link_libraries(cluster ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES})
-add_dependencies(cluster sensor_suite_generate_messages_cpp)

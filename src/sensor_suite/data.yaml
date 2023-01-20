@@ -1,0 +1,4 @@
+# Classes
+nc: 12  # number of classes
+names: ['red_pole','green_pole','white_pole','green_buoy','yellow_buoy','black_buoy','blue_buoy','red_buoy',
+'water_dock','skeeball_dock','water_target','skeeball_target'] 

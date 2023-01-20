@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>water_gun_task</name>
+  <name>pilot_suite</name>
   <version>0.0.0</version>
-  <description>The water_gun_task package</description>
+  <description>The pilot_suite package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/water_gun_task</url> -->
+  <!-- <url type="website">http://wiki.ros.org/arcturus_pilot</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
@@ -52,17 +52,30 @@
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
+  <build_depend>mavros</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>roslaunch</build_depend>
+
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
+  <build_export_depend>mavros</build_export_depend>
+
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>mavros</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->
+<<<<<<< HEAD:src/arcturus_pilot/package.xml
 
+=======
+  <!-- export this package-->
+  
+>>>>>>> 351031eaa37bdb673668a5cb8e1ee8d050ae4dba:src/pilot_suite/package.xml
   </export>
 </package>

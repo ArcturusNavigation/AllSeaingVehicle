@@ -7,7 +7,7 @@ import cv2 as cv
 import rospy
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
-CAMERA_TOPIC = '/zed2i/zed_node/rgb/image_rect_color' #'zed/rgb/image_rect_color'
+CAMERA_TOPIC = '/zed2i/zed_node/rgb/image_rect_color'  # 'zed/rgb/image_rect_color'
 CAMERA_FRAME = 'map'
 
 
@@ -20,9 +20,29 @@ class FakeCamera:
         self.frame_time = 1.0 / frame_rate
 
     def parse(self, src):
+        print(os.path.isdir(src))
+        print(os.path.isdir('/src/sensor_suite/images/redoverlays'))
+        print(os.path.abspath('/src/sensor_suite/images/redoverlays'))
+        print(os.path.abspath(
+            'C:/Users/alexanderzhang/arcturus_docker/home/AllSeaingVehicle/src/sensor_suite/images/redoverlays'))
+        print(os.path.isdir(
+            'C:/Users/alexanderzhang/arcturus_docker/home/AllSeaingVehicle/src/sensor_suite/images/redoverlays'))
         if os.path.isfile(src):
-            raise NotImplementedError(
-                "Video files are not yet supported")  # TODO
+            vid = cv.VideoCapture(src)
+            frameNum = 0
+            vidPath = os.path.join(os.path.dirname(src), '..', 'vidFrames')
+            while (True):
+                success, frame = vid.read()
+                if success:
+                    cv.imwrite(os.path.join(
+                        vidPath, 'frame_{frameNum}'), frame)
+                else:
+                    break
+                frameNum += 1
+            vid.release()
+            return [cv.imread(os.path.join(vidPath, f)) for f in os.listdir(vidPath) if f.endswith((".jpg", ".png"))]
+            # raise NotImplementedError(
+            # "Video files are not yet supported")  #TODO
         elif os.path.isdir(src):
             return [cv.imread(os.path.join(src, f)) for f in os.listdir(src) if f.endswith((".jpg", ".png"))]
         raise ValueError("Invalid source: {}".format(src))

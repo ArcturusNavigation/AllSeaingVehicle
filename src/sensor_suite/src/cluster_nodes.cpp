@@ -23,6 +23,7 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/segmentation/extract_clusters.h>
 #include "pcl_ros/transforms.h"
+#include <pcl/filters/crop_box.h>
 
 #include "image_geometry/pinhole_camera_model.h"
 #include "visualization_msgs/Marker.h"
@@ -100,7 +101,6 @@ class ClusterNode {
     ec_.setMinClusterSize(3);
     ec_.setMaxClusterSize(100);
     ec_.setSearchMethod(tree_);
-
 
     // Initiate subscribers and publishers
     // sync_.reset(new Sync(SyncPolicy(10), pcl_sub_, bbox_sub_));
