@@ -3,10 +3,20 @@
 ## Prerequisites
 Running vehicle nodes
 - ROS Noetic
-- ZED SDK
+- ZED SDK  
 Runing simulation:
 - Gazebo: Install gazebo 9 at https://classic.gazebosim.org/download.
 
+To download the ZED SDK, find and download the correct installer from https://www.stereolabs.com/developers/release/ or use curl
+```
+curl -L https://download.stereolabs.com/zedsdk/3.8/l4t32.6/jetsons -o installer.run # Replace link with https://download.stereolabs.com/zedsdk/3.8/cu117/ubuntu20 if using docker
+chmod +x installer.run 
+```
+Run installer
+```
+sudo apt install zstd # Run this if on a linux/jetson OS
+./installer.run
+```
 Clone the repository:
 ```
 git clone https://github.com/ArcturusNavigation/AllSeaingVehicle.git
