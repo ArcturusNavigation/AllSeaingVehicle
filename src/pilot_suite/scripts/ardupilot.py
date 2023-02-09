@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-from dataclasses import dataclass
 from collections import namedtuple
+from six.moves import xrange
 
 import rospy
 import tf
@@ -19,8 +19,6 @@ from sensor_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
 
 from pilot_suite.geom_utils import quaternion_from_angle
 
-from six.moves import xrange
-import numpy as np
 from geometry_msgs.msg import Quaternion
 from sklearn.decomposition import PCA
 import tf
@@ -41,19 +39,20 @@ MAV_STATE_ENUM = {
     8: 'FLIGHT_TERMINATION'
 }
 
-@dataclass 
-class Waypoint():
-    x: float
-    y: float
-    z: float
-    heading: float
 
-@dataclass 
+class Waypoint():
+    def __init__(self,x,y,z,heading):
+        self.x = x 
+        self.y = y 
+        self.z = z 
+        self.heading = heading
+
 class Task():
-    task_topic: str 
-    task_timeout: float = 60 
-    nav_control: bool = False
-    pause_queue: bool = False 
+    def __init__(self,task_topic, task_timeout=60, nav_control= False, pause_queue=False):
+        self.task_topic = task_topic
+        self.task_timeout = task_timeout
+        self.nav_control = nav_control
+        self.pause_queue = pause_queue
 
 ManagedTask = namedtuple('MangaedTask', ['start', 'timeout'])
 
@@ -230,7 +229,7 @@ class Ardupilot():
         self.send_pose.publish(data)
         curr_waypoint = self.get_curr_waypoint()
         
-        if curr_waypoint is None or isinstance(curr_waypoint, )ProcessedTask:
+        if curr_waypoint is None or isinstance(curr_waypoint, ProcessedTask):
             return
 
         dist_sq = (self.local_position.pose.position.x - curr_waypoint[0]) ** 2 + (self.local_position.pose.position.y - curr_waypoint[1]) ** 2
