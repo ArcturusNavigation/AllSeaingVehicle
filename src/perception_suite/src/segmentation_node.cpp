@@ -1,16 +1,14 @@
 #include "math.h"
 
-#include <sl/Camera.hpp>
-
 #include "cv_bridge/cv_bridge.h"
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
 #include "sensor_msgs/image_encodings.h"
 
-#include "sensor_suite/LabeledBoundingBox2D.h"
-#include "sensor_suite/LabeledBoundingBox2DArray.h"
-#include <sensor_suite/Object.h>
-#include "sensor_suite/ObjectArray.h"
+#include "perception_suite/LabeledBoundingBox2D.h"
+#include "perception_suite/LabeledBoundingBox2DArray.h"
+#include <perception_suite/Object.h>
+#include "perception_suite/ObjectArray.h"
 #include <image_geometry/pinhole_camera_model.h>
 
 #include <message_filters/subscriber.h>
@@ -36,9 +34,9 @@ class SegmentationNode {
   SegmentationNode(ros::NodeHandle n) : nh_(n) {
     img_sub_ = nh_.subscribe("/zed2i/zed_node/rgb/image_rect_color", 1,
                              &SegmentationNode::imgCallback, this);
-    img_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/image", 1);
-    box_pub_ = nh_.advertise<sensor_suite::LabeledBoundingBox2DArray>(
-        "/sensor_suite/bounding_boxes", 1);
+    img_pub_ = nh_.advertise<sensor_msgs::Image>("/perception_suite/image", 1);
+    box_pub_ = nh_.advertise<perception_suite::LabeledBoundingBox2DArray>(
+        "/perception_suite/bounding_boxes", 1);
   }
   void imgCallback(const sensor_msgs::ImageConstPtr& msg) {
     cv_bridge::CvImagePtr cv_ptr;
@@ -86,11 +84,11 @@ class SegmentationNode {
     cv::drawContours(img_, contours_green, -1, cv::Scalar(0, 255, 0), 2);
     cv::drawContours(img_, contours_yellow, -1, cv::Scalar(255, 255, 0), 2);
     // Create bounding boxes for each contour
-    sensor_suite::LabeledBoundingBox2DArray box_array;
+    perception_suite::LabeledBoundingBox2DArray box_array;
     for (int i = 0; i < contours_red.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_red[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 0, 255), 2);
-      sensor_suite::LabeledBoundingBox2D box;
+      perception_suite::LabeledBoundingBox2D box;
       box.min_x = rect.x;
       box.min_y = rect.y;
       box.max_x = rect.x + rect.width;
@@ -101,7 +99,7 @@ class SegmentationNode {
     for (int i = 0; i < contours_green.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_green[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 255, 0), 2);
-      sensor_suite::LabeledBoundingBox2D box;
+      perception_suite::LabeledBoundingBox2D box;
       box.min_x = rect.x;
       box.min_y = rect.y;
       box.max_x = rect.x + rect.width;
@@ -112,7 +110,7 @@ class SegmentationNode {
     for (int i = 0; i < contours_yellow.size(); i++) {
       cv::Rect rect = cv::boundingRect(contours_yellow[i]);
       cv::rectangle(img_, rect, cv::Scalar(0, 255, 255), 2);
-      sensor_suite::LabeledBoundingBox2D box;
+      perception_suite::LabeledBoundingBox2D box;
       box.min_x = rect.x;
       box.min_y = rect.y;
       box.max_x = rect.x + rect.width;

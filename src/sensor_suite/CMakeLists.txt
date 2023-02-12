@@ -24,11 +24,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   visualization_msgs
   std_msgs
-  genmsg
   message_generation
-  pcl_ros
   cv_bridge
-  laser_geometry
   image_geometry
 )
 
@@ -69,13 +66,13 @@ find_package(CUDA ${ZED_CUDA_VERSION} REQUIRED)
 # #   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 # Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  LabeledBoundingBox2D.msg
-  LabeledBoundingBox2DArray.msg
-  Object.msg
-  ObjectArray.msg
-)
+# add_message_files(
+#   FILES
+#   LabeledBoundingBox2D.msg
+#   LabeledBoundingBox2DArray.msg
+#   Object.msg
+#   ObjectArray.msg
+# )
 
 # # Generate services in the 'srv' folder
 # add_service_files(
@@ -133,7 +130,7 @@ catkin_package(
   INCLUDE_DIRS include
 
   # LIBRARIES sensor_suite
-  CATKIN_DEPENDS message_runtime # roscpp rospy sensor_msgs std_msgs pcl_ros pcl
+  # CATKIN_DEPENDS message_runtime # roscpp rospy sensor_msgs std_msgs pcl_ros pcl
 
   # DEPENDS system_lib
 )
@@ -193,7 +190,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 # # Mark executable scripts (Python etc.) for installation
 # # in contrast to setup.py, you can choose the destination
-catkin_install_python(PROGRAMS fake_camera.py segmentation.py zed_node.py
+catkin_install_python(PROGRAMS fake_camera.py zed_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -242,11 +239,6 @@ catkin_install_python(PROGRAMS fake_camera.py segmentation.py zed_node.py
 link_directories(${ZED_LIBRARY_DIR})
 link_directories(${CUDA_LIBRARY_DIRS})
 
-add_executable(segmentation src/segmentation_node.cpp)
-target_link_libraries(segmentation ${OpenCV_LIBRARIES})
-target_link_libraries(segmentation ${catkin_LIBRARIES})
-add_dependencies(segmentation sensor_suite_generate_messages_cpp)
-
 add_executable(zed src/zed_node.cpp)
 if (LINK_SHARED_ZED)
     SET(ZED_LIBS ${ZED_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_CUDART_LIBRARY})
@@ -258,10 +250,3 @@ target_link_libraries(zed ${ZED_LIBS})
 target_link_libraries(zed ${catkin_LIBRARIES})
 add_dependencies(zed sensor_suite_generate_messages_cpp)
 
-add_executable(processor src/processor_nodes.cpp)
-target_link_libraries(processor ${catkin_LIBRARIES})
-add_dependencies(processor sensor_suite_generate_messages_cpp)
-
-add_executable(cluster src/cluster_nodes.cpp)
-target_link_libraries(cluster ${catkin_LIBRARIES})
-add_dependencies(cluster sensor_suite_generate_messages_cpp)

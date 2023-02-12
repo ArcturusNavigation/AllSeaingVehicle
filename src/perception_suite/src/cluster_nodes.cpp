@@ -5,9 +5,9 @@
 
 #include "cv_bridge/cv_bridge.h"
 
-#include "geometry.h"
 #include "ros/ros.h"
 #include "tf/transform_listener.h"
+#include "image_geometry/pinhole_camera_model.h"
 
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -25,15 +25,16 @@
 #include "pcl_ros/transforms.h"
 #include <pcl/filters/crop_box.h>
 
-#include "image_geometry/pinhole_camera_model.h"
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
 #include "sensor_msgs/PointCloud2.h"
 
-#include "sensor_suite/LabeledBoundingBox2D.h"
-#include "sensor_suite/LabeledBoundingBox2DArray.h"
-#include <sensor_suite/Object.h>
-#include "sensor_suite/ObjectArray.h"
+#include "perception_suite/LabeledBoundingBox2D.h"
+#include "perception_suite/LabeledBoundingBox2DArray.h"
+#include <perception_suite/Object.h>
+#include "perception_suite/ObjectArray.h"
+
+#include "geometry.h"
 
 
 // Projection code based on personal work for 6.172
@@ -47,7 +48,7 @@ class ClusterNode {
  protected:
   ros::NodeHandle nh_;
   message_filters::Subscriber<sensor_msgs::PointCloud2> pcl_sub_;
-  message_filters::Subscriber<sensor_suite::LabeledBoundingBox2DArray>
+  message_filters::Subscriber<perception_suite::LabeledBoundingBox2DArray>
       bbox_sub_;
   ros::Subscriber cam_sub_;
   ros::Publisher pcl_pub_;
@@ -75,7 +76,7 @@ class ClusterNode {
   vector e, viewDirection;
   vector w, u, v;
   typedef message_filters::sync_policies::ApproximateTime<
-      sensor_msgs::PointCloud2, sensor_suite::LabeledBoundingBox2DArray>
+      sensor_msgs::PointCloud2, perception_suite::LabeledBoundingBox2DArray>
       SyncPolicy;
   // typedef message_filters::Synchronizer<SyncPolicy> Sync;
   message_filters::Synchronizer<SyncPolicy> sync_;
@@ -85,7 +86,7 @@ class ClusterNode {
       : nh_(n),
         indices_(new std::vector<int>),
         pcl_sub_(nh_, "/velodyne_points", 1),
-        bbox_sub_(nh_, "/sensor_suite/bounding_boxes", 1),
+        bbox_sub_(nh_, "/perception_suite/bounding_boxes", 1),
         sync_(SyncPolicy(10), pcl_sub_,bbox_sub_),
         buffer_(new pcl::PointCloud<pcl::PointXYZ>),
         unfiltered_buffer_(new pcl::PointCloud<pcl::PointXYZ>) {
@@ -114,11 +115,11 @@ class ClusterNode {
     sync_.registerCallback(
         boost::bind(&ClusterNode::pcCallback,this, _1, _2));
     object_pub_ =
-        nh_.advertise<sensor_suite::ObjectArray>("/sensor_suite/objects", 1);
+        nh_.advertise<perception_suite::ObjectArray>("/perception_suite/objects", 1);
     marker_pub_ =
-        nh_.advertise<visualization_msgs::MarkerArray>("/sensor_suite/markers",
+        nh_.advertise<visualization_msgs::MarkerArray>("/perception_suite/markers",
                                                         1);
-    debug_pub_ = nh_.advertise<sensor_msgs::Image>("/sensor_suite/projection_img", 1);
+    debug_pub_ = nh_.advertise<sensor_msgs::Image>("/perception_suite/projection_img", 1);
 
     std::cout << "Initialized!" << std::endl;
   }
@@ -134,7 +135,7 @@ class ClusterNode {
 
   void pcCallback(
       const sensor_msgs::PointCloud2ConstPtr& pcl_msg,
-      const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
+      const perception_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
     std::cout << "Callback!" << std::endl;
     pcl::fromROSMsg(*pcl_msg, *unfiltered_buffer_);
     debug_img_.image.setTo(0);
@@ -155,7 +156,7 @@ class ClusterNode {
     std::cout << "Found " << clusters.size() << " clusters." << std::endl;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(
         new pcl::PointCloud<pcl::PointXYZ>);
-    sensor_suite::ObjectArray objects;
+    perception_suite::ObjectArray objects;
     visualization_msgs::MarkerArray markers; 
     // Loop through every point in each cluster and project to bounding box
     int min_count = 0;  // minimum points in cluster labelled as one object to
@@ -200,7 +201,7 @@ class ClusterNode {
       //       1920);  // Image sized based on
                     // https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-  
       int label = getRegion(px, bbox_msg);
-      sensor_suite::Object new_object;
+      perception_suite::Object new_object;
       new_object.pos.x = centroid_point.x; //TODO: Finish
       new_object.pos.y = centroid_point.y;
       new_object.pos.z = centroid_point.z; 
@@ -248,7 +249,7 @@ class ClusterNode {
   // Loops through bounding boxes and returns the label of the bounding box
   int getRegion(
       cv::Point2d px,
-      const sensor_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
+      const perception_suite::LabeledBoundingBox2DArrayConstPtr& bbox_msg) {
     for (int i = 0; i < bbox_msg->boxes.size(); i++) {
       if (px.x >bbox_msg->boxes[i].min_x && px.x < bbox_msg->boxes[i].max_x && px.y > bbox_msg->boxes[i].min_y && px.y < bbox_msg->boxes[i].max_y) {
         return bbox_msg->boxes[i].label;
@@ -317,7 +318,7 @@ class ClusterNode {
 //         buffer_(new pcl::PointCloud<pcl::PointXYZRGB>) {
 //     // Initiate subscribers and publishers
 //     pcl_sub_.registerCallback(boost::bind(&ClusterNode::cloud_cb, this, _1));
-//     object_pub_ = nh_.advertise<sensor_suite::ObjectArray>("/sensor_suite/new_objects", 1);
+//     object_pub_ = nh_.advertise<perception_suite::ObjectArray>("/sensor_suite/new_objects", 1);
 
 //     // Clear point_cloud pointers
 //     // TODO: Move to initialization List
