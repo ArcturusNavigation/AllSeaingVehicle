@@ -30,9 +30,9 @@ First, we need to install all the rospackage dependencies. Navigate to the top-l
 ```
 rosdep install --from-paths src --ignore-src -r -y 
 ```
-Next, we'll build the repository and source the build
+Next, we'll build the main packages of the repository and source the build
 ```
-catkin_make
+catkin_make -DCATKIN_WHITELIST_PACKAGES="pilot_suite;mapping_suite;perception_suite"
 source devel/setup.bash
 ```
 ## Testing 
