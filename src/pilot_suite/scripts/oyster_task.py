@@ -11,7 +11,7 @@ from pilot_suite.msg import VelocityCommand
 
 from pilot_suite.task_node import TaskNode
 
-class OysterTask(TaskNode):
+class OysterTaskNode(TaskNode):
     def __init__(self, detection_method= 'combined',bag_bounds=(250,300),flip_point= (360, 640)):
         super().__init__('oyster_task')
         self.bridge = cv_bridge.CvBridge()
@@ -128,6 +128,6 @@ class OysterTask(TaskNode):
 
 if __name__ == '__main__':
     rospy.init_node('bag_detector')
-    task_node = OysterTask()
+    task_node = OysterTaskNode()
     task_node.active = True 
     task_node.run()
