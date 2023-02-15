@@ -241,8 +241,17 @@ class Ardupilot():
                 self.current_order += 1
             self.update_controller()
     
+    # combines pixhawk and zed camera data
     def combined_pos_callback(self, pixhawk_data, zed_data):
-        pass 
+        self.combined_pos = PoseStamped()
+        self.combined_pos.header = pixhawk_data.header
+        self.combined_pos.pose.position.x = (pixhawk_data.pose.position.x + zed_data.pose.position.x) / 2
+        self.combined_pos.pose.position.y = (pixhawk_data.pose.position.y + zed_data.pose.position.y) / 2
+        self.combined_pos.pose.position.z = (pixhawk_data.pose.position.z + zed_data.pose.position.z) / 2
+        self.combined_pos.pose.orientation = pixhawk_data.pose.orientation
+
+        if not self.sub_topics_ready['combined_pos']:
+            self.sub_topics_ready['combined_pos'] = True
 
     # subscribes to incoming waypoints and adds them to a list in
     # the correct order to be processed
