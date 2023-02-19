@@ -57,3 +57,6 @@ CATKIN_IGNORE
 #Miscellaneous
 #########
 *.deb
+
+*.jpg
+*.mp4
