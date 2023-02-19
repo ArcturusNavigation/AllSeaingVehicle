@@ -18,7 +18,7 @@ class FakeCamera:
         self.frame_rate = frame_rate
         self.loop = loop
         self.frame_count = 0
-        self.frame_time = 1.0 / frame_racd te
+        self.frame_time = 1.0 / frame_rate
 
     def parse(self, src):
         if os.path.isfile(src):
