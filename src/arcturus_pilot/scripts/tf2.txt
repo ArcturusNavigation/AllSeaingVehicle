@@ -1,8 +1,0 @@
-Just some random notes about tf2 frames:
-Mavros already has some builtin frames that it should publish to:
-/local_origin should be initialized where we begin
-/fcu is the current location of the Pixhawk controller (wherever it is)
-
-All waypoints to waypoint_pilot are expected to be in /local_origin
-The position published to arcturus_pilot/position is in the /local_origin frame and is the position of the FCU
-Currently, the waypoint generator expects the buoys passed in to be in the /local_origin frame (so effectively /local_origin = /map frame)

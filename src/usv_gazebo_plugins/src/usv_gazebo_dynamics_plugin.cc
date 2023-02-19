@@ -1,18 +1,24 @@
 /*
- * Copyright (C) 2017  Brian Bingham
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+
+Copyright (c) 2017, Brian Bingham
+All rights reserved
+
+This file is part of the usv_gazebo_dynamics_plugin package,
+known as this Package.
+
+This Package free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This Package s distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this package.  If not, see <http://www.gnu.org/licenses/>.
+
 */
 
 #include <ros/ros.h>
@@ -21,15 +27,12 @@
 #include <cmath>
 #include <functional>
 #include <sstream>
-#include <algorithm>
-
-#include <ignition/math/Pose3.hh>
+#include <algorithm>    // std::min
 
 #include "usv_gazebo_plugins/usv_gazebo_dynamics_plugin.hh"
 
 #define GRAVITY 9.815
 
-using namespace asv;
 using namespace gazebo;
 
 //////////////////////////////////////////////////
@@ -88,59 +91,52 @@ void UsvDynamicsPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
   }
 
   this->waterLevel       = this->SdfParamDouble(_sdf, "waterLevel"  , 0.5);
-  this->waterDensity     = this->SdfParamDouble(_sdf, "waterDensity", 997.7735);
+  this->waterDensity    = this->SdfParamDouble(_sdf, "waterDensity", 997.7735);
   this->paramXdotU       = this->SdfParamDouble(_sdf, "xDotU"       , 5);
   this->paramYdotV       = this->SdfParamDouble(_sdf, "yDotV"       , 5);
-  this->paramZdotW       = this->SdfParamDouble(_sdf, "zDotW"       , 0.1);
-  this->paramKdotP       = this->SdfParamDouble(_sdf, "kDotP"       , 0.1);
-  this->paramMdotQ       = this->SdfParamDouble(_sdf, "mDotQ"       , 0.1);
   this->paramNdotR       = this->SdfParamDouble(_sdf, "nDotR"       , 1);
   this->paramXu          = this->SdfParamDouble(_sdf, "xU"          , 20);
   this->paramXuu         = this->SdfParamDouble(_sdf, "xUU"         , 0);
   this->paramYv          = this->SdfParamDouble(_sdf, "yV"          , 20);
   this->paramYvv         = this->SdfParamDouble(_sdf, "yVV"         , 0);
   this->paramZw          = this->SdfParamDouble(_sdf, "zW"          , 20);
-  this->paramZww         = this->SdfParamDouble(_sdf, "zWW"         , 0);
   this->paramKp          = this->SdfParamDouble(_sdf, "kP"          , 20);
-  this->paramKpp         = this->SdfParamDouble(_sdf, "kPP"         , 0);
   this->paramMq          = this->SdfParamDouble(_sdf, "mQ"          , 20);
-  this->paramMqq         = this->SdfParamDouble(_sdf, "mQQ"         , 0);
   this->paramNr          = this->SdfParamDouble(_sdf, "nR"          , 20);
   this->paramNrr         = this->SdfParamDouble(_sdf, "nRR"         , 0);
-  this->paramHullRadius  = this->SdfParamDouble(_sdf, "hullRadius"  , 0.213);
+  this->paramHullRadius  = this->SdfParamDouble(_sdf, "hullRadius"    , 0.213);
   this->paramBoatWidth   = this->SdfParamDouble(_sdf, "boatWidth"   , 1.0);
   this->paramBoatLength  = this->SdfParamDouble(_sdf, "boatLength"  , 1.35);
+  this->paramLengthN = _sdf->GetElement("length_n")->Get<int>();
 
-  if (!_sdf->HasElement("length_n"))
+  // Wave parameters
+  std::ostringstream buf;
+  std::vector<float> tmpv(2, 0);
+  this->paramWaveN = _sdf->GetElement("wave_n")->Get<int>();
+  for (int i = 0; i < this->paramWaveN; ++i)
   {
-    int defaultVal = 2;
-    ROS_INFO_STREAM("Parameter <length_n> not found: "
-                    "Using default value of <" << defaultVal << ">.");
-    this->paramLengthN = defaultVal;
+    buf.str("");
+    buf << "wave_amp" << i;
+    this->paramWaveAmps.push_back(_sdf->GetElement(buf.str())->Get<float>());
+    ROS_DEBUG_STREAM("Wave Amplitude " << i << ": " << this->paramWaveAmps[i]);
+    buf.str("");
+    buf << "wave_period" << i;
+    this->paramWavePeriods.push_back(_sdf->GetElement(buf.str())->Get<float>());
+    buf.str("");
+    buf << "wave_direction" << i;
+    ignition::math::Vector2d tmpm = _sdf->GetElement(buf.str())->Get<ignition::math::Vector2d>();
+    tmpv[0] = tmpm.X();
+    tmpv[1] = tmpm.Y();
+    this->paramWaveDirections.push_back(tmpv);
+    ROS_DEBUG_STREAM("Wave Direction " << i << ": " <<
+      this->paramWaveDirections[i][0] << ", " <<
+      this->paramWaveDirections[i][1]);
   }
-  else
-  {
-    this->paramLengthN = _sdf->GetElement("length_n")->Get<int>();
-  }
-
-
-  //  Wave model
-  if (_sdf->HasElement("wave_model"))
-  {
-    this->waveModelName = _sdf->Get<std::string>("wave_model");
-  }
-  this->waveParams = nullptr;
 
   // Get inertia and mass of vessel
-  #if GAZEBO_MAJOR_VERSION >= 8
-    const ignition::math::Vector3d kInertia =
-      this->link->GetInertial()->PrincipalMoments();
-    const double kMass = this->link->GetInertial()->Mass();
-  #else
-    const ignition::math::Vector3d kInertia =
-      this->link->GetInertial()->GetPrincipalMoments().Ign();
-    const double kMass = this->link->GetInertial()->GetMass();
-  #endif
+  const ignition::math::Vector3d kInertia =
+    this->link->GetInertial()->PrincipalMoments();
+  const double kMass = this->link->GetInertial()->Mass();
 
   // Report some of the pertinent parameters for verification
   ROS_DEBUG("USV Dynamics Parameters: From URDF XACRO model definition");
@@ -149,11 +145,7 @@ void UsvDynamicsPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
                   " Y:" << kInertia[1] << " Z:" << kInertia[2]);
 
   // Initialize time and odometry position
-  #if GAZEBO_MAJOR_VERSION >= 8
-    this->prevUpdateTime = this->world->SimTime();
-  #else
-    this->prevUpdateTime = this->world->GetSimTime();
-  #endif
+  this->prevUpdateTime = this->world->SimTime();
 
   // Listen to the update event broadcastes every physics iteration.
   this->updateConnection = event::Events::ConnectWorldUpdateBegin(
@@ -164,62 +156,33 @@ void UsvDynamicsPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
   this->Ma <<
     this->paramXdotU, 0,                0,   0,   0,   0,
     0,                this->paramYdotV, 0,   0,   0,   0,
-    0,                0,     this->paramZdotW, 0,   0,   0,
-    0,                0,                0,   this->paramKdotP, 0,   0,
-    0,                0,                0,   0,   this->paramMdotQ, 0,
+    0,                0,                0.1, 0,   0,   0,
+    0,                0,                0,   0.1, 0,   0,
+    0,                0,                0,   0,   0.1, 0,
     0,                0,                0,   0,   0,   this->paramNdotR;
+
 }
 
 double UsvDynamicsPlugin::CircleSegment(double R, double h)
 {
-  return R*R*acos( (R-h)/R ) - (R-h)*sqrt(2*R*h-h*h);
+	return R*R*acos( (R-h)/R ) - (R-h)*sqrt(2*R*h-h*h) ;
 }
 
 //////////////////////////////////////////////////
 void UsvDynamicsPlugin::Update()
 {
-  // If we haven't yet, retrieve the wave parameters from ocean model plugin.
-  if (waveParams == nullptr)
-  {
-    gzmsg << "usv_gazebo_dynamics_plugin: waveParams is null. "
-          << " Trying to get wave parameters from ocean model" << std::endl;
-    this->waveParams = WavefieldModelPlugin::GetWaveParams(
-      this->world, this->waveModelName);
-  }
-
-  #if GAZEBO_MAJOR_VERSION >= 8
-    const common::Time kTimeNow = this->world->SimTime();
-  #else
-    const common::Time kTimeNow = this->world->GetSimTime();
-  #endif
+  const common::Time kTimeNow = this->world->SimTime();
   double dt = (kTimeNow - this->prevUpdateTime).Double();
   this->prevUpdateTime = kTimeNow;
 
   // Get Pose/Orientation from Gazebo (if no state subscriber is active)
-  #if GAZEBO_MAJOR_VERSION >= 8
-    const ignition::math::Pose3d kPose = this->link->WorldPose();
-  #else
-    const ignition::math::Pose3d kPose = this->link->GetWorldPose().Ign();
-  #endif
+  const ignition::math::Pose3d kPose = this->link->WorldPose();
   const ignition::math::Vector3d kEuler = kPose.Rot().Euler();
 
   // Get body-centered linear and angular rates
-  #if GAZEBO_MAJOR_VERSION >= 8
-    const ignition::math::Vector3d kVelLinearBody =
-      this->link->RelativeLinearVel();
-  #else
-    const ignition::math::Vector3d kVelLinearBody =
-      this->link->GetRelativeLinearVel().Ign();
-  #endif
+  const ignition::math::Vector3d kVelLinearBody = this->link->RelativeLinearVel();
   ROS_DEBUG_STREAM_THROTTLE(0.5, "Vel linear: " << kVelLinearBody);
-
-  #if GAZEBO_MAJOR_VERSION >= 8
-    const ignition::math::Vector3d kVelAngularBody =
-      this->link->RelativeAngularVel();
-  #else
-    const ignition::math::Vector3d kVelAngularBody =
-      this->link->GetRelativeAngularVel().Ign();
-  #endif
+  const ignition::math::Vector3d kVelAngularBody = this->link->RelativeAngularVel();
   ROS_DEBUG_STREAM_THROTTLE(0.5, "Vel angular: " << kVelAngularBody);
 
   // Estimate the linear and angular accelerations.
@@ -260,11 +223,10 @@ void UsvDynamicsPlugin::Update()
   // Drag
   Dmat(0, 0) = this->paramXu + this->paramXuu * std::abs(kVelLinearBody.X());
   Dmat(1, 1) = this->paramYv + this->paramYvv * std::abs(kVelLinearBody.Y());
-  Dmat(2, 2) = this->paramZw + this->paramZww * std::abs(kVelLinearBody.Z());
-  Dmat(3, 3) = this->paramKp + this->paramKpp * std::abs(kVelAngularBody.X());
-  Dmat(4, 4) = this->paramMq + this->paramMqq * std::abs(kVelAngularBody.Y());
+  Dmat(2, 2) = this->paramZw;
+  Dmat(3, 3) = this->paramKp;
+  Dmat(4, 4) = this->paramMq;
   Dmat(5, 5) = this->paramNr + this->paramNrr * std::abs(kVelAngularBody.Z());
-  ROS_DEBUG_STREAM_THROTTLE(1.0, "Cmat :\n" << Cmat);
   ROS_DEBUG_STREAM_THROTTLE(1.0, "Dmat :\n" << Dmat);
   const Eigen::VectorXd kDvec = -1.0 * Dmat * state;
   ROS_DEBUG_STREAM_THROTTLE(1.0, "Dvec :\n" << kDvec);
@@ -296,13 +258,12 @@ void UsvDynamicsPlugin::Update()
   // For each hull
   for (int ii = 0; ii < 2; ii++)
   {
-  // Grid point in boat frame
-  bpnt.setY((ii*2.0-1.0)*this->paramBoatWidth/2.0);
-  // For each length segment
+	// Grid point in boat frame
+	bpnt.setY((ii*2.0-1.0)*this->paramBoatWidth/2.0);
+	// For each length segment
     for (int jj = 1; jj <= this->paramLengthN; jj++)
     {
-      bpnt.setX(((jj - 0.5) / (static_cast<float>(this->paramLengthN)) - 0.5) *
-        this->paramBoatLength);
+	  bpnt.setX( ((jj-0.5)/((float)this->paramLengthN) - 0.5 )*this->paramBoatLength);
 
       // Transform from vessel to water/world frame
       bpntW = xformV * bpnt;
@@ -316,8 +277,8 @@ void UsvDynamicsPlugin::Update()
 
       // Vertical location of boat grid point in world frame
       const float kDdz = kPose.Pos().Z() + bpntW.z();
-      ROS_DEBUG_STREAM("Z, pose: " << kPose.Pos().Z() << ", bpnt: "
-        << bpntW.z() << ", dd: " << kDdz);
+      ROS_DEBUG_STREAM("Z, pose: " << kPose.Pos().Z() << ", bpnt: " << bpntW.z() <<
+        ", dd: " << kDdz);
 
       // Find vertical displacement of wave field
       // World location of grid point
@@ -325,34 +286,31 @@ void UsvDynamicsPlugin::Update()
       X.X() = kPose.Pos().X() + bpntW.x();
       X.Y() = kPose.Pos().Y() + bpntW.y();
 
-      // Compute the depth at the grid point.
-      double simTime = kTimeNow.Double();
-      // double depth = WavefieldSampler::ComputeDepthDirectly(
-      //  *waveParams, X, simTime);
-      double depth = 0.0;
-      if (waveParams)
+      // sum vertical dsplacement over all waves
+      double dz = 0.0;
+      for (int k = 0; k < this->paramWaveN; ++k)
       {
-        depth = WavefieldSampler::ComputeDepthSimply(*waveParams, X, simTime);
+        const double kDdotx = this->paramWaveDirections[k][0] * X.X() +
+          this->paramWaveDirections[k][1] * X.Y();
+        const double kW = 2.0 * M_PI / this->paramWavePeriods[k];
+        const double kK = kW * kW / GRAVITY;
+        dz += this->paramWaveAmps[k] * cos(kK * kDdotx - kW * kTimeNow.Float());
       }
+      ROS_DEBUG_STREAM_THROTTLE(1.0, "wave disp: " << dz);
 
-      // Vertical wave displacement.
-      double dz = depth + X.Z();
-
-      // Total z location of boat grid point relative to water surface
-      double  deltaZ = (this->waterLevel + dz) - kDdz;
-      deltaZ = std::max(deltaZ, 0.0);  // enforce only upward buoy force
-      deltaZ = std::min(deltaZ, this->paramHullRadius);
+	  // Total z location of boat grid point relative to water surface
+	  double  deltaZ = (this->waterLevel + dz) - kDdz;
+	  deltaZ = std::max(deltaZ,0.0);  // enforce only upward buoy force
+	  deltaZ = std::min(deltaZ,this->paramHullRadius);
       // Buoyancy force at grid point
-      const float kBuoyForce = CircleSegment(this->paramHullRadius, deltaZ) *
-        this->paramBoatLength/(static_cast<float>(this->paramLengthN)) *
-        GRAVITY * this->waterDensity;
+	  const float kBuoyForce = CircleSegment(this->paramHullRadius,deltaZ)*this->paramBoatLength/((float)this->paramLengthN)*GRAVITY*this->waterDensity;
+	  
       ROS_DEBUG_STREAM("buoyForce: " << kBuoyForce);
 
       // Apply force at grid point
       // From web, Appears that position is in the link frame
       // and force is in world frame
-      this->link->AddForceAtRelativePosition(
-        ignition::math::Vector3d(0, 0, kBuoyForce),
+      this->link->AddForceAtRelativePosition(ignition::math::Vector3d(0, 0, kBuoyForce),
         ignition::math::Vector3d(bpnt.x(), bpnt.y(), bpnt.z()));
     }
   }

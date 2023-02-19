@@ -3,10 +3,20 @@
 ## Prerequisites
 Running vehicle nodes
 - ROS Noetic
-- ZED SDK
+- ZED SDK (Not necessary on arcturus_docker for most of you)  
 Runing simulation:
-- Gazebo
+- Gazebo: Install gazebo 9 at https://classic.gazebosim.org/download.
 
+To download the ZED SDK(DON'T INSTALL ON DOCKER UNLESS YOU'RE USING AN ACTUAL CAMERA), find and download the correct installer from https://www.stereolabs.com/developers/release/ or use curl
+```
+curl -L https://download.stereolabs.com/zedsdk/3.8/l4t32.6/jetsons -o installer.run # Replace link with https://download.stereolabs.com/zedsdk/3.8/cu117/ubuntu20 if using docker
+chmod +x installer.run 
+```
+Run installer
+```
+sudo apt install zstd # Run this if on a linux/jetson OS
+./installer.run
+```
 Clone the repository:
 ```
 git clone https://github.com/ArcturusNavigation/AllSeaingVehicle.git
@@ -20,12 +30,32 @@ First, we need to install all the rospackage dependencies. Navigate to the top-l
 ```
 rosdep install --from-paths src --ignore-src -r -y 
 ```
-Next, we'll build the repository and source the build
+Next, we'll build the main packages of the repository and source the build
 ```
-catkin_make
+catkin_make -DCATKIN_WHITELIST_PACKAGES="pilot_suite;mapping_suite;perception_suite"
 source devel/setup.bash
 ```
-
 ## Testing 
 
-# Tutorials 
+# Tutorials
+## Running the gazebo simulation
+
+1. Start up the gazebo simulation
+```
+roslaunch sim_suite boat.launch
+```
+
+In the simulation, delete the boat_with_sensors model then insert another one(fixes weird glitch). Then you can hit play to start the simulation.
+
+2. Run the SITL simulation from arduRover
+
+```
+sim_vehicle.py -v APMrover2 --console
+```
+
+3. Run mavros with 
+
+```
+roslaunch arcturus_pilot mavros
+```
+

@@ -1,18 +1,24 @@
 /*
- * Copyright (C) 2017  Brian Bingham
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+
+Copyright (c) 2017, Brian Bingham
+All rights reserved
+
+This file is part of the usv_gazebo_dynamics_plugin package,
+known as this Package.
+
+This Package free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This Package s distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+
 */
 
 #ifndef USV_GAZEBO_PLUGINS_DYNAMICS_PLUGIN_HH_
@@ -23,13 +29,8 @@
 #include <vector>
 
 #include <gazebo/common/common.hh>
-#include <ignition/math/Vector3.hh>
 #include <gazebo/physics/physics.hh>
 #include <sdf/sdf.hh>
-
-#include "wave_gazebo_plugins/Wavefield.hh"
-#include "wave_gazebo_plugins/WavefieldEntity.hh"
-#include "wave_gazebo_plugins/WavefieldModelPlugin.hh"
 
 namespace gazebo
 {
@@ -44,20 +45,14 @@ namespace gazebo
   /// <waterLevel>: Water height [m]. Default value is 0.5.
   /// <xDotU>: Added mass coeff, surge.
   /// <yDotV>: Added mass coeff, sway.
-  /// <zDotW>: Added mass coeff, heave.
-  /// <kDotP>: Added mass coeff, roll.
-  /// <mDotQ>: Added mass coeff, pitch.
-  /// <nDotR>: Added mass coeff, yaw.
+  /// <nDotR>: Added mass coeff, yaw
   /// <xU>: Linear drag coeff surge.
   /// <xUU>: Quadratic drag coeff surge.
   /// <yV>: Linear drag coeff sway.
   /// <yVV>: Quadratic drag coeff sway
   /// <zW>: Linear drag coeff heave.
-  /// <zWW>: Quadratic drag coeff heave.
-  /// <kP>: Linear drag coeff roll.
-  /// <kPP>: Quadratic drag coeff roll.
-  /// <mQ>: Linear drag coeff pitch.
-  /// <mQQ>: Quadratic drag coeff pitch.
+  /// <kP>: Linear drag coeff pitch.
+  /// <mQ>: Linear drag coeff roll.
   /// <nR>: Linear drag coeff yaw.
   /// <nRR>: Quadratic drag coeff yaw.
   /// <wave_n>: Number of waves to generate wave field.
@@ -89,9 +84,9 @@ namespace gazebo
                                    const std::string &_paramName,
                                    const double _defaultVal) const;
 
-    /// \brief Convenience function for calculating the area of circle segment
-    /// \param[in] R Radius of circle
-    /// \param[in] h Height of the chord line
+	/// \brief Convenience function for calculating the area of circle segment
+	/// \param[in] R Radius of circle
+	/// \param[in] h Height of the chord line
     /// \return The area
     private: double CircleSegment(double R, double h);
 
@@ -121,15 +116,6 @@ namespace gazebo
     /// \brief Plugin Parameter: Added mass in sway, Y_\dot{v}.
     private: double paramYdotV;
 
-    /// \brief Plugin Parameter: Added mass in heave, Z_\dot{w}.
-    private: double paramZdotW;
-
-    /// \brief Plugin Parameter: Added mass in roll, K_\dot{p}.
-    private: double paramKdotP;
-
-    /// \brief Plugin Parameter: Added mass in pitch, M_\dot{q}.
-    private: double paramMdotQ;
-
     /// \brief Plugin Parameter: Added mass in yaw, N_\dot{r}.
     private: double paramNdotR;
 
@@ -148,21 +134,11 @@ namespace gazebo
     /// \brief Plugin Parameter: Linear drag in heave.
     private: double paramZw;
 
-
-    /// \brief Plugin Parameter: Quadratic drag in heave.
-    private: double paramZww;
-
     /// \brief Plugin Parameter: Linear drag in roll.
     private: double paramKp;
 
-    /// \brief Plugin Parameter: Quadratic drag in roll.
-    private: double paramKpp;
-
     /// \brief Plugin Parameter: Linear drag in pitch.
     private: double paramMq;
-
-    /// \brief Plugin Parameter: Quadratic drag in pitch.
-    private: double paramMqq;
 
     /// \brief Plugin Parameter: Linear drag in yaw.
     private: double paramNr;
@@ -173,44 +149,38 @@ namespace gazebo
     /// \brief Water height [m].
     private: double waterLevel;
 
-    /// \brief Water density [kg/m^3].
+	/// \brief Water density [kg/m^3].
     private: double waterDensity;
 
-    /// \brief Vessel length [m].
+	/// \brief Vessel length [m].
     private: double paramBoatLength;
 
-    /// \brief Vessel width [m].
+	/// \brief Vessel width [m].
     private: double paramBoatWidth;
 
-    /// \brief Demi-hull radius [m].
+	/// \brief Demi-hull radius [m].
     private: double paramHullRadius;
-
+	  
     /// \brief Length discretization, i.e., "N"
     private: int paramLengthN;
-
+	  
     /// \brief Added mass matrix, 6x6.
     private: Eigen::MatrixXd Ma;
 
-    /// \brief The name of the wave model
-    protected: std::string waveModelName;
+    /// \brief Wave parameters.
+    private: int paramWaveN;
 
-    // /// \brief Wave parameters.
-    // private: int paramWaveN;
+    /// \brief Wave amplitude values for N components.
+    private: std::vector<float> paramWaveAmps;
 
-    // /// \brief Wave amplitude values for N components.
-    // private: std::vector<float> paramWaveAmps;
+    /// \brief Wave period values for N components.
+    private: std::vector<float> paramWavePeriods;
 
-    // /// \brief Wave period values for N components.
-    // private: std::vector<float> paramWavePeriods;
-
-    // /// \brief Wave direction values for N components.
-    // private: std::vector<std::vector<float>> paramWaveDirections;
+    /// \brief Wave direction values for N components.
+    private: std::vector<std::vector<float>> paramWaveDirections;
 
     /// \brief Pointer to the update event connection.
     private: event::ConnectionPtr updateConnection;
-
-    /// \brief The wave parameters.
-    private: std::shared_ptr<const asv::WaveParameters> waveParams;
   };
 }
 

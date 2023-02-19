@@ -1,18 +1,24 @@
 /*
- * Copyright (C) 2017  Brian Bingham
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+
+Copyright (c) 2017, Brian Bingham
+All rights reserved
+
+This file is part of the usv_gazebo_dynamics_plugin package,
+known as this Package.
+
+This Package free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This Package s distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this package.  If not, see <http://www.gnu.org/licenses/>.
+
 */
 
 #ifndef USV_GAZEBO_PLUGINS_THRUST_HH
@@ -47,10 +53,6 @@ namespace gazebo
     /// \param[in] _msg The thrust message to process.
     public: void OnThrustCmd(const std_msgs::Float32::ConstPtr &_msg);
 
-    /// \brief Callback for new thrust angle commands.
-    /// \param[in] _msg The thrust angle message to process.
-    public: void OnThrustAngle(const std_msgs::Float32::ConstPtr &_msg);
-
     /// \brief Maximum abs val of incoming command.
     public: double maxCmd;
 
@@ -60,13 +62,10 @@ namespace gazebo
     /// \brief Max reverse force in Newtons.
     public: double maxForceRev;
 
-    /// \brief Maximum abs val of angle
-    public: double maxAngle;
-
     /// \brief Link where thrust force is applied.
     public: physics::LinkPtr link;
 
-    /// \brief Thruster mapping (0=linear; 1=GLF, nonlinear).
+    /// \brief Thruster mapping (0=linear; 1=GLF, nonlinear; 2=Square, nonlinear).
     public: int mappingType;
 
     /// \brief Topic name for incoming ROS thruster commands.
@@ -75,36 +74,14 @@ namespace gazebo
     /// \brief Subscription to thruster commands.
     public: ros::Subscriber cmdSub;
 
-    /// \brief If true, thruster will have adjustable angle.
-    ///        If false, thruster will have constant angle.
-    public: bool enableAngle;
-
-    /// \brief Topic name for incoming ROS thruster angle commands.
-    public: std::string angleTopic;
-
-    /// \brief Subscription to thruster commands.
-    public: ros::Subscriber angleSub;
-
     /// \brief Current, most recent command.
     public: double currCmd;
-
-    /// \brief Most recent desired angle.
-    public: double desiredAngle;
 
     /// \brief Last time received a command via ROS topic.
     public: common::Time lastCmdTime;
 
-    /// \brief Last time of update
-    public: common::Time lastAngleUpdateTime;
-
     /// \brief Joint controlling the propeller.
     public: physics::JointPtr propJoint;
-
-    /// \brief Joint controlling the engine.
-    public: physics::JointPtr engineJoint;
-
-    /// \brief PID for engine joint angle
-    public: common::PID engineJointPID;
 
     /// \brief Plugin parent pointer - for accessing world, etc.
     protected: UsvThrust *plugin;
@@ -124,24 +101,16 @@ namespace gazebo
   ///   Required elements:
   ///   <linkName>: Name of the link on which to apply thrust forces.
   ///   <propJointName>: The name of the propeller joint.
-  ///   <engineJointName>: The name of the engine joint.
-  ///   <cmdTopic>: The ROS topic to control this thruster,
-  ///               typically within [-1.0 , 1.0]
-  ///   <angleTopic>: The ROS topic to control the angle of this thruster,
-  ///                 will be clipped to stay within [-maxAngle, maxAngle]
-  ///   <enableAngle>: If true, thruster will have adjustable angle.
-  ///                  If false, thruster will have constant angle.
-  ///   Optional elements:
+  ///   <cmdTopic>: The ROS topic to control this thruster.
+  ///   Optional eleents:
   ///   <mappingType>: Thruster mapping (0=linear; 1=GLF, nonlinear),
   ///   default is 0
   ///   <maxCmd>:Maximum (abs val) of thrust commands,
   ///   defualt is 1.0
   ///   <maxForceFwd>: Maximum forward force [N].
-  ///   default is 250.0 N
+  ///   default is 100.0 N
   ///   <maxForceRev>: Maximum reverse force [N].
-  ///   default is -100.0 N
-  ///   <maxAngle>: Absolute value of maximum thruster angle [radians].
-  ///   default is pi/2
+  ///   default is 100.0 N
   ///
   /// Here is an example:
   ///
@@ -153,28 +122,20 @@ namespace gazebo
   ///      <thruster>
   ///        <linkName>left_propeller_link</linkName>
   ///        <propJointName>left_engine_propeller_joint</propJointName>
-  ///        <engineJointName>left_chasis_engine_joint</engineJointName>
   ///        <cmdTopic>left_thrust_cmd</cmdTopic>
-  ///        <angleTopic>left_thrust_angle</angleTopic>
-  ///        <enableAngle>false</enableAngle>
   ///        <mappingType>1</mappingType>
   ///        <maxCmd>1.0</maxCmd>
   ///        <maxForceFwd>250.0</maxForceFwd>
   ///        <maxForceRev>-100.0</maxForceRev>
-  ///        <maxAngle>1.57</maxAngle>
   ///      </thruster>
   ///      <thruster>
   ///        <linkName>right_propeller_link</linkName>
   ///        <propJointName>right_engine_propeller_joint</propJointName>
-  ///        <engineJointName>right_chasis_engine_joint</engineJointName>
   ///        <cmdTopic>right_thrust_cmd</cmdTopic>
-  ///        <angleTopic>right_thrust_angle</angleTopic>
-  ///        <enableAngle>false</enableAngle>
   ///        <mappingType>1</mappingType>
   ///        <maxCmd>1.0</maxCmd>
   ///        <maxForceFwd>250.0</maxForceFwd>
   ///        <maxForceRev>-100.0</maxForceRev>
-  ///        <maxAngle>1.57</maxAngle>
   ///      </thruster>
   ///    </plugin>
 
@@ -237,15 +198,26 @@ namespace gazebo
                                  const double _maxPos,
                                  const double _maxNeg) const;
 
-    /// \brief Rotate engine using engine joint PID
-    /// \param[in] _i Index of thruster whose engine will be rotated
-    /// \param[in] _stepTime common::Time since last rotation
-    private: void RotateEngine(size_t _i,
-                               common::Time _stepTime);
+    /// \brief Square function for non-linear thruster model.
+    /// \param[in] _x Independent variable (input) of Square.
+    /// \param[in] _k constant found by curve fitting to measured data. 
+    /// (Bollard pull test data)
+    private: double Square(const double _x,
+                           const double _k) const; 
 
-    /// \brief Spin a propeller based on its current command
-    /// \param[in] _i Index of thruster whose propeller will be spun
-    private: void SpinPropeller(size_t _i);
+    /// \brief Uses Square function to map thrust command to thruster force
+    /// in Newtons.
+    /// \param[in] _cmd Thrust command {-1.0,1.0}
+    /// \return Thrust force [N]
+    private: double SquareThrustCmd(const double _cmd,
+                                    const double _maxPos,
+                                    const double _maxNeg) const; 
+
+    /// \brief Spin a propeller based on its input
+    /// \param[in] _propeller Pointer to the propeller joint to spin
+    /// \param[in] _input Last input received for this propeller
+    private: void SpinPropeller(physics::JointPtr &_propeller,
+                                const double _input);
 
     /// \brief A mutex to protect member variables accessed during
     /// OnThustCmd() and Update().
@@ -275,12 +247,6 @@ namespace gazebo
 
     /// \brief The propeller message state.
     private: sensor_msgs::JointState jointStateMsg;
-
-    /// \brief Update rate (Hz) of the joint ROS publisher.
-    private: double publisherRate = 100.0;
-
-    /// \brief The last time we publish joints.
-    private: common::Time prevUpdateTime;
   };
 }
 
