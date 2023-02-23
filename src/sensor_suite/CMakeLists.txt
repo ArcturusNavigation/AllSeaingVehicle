@@ -127,7 +127,7 @@ generate_messages(
 # # DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 
-  INCLUDE_DIRS include
+  # INCLUDE_DIRS include
 
   # LIBRARIES sensor_suite
   # CATKIN_DEPENDS message_runtime # roscpp rospy sensor_msgs std_msgs pcl_ros pcl
@@ -248,5 +248,5 @@ endif()
 target_link_libraries(zed ${OpenCV_LIBRARIES})
 target_link_libraries(zed ${ZED_LIBS})
 target_link_libraries(zed ${catkin_LIBRARIES})
-add_dependencies(zed sensor_suite_generate_messages_cpp)
+# add_dependencies(zed sensor_suite_generate_messages_cpp)
 
