@@ -1,9 +1,9 @@
 [submodule "src/zed-ros-wrapper"]
 	path = src/zed-ros-wrapper
 	url = git@github.com:stereolabs/zed-ros-wrapper.git
-[submodule "src/sim_suite"]
-	path = src/sim_suite
-	url = https://github.com/ArcturusNavigation/sim_suite.git
 [submodule "src/iq_gnc"]
 	path = src/iq_gnc
 	url = https://github.com/Intelligent-Quads/iq_gnc.git
+[submodule "src/sim_suite"]
+	path = src/sim_suite
+	url = https://github.com/ARcturusNavigation/sim_suite
