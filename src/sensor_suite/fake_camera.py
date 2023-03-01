@@ -5,6 +5,7 @@ import sys
 
 import cv2 as cv
 import rospy
+import shutil
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 CAMERA_TOPIC = '/zed2i/zed_node/rgb/image_rect_color' #'zed/rgb/image_rect_color'
@@ -12,7 +13,7 @@ CAMERA_FRAME = 'map'
 
 
 class FakeCamera:
-    def __init__(self, src, frame_rate=1, loop=True):
+    def __init__(self, src, frame_rate=30, loop=True):
         self.src = self.parse(src)
         self.frame_rate = frame_rate
         self.loop = loop
@@ -20,26 +21,24 @@ class FakeCamera:
         self.frame_time = 1.0 / frame_rate
 
     def parse(self, src):
-        print(os.path.isdir(src))
-        print(os.path.isdir('/src/sensor_suite/images/redoverlays'))
-        print(os.path.abspath('/src/sensor_suite/images/redoverlays'))
-        print(os.path.abspath('C:/Users/alexanderzhang/arcturus_docker/home/AllSeaingVehicle/src/sensor_suite/images/redoverlays'))
-        print(os.path.isdir('C:/Users/alexanderzhang/arcturus_docker/home/AllSeaingVehicle/src/sensor_suite/images/redoverlays'))
         if os.path.isfile(src):
             vid = cv.VideoCapture(src)
             frameNum = 0
-            vidPath = os.path.join(os.path.dirname(src), '..', 'vidFrames')
+            if (os.path.exists(os.path.join(os.path.dirname(src), 'vidFrames'))):
+                shutil.rmtree(os.path.join(os.path.dirname(src), 'vidFrames'))
+            os.mkdir(os.path.join(os.path.dirname(src), 'vidFrames'))
+            vidPath = (os.path.join(os.path.dirname(src), 'vidFrames'))
+            print("the video path is {}".format(vidPath))
             while(True):
                 success, frame = vid.read()
                 if success:
-                    cv.imwrite(os.path.join(vidPath, 'frame_{frameNum}'), frame)
+                    cv.imwrite(os.path.join(vidPath, 'frame_{}.jpg'.format(frameNum)), frame)
                 else:
                     break
                 frameNum += 1
             vid.release()
+            print("done this")
             return [cv.imread(os.path.join(vidPath, f)) for f in os.listdir(vidPath) if f.endswith((".jpg", ".png"))]
-            #raise NotImplementedError(
-                #"Video files are not yet supported")  #TODO
         elif os.path.isdir(src):
             return [cv.imread(os.path.join(src, f)) for f in os.listdir(src) if f.endswith((".jpg", ".png"))]
         raise ValueError("Invalid source: {}".format(src))
@@ -58,7 +57,7 @@ def main():
     if len(sys.argv) == 2:
         rate = int(sys.argv[1])
     r = rospy.Rate(rate)
-    camera = FakeCamera('./src/sensor_suite/images/redoverlays')
+    camera = FakeCamera('./images/competition_video.mp4')
     pub = rospy.Publisher(CAMERA_TOPIC, Image, queue_size=1)
     while not rospy.is_shutdown():
         frame = camera.read()

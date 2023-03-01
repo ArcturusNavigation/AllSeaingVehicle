@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="perception_suite" type="segmentation" name="segmentation_node" output="screen"/>
+    <node pkg="perception_suite" type="cluster" name="cluster_node" output="screen"/>
+</launch>
