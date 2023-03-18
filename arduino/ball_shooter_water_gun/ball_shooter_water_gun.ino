@@ -1,107 +1,123 @@
 #include <Servo.h>
 #include <AFMotor.h>
-Servo servo1;
-Servo servo2; 
+
+//water gun setup
+Servo water_yaw_servo;
+Servo water_pitch_servo; 
 bool pump_toggle = false;
 int water_yaw_servo_pin = 9; 
 int water_pitch_servo_pin = 10; 
-int ball_flywheel_pin = 5; 
-int ball_loader_pin = 6;
-int pump_pin =8;
-int pump_count = 0; 
+int pump_pin = 8;
+int pump_count = 0; // indicates that pump starts as off
 int water_pitch_zero = 0; //indicates what angle the water pitch is at when straight
-int water_yaw_zero = 45; // will find value when we attach 
-float l = 2; //value, in meters, of how far the water gun can shoot in a straight line
-/// value was just a guess, subject to change. Also, we might want to think about a variable distance based on the angle&gravity
+int water_yaw_zero = 45; // will find value when we mount to boat
 unsigned long time = 0;  
 
+//ball shooter setup
+Servo ball_aim_servo; 
+int SENSOR_PIN = 0; // center pin of the potentiometer
+int RPWM_Output = 5; // Arduino PWM output pin 5; connect to IBT-2 pin 1 (RPWM)
+int LPWM_Output = 6; // Arduino PWM output pin 6; connect to IBT-2 pin 2 (LPWM)
+int ball_aim_servo_pin = 7; 
+ 
 
 void setup() {
-servo1.attach(water_yaw_servo_pin); // left, right
-servo2.attach(water_pitch_servo_pin); // up, down
+water_yaw_servo.attach(water_yaw_servo_pin); // left, right
+water_pitch_servo.attach(water_pitch_servo_pin); // up, down
+ball_aim_servo.attach(ball_aim_servo_pin); 
 pinMode(pump_pin, OUTPUT);
-pinMode(ball_flywheel_pin, OUTPUT);
-pinMode(ball_loader_pin, OUTPUT);
+pinMode(RPWM_Output, OUTPUT);
+pinMode(LPWM_Output, OUTPUT);
 Serial.begin(9600);
 }
 
 void loop() { 
- if (Serial.available()) {
-    if (time > 180000){
-        digitalWrite(8, false);
-    }
-    String inByte = Serial.readStringUntil('\n');  // read user input
-    if (inByte.length() ==1){
-          if (inByte == "P"){
-            //activate water pump
-           pump(); 
-          }
-          if(inByte == "B"){
-            ball_shooter();
-          }
-          if(inByte == "D"){ // read current pos
-          int yaw_pos = servo1.read(); 
-          int pitch_pos = servo2.read(); 
-          Serial.println("Current Water Gun Angles: ( " + String(yaw_pos) +", " + String(pitch_pos)+ " )"); //print water gun angles
-          // print motor speed and relay state
-          }
-          if(inByte == "R"){ //reset to zeroed values
-            servo1.write(water_yaw_zero); 
-            servo2.write(water_pitch_zero); 
-          }
-    }
-    else{
-      float x; 
-      float y; 
-      float z; 
-      String rest; 
-      int index; 
-      String mode; 
-      index = inByte.indexOf(","); 
-      x = inByte.substring(0, index).toFloat(); 
-      rest = inByte.substring(index+1, -1);
+  if (time > 180000){
+    // automatically turns pump off when it has been on for a long time
+    digitalWrite(pump_pin, false); 
+  }
+  if (Serial.available()) {
+    parse_input(); 
+  }
+ }
+
+
+void parse_input(){
+  // reads a serial input
+  String inByte = Serial.readStringUntil('\n'); 
+  if (inByte.length() ==1){ // deals with single letter functions
+        if (inByte == "P"){ //activate water pump
+         pump(); 
+        }
+        if(inByte == "B"){ // fire a ball
+          shoot();
+        }
+        if(inByte == "D"){ // read current pos
+          read_curr_pos(); 
+        }
+        if(inByte == "R"){ //reset to zeroed values
+          servo1.write(water_yaw_zero); 
+          servo2.write(water_pitch_zero); 
+        }
+  else{
+      //Parse x,y,z,mode type input
+      //Note: input must be in format x,y,z,mode, with NO SPACES 
+      
+      //find x value
+      int index = inByte.indexOf(","); 
+      float x = inByte.substring(0, index).toFloat();
+      // find y value
+      String rest = inByte.substring(index+1, -1);
       index = rest.indexOf(","); 
-      y = rest.substring(0, index).toFloat(); 
+      float y = rest.substring(0, index).toFloat();
+      //find z value 
       rest = rest.substring(index+1, -1);
       index = rest.indexOf(","); 
-      z = rest.substring(0, index).toFloat(); 
+      float z = rest.substring(0, index).toFloat(); 
+      // find the mode or display formatting error
       rest = rest.substring(index+1, -1); 
       if (rest.length()!= 1){
         Serial.println("Invalid Format");
       }
       else{
-        mode = rest; 
+        String mode = rest; 
         if (mode == "P"){
-          float theta1 = asin(z/l); 
-          float theta2 = atan(x/y); 
-          theta1 = water_yaw_zero + theta1*180/3.14; 
-          theta2 = water_pitch_zero + theta2*180/3.14; 
-          servo1.write(int(theta1)); 
-          servo2.write(int(theta2)); 
+           watergun_aim_shoot(x,y,z); 
         }
         if (mode =="B"){
-          //turn to x,y
-          ball_shooter(); 
+          servo1.write(x);
+          delay(1000);
+          servo1.write(y);
+          delay(1000);
+          servo1.write(z);
         }
       }
     }
- }
 }
 
-void pump(){
-  pump_toggle = !pump_toggle;
-  digitalWrite(8, pump_toggle);
-  if(pump_toggle == false){
-    time = 0; 
-    Serial.println("pump turned OFF"); 
-  }
-  else{
-    time = millis(); 
-    Serial.println("pump turned ON"); 
-  }
+void watergun_aim_shoot(x, y, z){
+  //find theta values through trig
+  //dependent on zeroed angle values
+  float theta1 = atan(z/y); 
+  float theta2 = atan(x/y); 
+  theta1 = water_yaw_zero + theta1*180/3.14; 
+  theta2 = water_pitch_zero + theta2*180/3.14; 
+  water_yaw_servo.write(int(theta1)); 
+  water_pitch_servo.write(int(theta2)); 
+  delay(1000); // not sure if we need a delay, just thought we should give it a sec
+  pump(); //turn water pump on 
 }
 
-void ball_shooter(){
+void ballshooter_aim_shoot(x, y, z){
+  // find ball shooter theta val
+  // need to think a little more about ideal angle since we only have pitch and no yaw
+  float theta = atan(x/y); 
+  ball_aim_servo.write(int(theta)); 
+  delay(1000); 
+  ball_shoot(); 
+}
+
+void ball_shoot(){
 // fire ball shooter
       int sensorValue = 1023;
       // sensor value is in the range 0 to 1023
@@ -118,7 +134,27 @@ void ball_shooter(){
       analogWrite(RPWM_Output, 0);
       analogWrite(LPWM_Output, forwardPWM);
       }
-    // check if ball shooter was actually shot
+    Serial.println("Ball shooter fired!"); 
 }
 
+void pump(){
+  //turn on the water pump 
+  pump_toggle = !pump_toggle;
+  digitalWrite(8, pump_toggle);
+  if(pump_toggle == false){
+    time = 0; 
+    Serial.println("pump turned OFF"); 
+  }
+  else{
+    time = millis(); // starts pump timer
+    Serial.println("pump turned ON"); 
+  }
+}
+
+void read_curr_pos(){
+   // prints out current water gun pos
+   int yaw_pos = water_yaw_servo.read(); 
+   int pitch_pos = water_pitch_servo.read(); 
+   Serial.println("Current Water Gun Angles: ( " + String(yaw_pos) +", " + String(pitch_pos)+ " )"); //print water gun angles
+}
 
