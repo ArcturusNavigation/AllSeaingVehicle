@@ -37,27 +37,26 @@ void loop() {
     digitalWrite(pump_pin, false); 
   }
   if (Serial.available()) {
-    parse_input(); 
+      // reads a serial input
+      parse_input(); 
   }
  }
 
-
 void parse_input(){
-  // reads a serial input
   String inByte = Serial.readStringUntil('\n'); 
   if (inByte.length() ==1){ // deals with single letter functions
         if (inByte == "P"){ //activate water pump
          pump(); 
         }
         if(inByte == "B"){ // fire a ball
-          shoot();
+          ball_shoot();
         }
         if(inByte == "D"){ // read current pos
           read_curr_pos(); 
         }
         if(inByte == "R"){ //reset to zeroed values
-          servo1.write(water_yaw_zero); 
-          servo2.write(water_pitch_zero); 
+          water_yaw_servo.write(water_yaw_zero); 
+          water_pitch_servo.write(water_pitch_zero); 
         }
   else{
       //Parse x,y,z,mode type input
@@ -85,17 +84,14 @@ void parse_input(){
            watergun_aim_shoot(x,y,z); 
         }
         if (mode =="B"){
-          servo1.write(x);
-          delay(1000);
-          servo1.write(y);
-          delay(1000);
-          servo1.write(z);
+          ballshooter_aim_shoot(x,y,z); 
         }
       }
     }
+  }
 }
 
-void watergun_aim_shoot(x, y, z){
+void watergun_aim_shoot(float x, float y, float z){
   //find theta values through trig
   //dependent on zeroed angle values
   float theta1 = atan(z/y); 
@@ -108,7 +104,7 @@ void watergun_aim_shoot(x, y, z){
   pump(); //turn water pump on 
 }
 
-void ballshooter_aim_shoot(x, y, z){
+void ballshooter_aim_shoot(float x, float y, float z){
   // find ball shooter theta val
   // need to think a little more about ideal angle since we only have pitch and no yaw
   float theta = atan(x/y); 
