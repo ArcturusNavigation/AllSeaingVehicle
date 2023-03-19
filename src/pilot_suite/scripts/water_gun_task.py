@@ -63,8 +63,6 @@ class WaterGunTaskNode(TaskNode):
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
 
-        self.REDGREENTHRESHOLD = 100
-
 
     def depth_mask(self, original_img, depth_img):
 
@@ -178,9 +176,12 @@ class WaterGunTaskNode(TaskNode):
             target_center = self.identify_center(segmented_img)
             print("Center is At: ", target_center)
             print(segmented_img.shape)
-            for i in range(-13,14):
-                for j in range(-13,14):
-                    segmented_img[(i+target_center[0])//self.SHRINK_FACTOR, (j+target_center[1])//self.SHRINK_FACTOR] = np.array([240, 100, 50])
+            for i in range(-20,20):
+                for j in range(-20,20):
+                    try:
+                        segmented_img[(i+target_center[0])//self.SHRINK_FACTOR, (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 0, 0])
+                    except:
+                        print('ok')
 
             self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
         
