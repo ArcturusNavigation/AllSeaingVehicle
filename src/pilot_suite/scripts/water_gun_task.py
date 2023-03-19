@@ -60,6 +60,7 @@ class WaterGunTaskNode(TaskNode):
         self.SHRINK_FACTOR = 4
         self.BLUE_DEVIATION_THRESHOLD = 100
         self.DEPTH_THRESHOLD = 10
+        self.BLUE_CONSTANT = 120
 
 
     def depth_mask(self, original_img, depth_img):
@@ -78,7 +79,7 @@ class WaterGunTaskNode(TaskNode):
         min_diff = np.min(
             np.abs(input_img[:, :, 0] - 120 * np.ones(input_img.shape[:2])))
 
-        blue_color = 120 + (min_diff if (120 + min_diff)
+        blue_color = self.BLUE_CONSTANT + (min_diff if (120 + min_diff)
                             in input_img[:, :, 0] else -min_diff)
 
         if abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
@@ -96,7 +97,7 @@ class WaterGunTaskNode(TaskNode):
             vars = np.square(x_blues - x_mean) + np.square(y_blues - y_mean)
             mean_var = np.mean(vars)
 
-            return x_blues[vars / mean_var <= 2], y_blues[vars / mean_var <= 2]
+            return x_blues[vars / mean_var <= 0.7], y_blues[vars / mean_var <= 0.7]
 
         x_blues, y_blues = remove_outliers(x_blues, y_blues)
 
@@ -116,8 +117,8 @@ class WaterGunTaskNode(TaskNode):
         criteria = (cv2.TERM_CRITERIA_EPS +
                     cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
-        K = 5
-        attempts = 2
+        K = 7
+        attempts = 1
 
         _, label, center = cv2.kmeans(
             twoDimage, K, None, criteria, attempts, cv2.KMEANS_PP_CENTERS)
