@@ -38,8 +38,8 @@ class WaterGunTaskNode(TaskNode):
         
         if(self.debug):
             self.image_segmented_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/segmented_img', Image, queue_size=1)
-            self.target_filtered_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/filtered_img', Image, queue_size=1)
-            self.target_outliers_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/outliers_img', Image, queue_size=1)
+            self.image_filtered_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/filtered_img', Image, queue_size=1)
+            self.image_outliers_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/outliers_img', Image, queue_size=1)
 
         # self.velocity_pub = rospy.Publisher('pilot_suite/velocity_command',VelocityCommand, queue_size=1 )
         self.detection_method = detection_method
