@@ -63,8 +63,10 @@ class WaterGunTaskNode(TaskNode):
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
 
+        self.REDGREENTHRESHOLD = 100
 
-    def depth_mask(self, original_img, depth_img):
+
+    def depth_amask(self, original_img, depth_img):
 
         res_img = np.copy(original_img)
 
@@ -155,7 +157,7 @@ class WaterGunTaskNode(TaskNode):
         # Convert depth and rgb image using cvBridge
         try: 
             depth_img = self.bridge.imgmsg_to_cv2(depth_img, "32FC1")
-            img = self.bridge.imgmsg_to_cv2(img, "bgr8")
+            img = cv2.cvtColor(self.bridge.imgmsg_to_cv2(img, "bgr8"), cv2.COLOR_BGR2HSV)
         except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
 
