@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 
 import numpy as np
 import cv2
 import os
@@ -8,7 +8,8 @@ import rospy
 from std_msgs.msg import String
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from sensor_msgs.msg import Image 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, Point
+from visualization_msgs.msg import Marker
 
 from task_node import TaskNode
 
@@ -16,20 +17,44 @@ class WaterGunTaskNode(TaskNode):
     
     def __init__(self, detection_method= 'combined',bag_bounds=(250,300),flip_point= (360, 640)):
 
+        #########################################
+        ######## Execution Debug Mode ###########
+        #########################################
+
+        self.debug = True
+
+
+
+
         super().__init__('water_gun_task')
         self.bridge = cv_bridge.CvBridge()
-        self.target_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/target_img', Image, queue_size=1)
-        self.img_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/rgb_img', Image, queue_size=1)
+
+        ########################################
+        ############# PUBLISHERS ###############
+        ########################################
+
+        self.center_pub = rospy.Publisher('/pilot_suite/water_gun_task/target_center_pose', Point, queue_size=1)
+        self.marker_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/marker_pub', Marker, queue_size=1)
+        
+        if(self.debug):
+            self.image_segmented_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/target_img', Image, queue_size=1)
+            self.target_filtered_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/rgb_img', Image, queue_size=1)
+
         # self.velocity_pub = rospy.Publisher('pilot_suite/velocity_command',VelocityCommand, queue_size=1 )
         self.detection_method = detection_method
         self.bag_bounds = bag_bounds
         self.flip_point = flip_point
         self.flip_index = -1
+
+
         # Subscribe to approximatley synchornized depth and rgb images
         depth_sub = Subscriber('/zed2i/zed_node/depth/depth_registered', Image)
         rgb_sub = Subscriber('/zed2i/zed_node/rgb/image_rect_color', Image)
+
         self.ats = ApproximateTimeSynchronizer([depth_sub, rgb_sub], queue_size=1, slop=.1)
+
         self.ats.registerCallback(self.callback)
+        
         self.bag_positions = []
  
         self.SHRINK_FACTOR = 4
@@ -116,10 +141,46 @@ class WaterGunTaskNode(TaskNode):
 
         print("Callback is running!")
 
-        print(depth_img)
         cv2.imwrite("~/test.jpg", self.depth_mask(img, depth_img))
+        cv2.imwrite('~/depth_map.jpg', depth_img)
 
-        print("center at", self.identify_center(self.segment_image(self.depth_mask(img, depth_img))))
+        target_center = self.identify_center(self.segment_image(self.depth_mask(img, depth_img)))
+        print("Center is At: ", target_center)
+
+        point = Point()
+        point.x = target_center[1]    
+        point.y = target_center[0]
+        point.z = depth_img[target_center[0], target_center[1]]
+        
+        self.center_pub.publish(point)
+
+        center_marker = Marker()
+        
+        center_marker.header.frame_id = "map"
+        center_marker.header.stamp = rospy.Time()
+        center_marker.ns = "water_gun_center"
+        center_marker.id = 1
+        center_marker.type = 1 # Cube
+        center_marker.action = 0
+
+        center_marker.pose.position.x = point.x
+        center_marker.pose.position.y = point.y
+        center_marker.pose.position.z = point.z
+
+        center_marker.pose.orientation.x = 0.0
+        center_marker.pose.orientation.y = 0.0
+        center_marker.pose.orientation.z = 0.0
+        center_marker.pose.orientation.w = 1.0
+
+        center_marker.scale.x = 100
+        center_marker.scale.y = 100
+        center_marker.scale.z = 100
+        center_marker.color.a = 1.0 # Don't forget to set the alpha!
+        center_marker.color.r = 0.0
+        center_marker.color.g = 1.0
+        center_marker.color.b = 0.0
+
+        self.marker_pub.publish(center_marker)
 
     def run(self):
         while not rospy.is_shutdown():
