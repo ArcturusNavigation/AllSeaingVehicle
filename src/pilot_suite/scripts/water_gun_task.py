@@ -66,7 +66,7 @@ class WaterGunTaskNode(TaskNode):
         self.REDGREENTHRESHOLD = 100
 
 
-    def depth_amask(self, original_img, depth_img):
+    def depth_mask(self, original_img, depth_img):
 
         res_img = np.copy(original_img)
 
