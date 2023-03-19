@@ -114,9 +114,9 @@ class WaterGunTaskNode(TaskNode):
             postoutliers_img = filtered_img.copy()
             for i in range(len(postoutliers_img)):
                 for j in range(len(postoutliers_img[0])):
-                    postoutliers_img[i, j, :] = [0, 0, 0]
+                    postoutliers_img[i, j, :] = np.zeros(3)
             for i in range(len(x_blues)):
-                postoutliers_img[x_blues[i], y_blues[i], :] = [120, 50, 50]
+                postoutliers_img[x_blues[i], y_blues[i], :] = np.array([120, 100, 100])
             return (int(self.SHRINK_FACTOR * np.median(x_blues)),
                 int(self.SHRINK_FACTOR * np.median(y_blues)), ), filtered_img, postoutliers_img
         else:
