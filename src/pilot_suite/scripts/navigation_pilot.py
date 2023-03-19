@@ -10,18 +10,21 @@ from pilot_suite.msg import VelocityCommand
 from pilot_suite.task_node import TaskNode
 from pilot_suite.object_types.roboboat import Label
 
-from sensor_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
+from perception_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
 class BuoyNavNode(TaskNode):
     def __init__(self,img_height, img_width):
         super().__init__("navigation_pilot")
-        self.bbox_sub = rospy.Subscriber("/sensor_suite/bounding_boxes", LabeledBoundingBox2DArray, self.nav_callback)
+        self.bbox_sub = rospy.Subscriber("/perception_suite/bounding_boxes", LabeledBoundingBox2DArray, self.nav_callback)
         self.pub = rospy.Publisher("/pilot_suite/velocity_command", VelocityCommand, queue_size=10)
         self.img_height = img_height
         self.img_width = img_width
+        self.active = True
+        self.set_velocity = rospy.Publisher('mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=5)
 
     def nav_callback(self, msg):
         if not self.active:
             return
+        rospy.loginfo_once('Active!')
         port_pos = 0 # Left objects 
         starboard_pos = self.img_width #Right objects
         obstacle_pos = -1 # Only used if we find obstacles
@@ -70,6 +73,7 @@ class BuoyNavNode(TaskNode):
         vel_command.twist = command
         vel_command.cancel = False
         self.pub.publish(vel_command)
+        self.set_velocity.publish(command)
 
 if __name__ == "__main__":
     try:

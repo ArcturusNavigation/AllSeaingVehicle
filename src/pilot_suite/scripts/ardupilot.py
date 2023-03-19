@@ -110,7 +110,7 @@ class Ardupilot():
         # rospy.Subscriber('mavros/local_position/pose', PoseStamped, self.local_position_callback)
         pix_pos_sub = message_filters.Subscriber('mavros/local_position/pose', PoseStamped)
         zed_pos_sub = message_filters.Subscriber('/zed2i/zed_node/pos', PoseStamped) #TODO: Get actual topic
-        ts = message_filters.ApproximateTimesynchronizer([pix_pos_sub, zed_pos_sub], 10, 0.1, allow_headerless=True)
+        ts = message_filters.ApproximateTimeSynchronizer([pix_pos_sub, zed_pos_sub], 10, 0.1, allow_headerless=True)
         ts.registerCallback(self.combined_pos_callback)
 
         self.sub_topics_ready = {
@@ -160,6 +160,14 @@ class Ardupilot():
             if all(value for value in self.sub_topics_ready.values()):
                 rospy.loginfo("subscribed topics ready in {0} seconds".format(i / loop_freq))
                 break
+            elif i > 20:
+                rospy.loginfo("Not all topics are ready but continuing anyway")
+                break
+            unready_topics = []
+            for topic in self.sub_topics_ready:
+                if not self.sub_topics_ready[topic]:
+                    unready_topics.append(topic)
+            rospy.loginfo("waiting for topics: {0}".format(unready_topics))
             try:
                 rate.sleep()
             except rospy.ROSException as e:
@@ -170,13 +178,13 @@ class Ardupilot():
             rospy.loginfo(f"armed state changed from {self.state.armed} to {data.armed}")
 
         if self.state.connected != data.connected:
-            rospy.loginfo("connected changed from {self.state.connected} to {data.connected}")
+            rospy.loginfo(f"connected changed from {self.state.connected} to {data.connected}")
 
         if self.state.mode != data.mode:
-            rospy.loginfo("mode changed from {self.state.mode} to {data.mode}")
+            rospy.loginfo(f"mode changed from {self.state.mode} to {data.mode}")
 
         if self.state.system_status != data.system_status:
-            rospy.loginfo("system_status changed from {MAV_STATE_ENUM[self.state.system_status]} to {MAV_STATE_ENUM[data.system_status]}")
+            rospy.loginfo(f"system_status changed from {MAV_STATE_ENUM[self.state.system_status]} to {MAV_STATE_ENUM[data.system_status]}")
 
         self.state = data
 
