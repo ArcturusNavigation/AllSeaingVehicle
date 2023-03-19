@@ -149,8 +149,9 @@ class WaterGunTaskNode(TaskNode):
 
         for i in range(-3,4):
             for j in range(-3,4):
-                segmented_img[i, j] = np.array([240, 100, 50])
-        self.image_segmented_pub.publish(segmented_img)
+                segmented_img[i+target_center[0], j+target_center[1]] = np.array([240, 100, 50])
+
+        self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(segmented_img, "bgr8"))
         print("Center is At: ", target_center)
 
         point = Point()
