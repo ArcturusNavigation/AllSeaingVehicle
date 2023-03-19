@@ -167,23 +167,21 @@ class WaterGunTaskNode(TaskNode):
         segmented_img = self.segment_image(self.depth_mask(img, depth_img))
         if self.debug:
             target_center, filtered_img, postoutliers_img = self.identify_center(segmented_img)
-            print("Center is At:", target_center)
+            print("Center is At: ", target_center)
+            print(segmented_img.shape)
+            for i in range(-20,20):
+                for j in range(-20,20):
+                    try:
+                        segmented_img[(i+target_center[0])//self.SHRINK_FACTOR, (j+target_center[1])//self.SHRINK_FACTOR] = np.array([240, 50, 50])
+                    except:
+                        print('ok')
+
             self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
             self.image_filtered_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(filtered_img, cv2.COLOR_HSV2BGR), "bgr8"))
             self.image_outliers_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(postoutliers_img, cv2.COLOR_HSV2BGR), "bgr8"))
 
         else:
             target_center = self.identify_center(segmented_img)
-            print("Center is At: ", target_center)
-            print(segmented_img.shape)
-            for i in range(-20,20):
-                for j in range(-20,20):
-                    try:
-                        segmented_img[(i+target_center[0])//self.SHRINK_FACTOR, (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 0, 0])
-                    except:
-                        print('ok')
-
-            self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
         
 
         point = Point()
