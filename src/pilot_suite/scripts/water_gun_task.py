@@ -144,7 +144,13 @@ class WaterGunTaskNode(TaskNode):
         cv2.imwrite("~/test.jpg", self.depth_mask(img, depth_img))
         cv2.imwrite('~/depth_map.jpg', depth_img)
 
-        target_center = self.identify_center(self.segment_image(self.depth_mask(img, depth_img)))
+        segmented_img = self.segment_image(self.depth_mask(img, depth_img))
+        target_center = self.identify_center(segmented_img)
+
+        for i in range(-3,4):
+            for j in range(-3,4):
+                segmented_img[i, j] = np.array([240, 100, 50])
+        self.image_segmented_pub.publish(segmented_img)
         print("Center is At: ", target_center)
 
         point = Point()
