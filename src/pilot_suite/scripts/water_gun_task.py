@@ -172,7 +172,7 @@ class WaterGunTaskNode(TaskNode):
             for i in range(-20,20):
                 for j in range(-20,20):
                     try:
-                        segmented_img[(i+target_center[0])//self.SHRINK_FACTOR, (j+target_center[1])//self.SHRINK_FACTOR] = np.array([240, 50, 50])
+                        segmented_img[(i+target_center[0])//self.SHRINK_FACTOR, (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
                     except:
                         print('ok')
 
