@@ -18,8 +18,8 @@ class WaterGunTaskNode(TaskNode):
 
         super().__init__('water_gun_task')
         self.bridge = cv_bridge.CvBridge()
-        self.target_pub = rospy.Publisher('/pilot_suite/oyster_task/debug/target_img', Image, queue_size=1)
-        self.img_pub = rospy.Publisher('/pilot_suite/oyster_task/debug/rgb_img', Image, queue_size=1)
+        self.target_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/target_img', Image, queue_size=1)
+        self.img_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/rgb_img', Image, queue_size=1)
         # self.velocity_pub = rospy.Publisher('pilot_suite/velocity_command',VelocityCommand, queue_size=1 )
         self.detection_method = detection_method
         self.bag_bounds = bag_bounds
@@ -32,108 +32,75 @@ class WaterGunTaskNode(TaskNode):
         self.ats.registerCallback(self.callback)
         self.bag_positions = []
  
-    def depth_mask(self, original_img, depth_img, threshold):
+        self.SHRINK_FACTOR = 4
+        self.BLUE_DEVIATION_THRESHOLD = 100
+        self.DEPTH_THRESHOLD = 10
 
-        print("Depth masking right now")
+
+    def depth_mask(self, original_img, depth_img):
 
         res_img = np.copy(original_img)
 
-        for i in range(original_img.shape[0]):
-            for j in range(original_img.shape[1]):
-                if depth_img[i, j] > threshold:
-                    res_img[i, j, :] = 0
-
-        print("Done depth masking")
+        res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
 
         return res_img
 
-    def reject_outliers(self, data, m=0.7):
-        return data
-        return data[abs(data - np.mean(data)) < m * np.std(data)]
-    
+
     def identify_center(self, input_img):
 
-        print("Identifying Center...")
+        input_img = np.array(input_img)
 
-        input_img = cv2.cvtColor(input_img, cv2.COLOR_RGB2HSV)
+        min_diff = np.min(
+            np.abs(input_img[:, :, 0] - 120 * np.ones(input_img.shape[:2])))
 
-        min_diff = np.min(np.abs(input_img[:,:,0] - 240 * np.ones(input_img.shape[:-1])))
-        blue_color = 240 + (min_diff if (240 + min_diff) in input_img else -min_diff)
+        blue_color = 120 + (min_diff if (120 + min_diff)
+                            in input_img[:, :, 0] else -min_diff)
 
-        h_range = 30 # should be 100
-        
-        print("Center Identified")
+        if abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
+            return (-1, -1)
 
-    # blue_color = 240
+        blues = np.argwhere(np.abs(input_img - blue_color) < 1)
 
-        x_blues, y_blues = [], []
+        x_blues, y_blues = blues[:, 0], blues[:, 1]
 
-        result_img = input_img
+        def remove_outliers(x_blues, y_blues):
 
-        for i in range(input_img.shape[0]):
-            for j in range(input_img.shape[1]):
-                if (input_img[i][j][0] >= (blue_color - h_range) and input_img[i][j][0] <= (blue_color + h_range)):
-                    x_blues.append(i)
-                    y_blues.append(j)
-                    result_img[i, j, :] = np.array([0, 100, 100])
-        
-        x_blues, y_blues = np.array(x_blues), np.array(y_blues)
-        x_blues, y_blues = x_blues[~np.isnan(x_blues)], y_blues[~np.isnan(y_blues)]
+            x_mean = np.mean(x_blues)
+            y_mean = np.mean(y_blues)
 
-        #print(x_blues)
-        #print(y_blues)
-        if (len(x_blues) == 0 or len(y_blues) == 0):
-            print("no center found")
-            center_index = (-1,-1)
-        else:
-            center_index = (int(np.median(x_blues)), int(np.median(y_blues)))
+            vars = np.square(x_blues - x_mean) + np.square(y_blues - y_mean)
+            mean_var = np.mean(vars)
 
-        # is_blue = (input_img >= (blue_color - h_range) and input_img <= (blue_color + h_range))
-        # is_blue = is_blue[:, :, 0]
+            return x_blues[vars / mean_var <= 2], y_blues[vars / mean_var <= 2]
 
-        # print(np.where(is_blue))
+        x_blues, y_blues = remove_outliers(x_blues, y_blues)
 
-        # center_index = np.int32(np.mean(np.where(is_blue), axis=-1))
+        return (int(self.SHRINK_FACTOR * np.median(x_blues)),
+                int(self.SHRINK_FACTOR * np.median(y_blues)))
 
-        return center_index
 
-        for deltax in range(-3, 3):
-            for deltay in range(-3, 3):
-                try:
-                    red = np.array([120, 100, 100])
-                    result_img[center_index[0] + deltax, center_index[1] + deltay, :] = red
-                except:
-                    print("On Edge")
+    def segment_image(self, input_img):
 
-        return cv2.cvtColor(result_img, cv2.COLOR_HSV2RGB)
+        scaled_dim = (input_img.shape[1] // self.SHRINK_FACTOR,
+                    input_img.shape[0] // self.SHRINK_FACTOR)
 
-        return res_img
+        img = cv2.resize(input_img, scaled_dim, interpolation=cv2.INTER_AREA)
 
-    def image_segmentation_algorithm(self, input_img):
+        twoDimage = np.float32(img.reshape((-1, 3)))
 
-        print("Segmenting Image...")
-        
-        # Creating kernel
-        kernel = np.ones((2, 2), np.uint8)
+        criteria = (cv2.TERM_CRITERIA_EPS +
+                    cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
-        # Using cv2.erode() method 
-        # img = cv2.erode(img, kernel, iterations = 5) 
-        # img = cv2.dilate(img, kernel, iterations = 5)
-
-        twoDimage = input_img.reshape((-1,3))
-        twoDimage = np.float32(twoDimage)
-
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
         K = 5
-        attempts=10
+        attempts = 2
 
-        ret,label,center=cv2.kmeans(twoDimage,K,None,criteria,attempts,cv2.KMEANS_PP_CENTERS)
+        _, label, center = cv2.kmeans(
+            twoDimage, K, None, criteria, attempts, cv2.KMEANS_PP_CENTERS)
         center = np.uint8(center)
         res = center[label.flatten()]
-        result_image = res.reshape((input_img.shape))
 
-        print("Image Segmented")
-        
+        result_image = res.reshape((img.shape))
+
         return result_image
 
     def callback(self, depth_img, img):
@@ -149,14 +116,10 @@ class WaterGunTaskNode(TaskNode):
 
         print("Callback is running!")
 
-        img = np.array(img)
-        depth_img = np.array(depth_img)
+        print(depth_img)
+        cv2.imwrite("~/test.jpg", self.depth_mask(img, depth_img))
 
-        NEW_IMG_SIZE = (img.shape[0] // 4, img.shape[1] // 4)
-        depth_img = cv2.resize(depth_img, dsize=NEW_IMG_SIZE)
-        img = cv2.resize(img, dsize=NEW_IMG_SIZE)
-
-        print("center at", self.identify_center(self.image_segmentation_algorithm(self.depth_mask(img, depth_img, 10))))
+        print("center at", self.identify_center(self.segment_image(self.depth_mask(img, depth_img))))
 
     def run(self):
         while not rospy.is_shutdown():
