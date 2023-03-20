@@ -23,9 +23,6 @@ class WaterGunTaskNode(TaskNode):
 
         self.debug = True
 
-
-
-
         super().__init__('water_gun_task')
         self.bridge = cv_bridge.CvBridge()
 
@@ -62,13 +59,16 @@ class WaterGunTaskNode(TaskNode):
         self.BLUE_DEVIATION_THRESHOLD = 50
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
+        self.SV_THRESHOLD = 100
 
 
-    def depth_mask(self, original_img, depth_img):
+    def depth_and_sv_mask(self, original_img, depth_img):
 
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
@@ -83,9 +83,9 @@ class WaterGunTaskNode(TaskNode):
         blue_color = self.BLUE_CONSTANT + (min_diff if (120 + min_diff)
                             in input_img[:, :, 0] else -min_diff)
 
-        if abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
+        if not self.debug and abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
             return (-1, -1)
-
+        
         blues = np.argwhere(np.abs(input_img - blue_color) < 1)
 
         x_blues, y_blues = blues[:, 0], blues[:, 1]
@@ -117,8 +117,9 @@ class WaterGunTaskNode(TaskNode):
                     postoutliers_img[i, j, :] = np.zeros(3)
             for i in range(len(x_blues)):
                 postoutliers_img[x_blues[i], y_blues[i], :] = np.array([120, 100, 100])
+
             return (int(self.SHRINK_FACTOR * np.median(x_blues)),
-                int(self.SHRINK_FACTOR * np.median(y_blues)), ), filtered_img, postoutliers_img
+                int(self.SHRINK_FACTOR * np.median(y_blues))), filtered_img, postoutliers_img
         else:
             return (int(self.SHRINK_FACTOR * np.median(x_blues)),
                 int(self.SHRINK_FACTOR * np.median(y_blues)), )
@@ -146,8 +147,6 @@ class WaterGunTaskNode(TaskNode):
 
         result_image = res.reshape((img.shape))
 
-        print(set([str(color) for row in result_image for color in row]))
-
         return result_image
 
     def callback(self, depth_img, img):
@@ -161,22 +160,19 @@ class WaterGunTaskNode(TaskNode):
         except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
 
-        print("Callback is running!")
-
-        cv2.imwrite("~/test.jpg", self.depth_mask(img, depth_img))
+        cv2.imwrite("~/test.jpg", self.depth_and_sv_mask(img, depth_img))
         cv2.imwrite('~/depth_map.jpg', depth_img)
 
-        segmented_img = self.segment_image(self.depth_mask(img, depth_img))
+        segmented_img = self.segment_image(self.depth_and_sv_mask(img, depth_img))
         if self.debug:
             target_center, filtered_img, postoutliers_img = self.identify_center(segmented_img)
             print("Center is At: ", target_center)
-            print(segmented_img.shape)
             for i in range(-20,20):
                 for j in range(-20,20):
                     try:
                         segmented_img[(i+target_center[0])//self.SHRINK_FACTOR, (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
                     except:
-                        print('ok')
+                        print('Out of Bounds')
 
             self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
             self.image_filtered_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(filtered_img, cv2.COLOR_HSV2BGR), "bgr8"))
@@ -237,15 +233,6 @@ class WaterGunTaskNode(TaskNode):
                         angle = np.arctan2(bag_position[1] - self.flip_point[1], bag_position[0] - self.flip_point[0])
                         self.update_velocity(dist, angle)
             self.rate.sleep()
-  #    vidcap = cv2.VideoCapture('competition_video.mp4')
-
-#    success, image = vidcap.read()
-#    scale = 2
-#   NEW_IMG_SIZE = (image.shape[1] // scale, image.shape[0] // scale)
-#   count = 1
-#   for i in range(1, count):
-#       cv.imwrite(f"centered/frame{i}.jpg", identify_center(cv2.imread(f"processed/frame{i}.jpg")))
-#   os.system("ffmpeg -framerate 30 -i processed/frame%d.jpg -c:v libx264 -r 30 new_output_3.mp4")
 
 if __name__ == '__main__':
 
