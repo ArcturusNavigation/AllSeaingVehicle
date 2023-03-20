@@ -146,6 +146,8 @@ class WaterGunTaskNode(TaskNode):
 
         result_image = res.reshape((img.shape))
 
+        print(set(result_image.flatten()))
+
         return result_image
 
     def callback(self, depth_img, img):
