@@ -146,7 +146,7 @@ class WaterGunTaskNode(TaskNode):
 
         result_image = res.reshape((img.shape))
 
-        print(set(map(lambda x:tuple(x), result_image.reshape(-1, result_image.shape[-1]))))
+        print(set([str(color) for row in result_image for color in row]))
 
         return result_image
 
