@@ -146,7 +146,7 @@ class WaterGunTaskNode(TaskNode):
 
         result_image = res.reshape((img.shape))
 
-        print(set(result_image.reshape(-1, result_image.shape[-1])))
+        print(set(map(lambda x:tuple(x), result_image.reshape(-1, result_image.shape[-1]))))
 
         return result_image
 
