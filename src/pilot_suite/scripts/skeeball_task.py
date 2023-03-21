@@ -118,7 +118,7 @@ class SkeeballTaskNode(TaskNode):
                 int(self.SHRINK_FACTOR * np.median(y_blues)), ), filtered_img, postoutliers_img
         else:
             return (int(self.SHRINK_FACTOR * np.median(x_blues)),
-                int(self.SHRINK_FACTOR * np.median(y_blues)), )
+                int(self.SHRINK_FACTOR * (np.max(y_blues) - np.std(y_blues))), )
 
 
     def segment_image(self, input_img):
