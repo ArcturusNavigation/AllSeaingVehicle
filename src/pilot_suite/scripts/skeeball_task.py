@@ -13,7 +13,7 @@ from visualization_msgs.msg import Marker
 
 from task_node import TaskNode
 
-class WaterGunTaskNode(TaskNode):
+class SkeeballTaskNode(TaskNode):
     
     def __init__(self, detection_method= 'combined',bag_bounds=(250,300),flip_point= (360, 640)):
 
@@ -23,20 +23,20 @@ class WaterGunTaskNode(TaskNode):
 
         self.debug = True
 
-        super().__init__('water_gun_task')
+        super().__init__('skeeball_task')
         self.bridge = cv_bridge.CvBridge()
 
         ########################################
         ############# PUBLISHERS ###############
         ########################################
 
-        self.center_pub = rospy.Publisher('/pilot_suite/water_gun_task/target_center_pose', Point, queue_size=1)
-        self.marker_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/marker_pub', Marker, queue_size=1)
+        self.center_pub = rospy.Publisher('/pilot_suite/skeeball_task/target_center_pose', Point, queue_size=1)
+        self.marker_pub = rospy.Publisher('/pilot_suite/skeeball_task/debug/marker_pub', Marker, queue_size=1)
         
         if(self.debug):
-            self.image_segmented_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/segmented_img', Image, queue_size=1)
-            self.image_filtered_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/filtered_img', Image, queue_size=1)
-            self.image_outliers_pub = rospy.Publisher('/pilot_suite/water_gun_task/debug/outliers_img', Image, queue_size=1)
+            self.image_segmented_pub = rospy.Publisher('/pilot_suite/skeeball_task/debug/segmented_img', Image, queue_size=1)
+            self.image_filtered_pub = rospy.Publisher('/pilot_suite/skeeball_task/debug/filtered_img', Image, queue_size=1)
+            self.image_outliers_pub = rospy.Publisher('/pilot_suite/skeeball_task/debug/outliers_img', Image, queue_size=1)
 
         # self.velocity_pub = rospy.Publisher('pilot_suite/velocity_command',VelocityCommand, queue_size=1 )
         self.detection_method = detection_method
@@ -59,16 +59,13 @@ class WaterGunTaskNode(TaskNode):
         self.BLUE_DEVIATION_THRESHOLD = 50
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
-        self.SV_THRESHOLD = 100
 
 
-    def depth_and_sv_mask(self, original_img, depth_img):
+    def depth_mask(self, original_img, depth_img):
 
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
-        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
-        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
@@ -83,9 +80,9 @@ class WaterGunTaskNode(TaskNode):
         blue_color = self.BLUE_CONSTANT + (min_diff if (120 + min_diff)
                             in input_img[:, :, 0] else -min_diff)
 
-        if not self.debug and abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
+        if abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
             return (-1, -1)
-        
+
         blues = np.argwhere(np.abs(input_img - blue_color) < 1)
 
         x_blues, y_blues = blues[:, 0], blues[:, 1]
@@ -117,9 +114,8 @@ class WaterGunTaskNode(TaskNode):
                     postoutliers_img[i, j, :] = np.zeros(3)
             for i in range(len(x_blues)):
                 postoutliers_img[x_blues[i], y_blues[i], :] = np.array([120, 100, 100])
-
             return (int(self.SHRINK_FACTOR * np.median(x_blues)),
-                int(self.SHRINK_FACTOR * np.median(y_blues))), filtered_img, postoutliers_img
+                int(self.SHRINK_FACTOR * np.median(y_blues)), ), filtered_img, postoutliers_img
         else:
             return (int(self.SHRINK_FACTOR * np.median(x_blues)),
                 int(self.SHRINK_FACTOR * np.median(y_blues)), )
@@ -160,19 +156,22 @@ class WaterGunTaskNode(TaskNode):
         except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
 
-        cv2.imwrite("~/test.jpg", self.depth_and_sv_mask(img, depth_img))
+        print("Callback is running!")
+
+        cv2.imwrite("~/test.jpg", self.depth_mask(img, depth_img))
         cv2.imwrite('~/depth_map.jpg', depth_img)
 
-        segmented_img = self.segment_image(self.depth_and_sv_mask(img, depth_img))
+        segmented_img = self.segment_image(self.depth_mask(img, depth_img))
         if self.debug:
             target_center, filtered_img, postoutliers_img = self.identify_center(segmented_img)
             print("Center is At: ", target_center)
+            print(segmented_img.shape)
             for i in range(-20,20):
                 for j in range(-20,20):
                     try:
                         segmented_img[(i+target_center[0])//self.SHRINK_FACTOR, (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
                     except:
-                        print('Out of Bounds')
+                        print('ok')
 
             self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
             self.image_filtered_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(filtered_img, cv2.COLOR_HSV2BGR), "bgr8"))
@@ -193,7 +192,7 @@ class WaterGunTaskNode(TaskNode):
         
         center_marker.header.frame_id = "map"
         center_marker.header.stamp = rospy.Time()
-        center_marker.ns = "water_gun_center"
+        center_marker.ns = "skeeball_center"
         center_marker.id = 1
         center_marker.type = 1 # Cube
         center_marker.action = 0
@@ -233,11 +232,20 @@ class WaterGunTaskNode(TaskNode):
                         angle = np.arctan2(bag_position[1] - self.flip_point[1], bag_position[0] - self.flip_point[0])
                         self.update_velocity(dist, angle)
             self.rate.sleep()
+  #    vidcap = cv2.VideoCapture('competition_video.mp4')
+
+#    success, image = vidcap.read()
+#    scale = 2
+#   NEW_IMG_SIZE = (image.shape[1] // scale, image.shape[0] // scale)
+#   count = 1
+#   for i in range(1, count):
+#       cv.imwrite(f"centered/frame{i}.jpg", identify_center(cv2.imread(f"processed/frame{i}.jpg")))
+#   os.system("ffmpeg -framerate 30 -i processed/frame%d.jpg -c:v libx264 -r 30 new_output_3.mp4")
 
 if __name__ == '__main__':
 
     print("Python Script Running!")
-    rospy.init_node('water_gun_node')
-    task_node = WaterGunTaskNode()
+    rospy.init_node('skeeball_task')
+    task_node = SkeeballTaskNode()
     task_node.active = True 
     task_node.run()
