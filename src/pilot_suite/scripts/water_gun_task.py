@@ -118,7 +118,7 @@ class WaterGunTaskNode(TaskNode):
 
         x_blues, y_blues = remove_outliers(x_blues, y_blues)
         # convert location to location relative to center of the frame
-        W, H = input_img.shape()
+        W, H, _ = input_img.shape
         mid_x = W * self.SHRINK_FACTOR // 2
         mid_y = H * self.SHRINK_FACTOR // 2
         if self.debug:
@@ -221,7 +221,7 @@ class WaterGunTaskNode(TaskNode):
         point.x = means[1]
         point.y = means[0]
         point.z = means[2]
-
+        print("stablizied center:", means[1], means[0], means[2])
         self.center_pub.publish(point)
 
         if self.debug:
