@@ -1,11 +1,13 @@
 #include <Servo.h>
 
-#define BALL_COLLECT_LIMIT_UP
-#define BALL_COLLECT_LIMIT_DOWN
-#define BALL_COLLECT_MOTOR
-#define BALL_COLLECT_SERVO
+#define BALL_COLLECT_LIMIT_UP 1
+#define BALL_COLLECT_LIMIT_DOWN 2
+#define BALL_COLLECT_MOTOR 3
+#define BALL_COLLECT_SERVO 4
 
 Servo collectorServo;
+const int COLLECT_MOTOR_SPEED = 50; // MAX 255
+const int COLLECT_SERVO_SPEED = 50; // MAX 360
 
 void setup() {
 
@@ -26,10 +28,9 @@ enum CollectorModes {
 	MOVE_UP,
 	INACTIVATED
 
-}
+};
 
-int rotationMode = 0;
-CollectorModes mode = INACTIVATED;
+CollectorModes collectorMode = INACTIVATED;
 void loop() {
 
 	int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
@@ -40,14 +41,32 @@ void loop() {
 
 	if (Serial.available() > 0) {
 
-		analogWrite(BALL_COLLECT_MOTOR, 50); // MAX 255
-
+    int data = Serial.readStringUntil('\n').toInt();
+    if (data == 0) {
+      collectorMode = MOVE_DOWN;
+    } else if (data == 0) {
+      collectorMode = MOVE_UP;
+    }
 	}
 
-		
-
-	if (collectorLimitDownVal == HIGH || collectorLimitUpVal == HIGH) {
-		analogWrite(BALL_COLLECT_MOTOR, 0)
-	}
-
+  // Ball collector modes
+  if (collectorMode == INACTIVATED) {
+    analogWrite(BALL_COLLECT_MOTOR, 0);
+    collectorServo.write(0);
+  } else if (collectorMode == COLLECT) {
+    analogWrite(BALL_COLLECT_MOTOR, 0);
+    collectorServo.write(COLLECT_SERVO_SPEED);
+  } else if (collectorMode == MOVE_UP) {
+    analogWrite(BALL_COLLECT_MOTOR, COLLECT_MOTOR_SPEED);
+    collectorServo.write(0);
+    if (collectorLimitUpVal == HIGH) {
+      collectorMode = INACTIVATED;
+    }
+  } else {
+    analogWrite(BALL_COLLECT_MOTOR, -COLLECT_MOTOR_SPEED);
+    collectorServo.write(0);
+    if (collectorLimitDownVal == HIGH) {
+      collectorMode = COLLECT;
+    }
+  }
 }
