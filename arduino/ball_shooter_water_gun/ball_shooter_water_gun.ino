@@ -3,17 +3,19 @@
 #include <geometry_msgs/Point.h>
 #include <Servo.h>
 #include <AFMotor.h>
+#include <std_msgs/Empty.h>
 
 ros::NodeHandle node_handle;
 std_msgs::Bool validity_msg;
 geometry_msgs::Point point_msg;
 
+
 //water gun setup
 Servo water_yaw_servo;
 Servo water_pitch_servo; 
 bool pump_toggle = false;
-int water_yaw_servo_pin = 9; 
-int water_pitch_servo_pin = 10; 
+int water_yaw_servo_pin = 10; 
+int water_pitch_servo_pin = 11; 
 int pump_pin = 8;
 int pump_count = 0; // indicates that pump starts as off
 int water_pitch_zero = 0; //indicates what angle the water pitch is at when straight
@@ -27,10 +29,14 @@ int RPWM_Output = 5; // Arduino PWM output pin 5; connect to IBT-2 pin 1 (RPWM)
 int LPWM_Output = 6; // Arduino PWM output pin 6; connect to IBT-2 pin 2 (LPWM)
 int ball_aim_servo_pin = 7; 
 
+void statusCB( const std_msgs::Empty& toggle_msg){
+  digitalWrite(13, HIGH-digitalRead(13));   // blink the led
+}
+
 void subscriberCallback(const geometry_msgs::Point& point_msg) {
 	if (point_msg.x == -1 || point_msg.y == -1 || point_msg.z == -1) {
 		validity_msg = false;			
-		pump(); // TODO: maybe this goes to the valid one.
+		pump();
 	} else {
 		validity_msg = true;
 		watergun_aim_shoot(point.msg.x, point.msg.y, point.msg.z); 
@@ -39,6 +45,8 @@ void subscriberCallback(const geometry_msgs::Point& point_msg) {
 
 ros::Publisher validity_publisher("/pilot_suite/water_gun_task/arduino/pump_activator", &validity_msg);
 ros::Subscriber<geometry_msgs::Point> point_subscriber("/pilot_suite/water_gun_task/target_center_pose");
+ros::Subscriber<std_msgs::Empty> status_sub("toggle_status", &statusCB );
+
 
 void setup() {
 	water_yaw_servo.attach(water_yaw_servo_pin); // left, right
@@ -53,18 +61,11 @@ void setup() {
 	node_handle.initNode();
 	node_handle.advertise(validity_publisher)
 	node_handle.subscribe(point_subscriber);
+  node_handle.subscribe(status_sub);
 }
 
 void loop() { 
-	if (time > 180000){
-		// automatically turns pump off when it has been on for a long time
-		digitalWrite(pump_pin, false); 
-	}
-	if (Serial.available()) {
-		// reads a serial input
-		parse_input(); 
-	}
-
+	
 	validity_publisher.publish(&validity_msg);
 	node_handle.spinOnce();
 }
@@ -181,4 +182,5 @@ void read_curr_pos(){
 	int pitch_pos = water_pitch_servo.read(); 
 	Serial.println("Current Water Gun Angles: ( " + String(yaw_pos) +", " + String(pitch_pos)+ " )"); //print water gun angles
 }
+
 
