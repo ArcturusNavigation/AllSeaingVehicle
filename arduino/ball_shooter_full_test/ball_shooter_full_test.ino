@@ -30,6 +30,9 @@ Servo ballAimServo;
 
 // Encoder counter
 volatile long counter = 0;
+long prevCounter = 0;
+unsigned long lastTime = 0;
+const int PPR = 28;
 
 // Ball shooter hopper movement
 bool isHopperMoving = false;
@@ -65,11 +68,27 @@ enum CollectorModes {
 };
 
 CollectorModes collectorMode = INACTIVATED;
+
 void loop() {
 
+  // Change in encoder values
+  unsigned long deltaTime = millis() - lastTime;
+  lastTime = millis();
+  long deltaCounter = counter - prevCounter;
+  prevCounter = counter;
+
+  // Calculate RPM
+  double rpm = (deltaCounter / PPR) / (deltaTime * 1000 * 60);
+
+  // Limit switch values
   int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
 	int collectorLimitDownVal = digitalRead(BALL_COLLECT_LIMIT_DOWN);
+
+  // Hall effect sensor values
+  int hallEffectBackVal = digitalRead(HALL_EFFECT_BACK);
+	int hallEffectFrontVal = digitalRead(HALL_EFFECT_FRONT);
   Serial.println("Counter: " + String(counter));
+  Serial.println("RPM: " + String(rpm));
   Serial.println("Limit up: " + String(collectorLimitUpVal));
 	Serial.println("Limit down: " + String(collectorLimitDownVal));
 
@@ -94,10 +113,6 @@ void loop() {
     }
 
 	}
-
-  // Hall effect sensor values
-  int hallEffectBackVal = digitalRead(HALL_EFFECT_BACK);
-	int hallEffectFrontVal = digitalRead(HALL_EFFECT_FRONT);
 
   // Moving the hopper
 	if (isHopperMoving) {
