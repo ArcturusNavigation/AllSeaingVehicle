@@ -32,7 +32,9 @@ Servo ballAimServo;
 volatile long counter = 0;
 long prevCounter = 0;
 unsigned long lastTime = 0;
-const int PPR = 28;
+const double PPR = 28.0;
+const int TIME_INTERVAL = 200;
+const int GEAR_RATIO = 2;
 
 // Ball shooter hopper movement
 bool isHopperMoving = false;
@@ -78,7 +80,10 @@ void loop() {
   prevCounter = counter;
 
   // Calculate RPM
-  double rpm = (deltaCounter / PPR) / (deltaTime * 1000 * 60);
+  double num = GEAR_RATIO * deltaCounter / PPR;
+  //Serial.println(num);
+  float rpm = (num * 1000 * 60) / deltaTime;
+  Serial.println(rpm);
 
   // Limit switch values
   int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
@@ -87,10 +92,11 @@ void loop() {
   // Hall effect sensor values
   int hallEffectBackVal = digitalRead(HALL_EFFECT_BACK);
 	int hallEffectFrontVal = digitalRead(HALL_EFFECT_FRONT);
-  Serial.println("Counter: " + String(counter));
-  Serial.println("RPM: " + String(rpm));
-  Serial.println("Limit up: " + String(collectorLimitUpVal));
-	Serial.println("Limit down: " + String(collectorLimitDownVal));
+  //Serial.println("deltaCounter: " + String(deltaCounter));
+  //Serial.println("deltaTime:" + String(deltaTime));
+  //Serial.println("RPM: " + String(rpm));
+  //Serial.println("Limit up: " + String(collectorLimitUpVal));
+	//Serial.println("Limit down: " + String(collectorLimitDownVal));
 
   if (Serial.available() > 0) {
 
@@ -131,7 +137,7 @@ void loop() {
 		millis() - timeSinceHopperMove > 500) {
 
 		isHopperMoving = false;
-		Serial.println("Hopper stopped");
+		//Serial.println("Hopper stopped");
 
 	}
 
