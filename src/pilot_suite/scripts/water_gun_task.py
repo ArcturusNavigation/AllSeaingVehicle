@@ -22,8 +22,7 @@ class WaterGunTaskNode(TaskNode):
         ######## Execution Debug Mode ###########
         #########################################
 
-        self.debug = True
-
+        self.debug = False
         super().__init__('water_gun_task')
         self.bridge = cv_bridge.CvBridge()
 
@@ -58,7 +57,7 @@ class WaterGunTaskNode(TaskNode):
             [depth_sub, rgb_sub], queue_size=1, slop=.1)
 
         self.ats.registerCallback(self.callback)
-
+        print("on callback")
         self.bag_positions = []
 
         self.SHRINK_FACTOR = 4
@@ -81,7 +80,8 @@ class WaterGunTaskNode(TaskNode):
         return res_img
 
     def identify_center(self, input_img):
-
+        if self.debug:
+            print("identifying a center")
         input_img = np.array(input_img)
 
         min_diff = np.min(
@@ -115,12 +115,14 @@ class WaterGunTaskNode(TaskNode):
             mean_var = np.mean(vars)
 
             return x_blues[vars / mean_var <= self.VAR_THRESHOLD], y_blues[vars / mean_var <= self.VAR_THRESHOLD]
-
+        if self.debug:
+            print("removed outliers")
         x_blues, y_blues = remove_outliers(x_blues, y_blues)
         # convert location to location relative to center of the frame
         W, H, _ = input_img.shape
         mid_x = W * self.SHRINK_FACTOR // 2
         mid_y = H * self.SHRINK_FACTOR // 2
+
         if self.debug:
             postoutliers_img = filtered_img.copy()
             for i in range(len(postoutliers_img)):
@@ -211,7 +213,7 @@ class WaterGunTaskNode(TaskNode):
             self.center_history = ch[vars / vars_avg <= 0.5].tolist()
         if len(self.center_history) > 10:
             self.center_history.pop(0)
-        elif len(self.center_history < 10):
+        elif len(self.center_history) < 10:
             return
 
         ch = np.array(self.center_history)
@@ -256,6 +258,7 @@ class WaterGunTaskNode(TaskNode):
     def run(self):
         while not rospy.is_shutdown():
             if self.active:
+                pass
                 if len(self.bag_positions) > 0:
                     if self.flip_index >= len(self.bag_positions):
                         continue
