@@ -59,6 +59,8 @@ class SkeeballTaskNode(TaskNode):
         self.BLUE_DEVIATION_THRESHOLD = 50
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
+        self.SV_THRESHOLD = 100
+        self.VAR_THRESHOLD = 0.7
 
 
     def depth_mask(self, original_img, depth_img):
@@ -66,7 +68,8 @@ class SkeeballTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
-
+        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
         return res_img
 
 
@@ -104,7 +107,7 @@ class SkeeballTaskNode(TaskNode):
             vars = np.square(x_blues - x_mean) + np.square(y_blues - y_mean)
             mean_var = np.mean(vars)
 
-            return x_blues[vars / mean_var <= 0.7], y_blues[vars / mean_var <= 0.7]
+            return x_blues[vars / mean_var <= self.VAR_THRESHOLD], y_blues[vars / mean_var <= self.VAR_THRESHOLD]
 
         x_blues, y_blues = remove_outliers(x_blues, y_blues)
         if self.debug:

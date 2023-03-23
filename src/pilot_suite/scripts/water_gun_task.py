@@ -60,6 +60,7 @@ class WaterGunTaskNode(TaskNode):
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
         self.SV_THRESHOLD = 100
+        self.VAR_THRESHOLD = 0.7
 
 
     def depth_and_sv_mask(self, original_img, depth_img):
@@ -107,9 +108,13 @@ class WaterGunTaskNode(TaskNode):
             vars = np.square(x_blues - x_mean) + np.square(y_blues - y_mean)
             mean_var = np.mean(vars)
 
-            return x_blues[vars / mean_var <= 0.7], y_blues[vars / mean_var <= 0.7]
+            return x_blues[vars / mean_var <= self.VAR_THRESHOLD], y_blues[vars / mean_var <= self.VAR_THRESHOLD]
 
         x_blues, y_blues = remove_outliers(x_blues, y_blues)
+        # convert location to location relative to center of the frame
+        W, H = input_img.shape()
+        mid_x = W * self.SHRINK_FACTOR // 2
+        mid_y = H * self.SHRINK_FACTOR // 2
         if self.debug:
             postoutliers_img = filtered_img.copy()
             for i in range(len(postoutliers_img)):
@@ -118,11 +123,12 @@ class WaterGunTaskNode(TaskNode):
             for i in range(len(x_blues)):
                 postoutliers_img[x_blues[i], y_blues[i], :] = np.array([120, 100, 100])
 
-            return (int(self.SHRINK_FACTOR * np.median(x_blues)),
-                int(self.SHRINK_FACTOR * np.median(y_blues))), filtered_img, postoutliers_img
+            return (int(self.SHRINK_FACTOR * np.median(x_blues) - mid_x ),
+                int(self.SHRINK_FACTOR * np.median(y_blues) - mid_y)), filtered_img, postoutliers_img
         else:
-            return (int(self.SHRINK_FACTOR * np.median(x_blues)),
-                int(self.SHRINK_FACTOR * np.median(y_blues)), )
+            
+            return (int(self.SHRINK_FACTOR * np.median(x_blues) - mid_x),
+                int(self.SHRINK_FACTOR * np.median(y_blues) - mid_y), )
 
 
     def segment_image(self, input_img):
