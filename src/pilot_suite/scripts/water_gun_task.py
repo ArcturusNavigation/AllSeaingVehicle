@@ -22,7 +22,7 @@ class WaterGunTaskNode(TaskNode):
         ######## Execution Debug Mode ###########
         #########################################
 
-        self.debug = False
+        self.debug = True
         super().__init__('water_gun_task')
         self.bridge = cv_bridge.CvBridge()
 
@@ -201,16 +201,16 @@ class WaterGunTaskNode(TaskNode):
 
         else:
             target_center = self.identify_center(segmented_img)
-
+        print("stabilized center has", len(self.center_history))
         self.center_history.append(
             [target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]])
         if len(self.center_history) >= 10:
             ch = np.array(self.center_history)
             means = np.mean(ch, axis=0)
             vars = np.square(ch[:, 0] - means[0]) + np.square(
-                ch[:, 1] - means[1]) + np.square(ch[:, 2] - means[2])
+                ch[:, 1] - means[1])
             vars_avg = np.mean(vars)
-            self.center_history = ch[vars / vars_avg <= 0.5].tolist()
+            self.center_history = ch[vars / vars_avg <= 1.5].tolist()
         if len(self.center_history) > 10:
             self.center_history.pop(0)
         elif len(self.center_history) < 10:
