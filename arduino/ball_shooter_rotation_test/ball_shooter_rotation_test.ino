@@ -40,7 +40,7 @@ void loop() {
 	if (isHopperMoving) {
 
 		hopperServo.write(0);
-		Seria.println(timeSinceHopperMove);
+		Serial.println(timeSinceHopperMove);
 
 	} else {
 
