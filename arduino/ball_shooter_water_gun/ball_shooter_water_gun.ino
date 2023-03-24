@@ -118,7 +118,7 @@ void parse_input(){
 		}
 	}
 }
-
+// x, y, z relative to the water gun
 void watergun_aim_shoot(float x, float y, float z){
 	//find theta values through trig
 	//dependent on zeroed angle values

@@ -61,7 +61,7 @@ class TurtleNestTaskNode(TaskNode):
         if target_color == "blue":
             self.TARGET_COLOR_CONSTANT = 120
         elif target_color == "red":
-            self.TARGET_COLOR_CONSTANT = 0
+            self.TARGET_COLOR_CONSTANT = 0 # TODO: mod 180 later
         elif target_color == "green":
             self.TARGET_COLOR_CONSTANT = 60
         self.SV_THRESHOLD = 100
