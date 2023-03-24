@@ -16,7 +16,7 @@ from task_node import TaskNode
 
 class TurtleNestTaskNode(TaskNode):
 
-    def __init__(self, detection_method='combined', bag_bounds=(250, 300), flip_point=(360, 640)):
+    def __init__(self, target_color):
 
         #########################################
         ######## Execution Debug Mode ###########
@@ -44,10 +44,6 @@ class TurtleNestTaskNode(TaskNode):
                 '/pilot_suite/turtle_nest_task/debug/outliers_img', Image, queue_size=1)
 
         # self.velocity_pub = rospy.Publisher('pilot_suite/velocity_command',VelocityCommand, queue_size=1 )
-        self.detection_method = detection_method
-        self.bag_bounds = bag_bounds
-        self.flip_point = flip_point
-        self.flip_index = -1
 
         # Subscribe to approximatley synchornized depth and rgb images
         depth_sub = Subscriber('/zed2i/zed_node/depth/depth_registered', Image)
@@ -58,14 +54,16 @@ class TurtleNestTaskNode(TaskNode):
 
         self.ats.registerCallback(self.callback)
         print("on callback")
-        self.bag_positions = []
 
         self.SHRINK_FACTOR = 4
-        self.BLUE_DEVIATION_THRESHOLD = 50
+        self.TARGET_COLOR_DEVIATION_THRESHOLD = 30
         self.DEPTH_THRESHOLD = 10
-        self.BLUE_CONSTANT = 120
-        self.RED_CONSTANT = 240
-        self.BLUE_CONSTANT = 0
+        if target_color == "blue":
+            self.TARGET_COLOR_CONSTANT = 120
+        elif target_color == "red":
+            self.TARGET_COLOR_CONSTANT = 0
+        elif target_color == "green":
+            self.TARGET_COLOR_CONSTANT = 60
         self.SV_THRESHOLD = 100
         self.VAR_THRESHOLD = 0.7
 
@@ -89,37 +87,37 @@ class TurtleNestTaskNode(TaskNode):
         min_diff = np.min(
             np.abs(input_img[:, :, 0] - 120 * np.ones(input_img.shape[:2])))
 
-        blue_color = self.BLUE_CONSTANT + (min_diff if (120 + min_diff)
+        target_color_color = self.TARGET_COLOR_CONSTANT + (min_diff if (120 + min_diff)
                                            in input_img[:, :, 0] else -min_diff)
 
-        if not self.debug and abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
+        if not self.debug and abs(target_color_color - 120) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
             return (-1, -1)
 
-        blues = np.argwhere(np.abs(input_img - blue_color) < 1)
+        target_colors = np.argwhere(np.abs(input_img - target_color_color) < 1)
 
-        x_blues, y_blues = blues[:, 0], blues[:, 1]
+        x_target_colors, y_target_colors = target_colors[:, 0], target_colors[:, 1]
         if self.debug:
             filtered_img = input_img.copy()
 
             for i in range(input_img.shape[0]):
                 for j in range(input_img.shape[1]):
-                    if (abs(input_img[i][j][0] - blue_color) < 1):
+                    if (abs(input_img[i][j][0] - target_color_color) < 1):
                         continue
                     else:
                         filtered_img[i, j, :] = [0, 0, 0]
 
-        def remove_outliers(x_blues, y_blues):
+        def remove_outliers(x_target_colors, y_target_colors):
 
-            x_mean = np.mean(x_blues)
-            y_mean = np.mean(y_blues)
+            x_mean = np.mean(x_target_colors)
+            y_mean = np.mean(y_target_colors)
 
-            vars = np.square(x_blues - x_mean) + np.square(y_blues - y_mean)
+            vars = np.square(x_target_colors - x_mean) + np.square(y_target_colors - y_mean)
             mean_var = np.mean(vars)
 
-            return x_blues[vars / mean_var <= self.VAR_THRESHOLD], y_blues[vars / mean_var <= self.VAR_THRESHOLD]
+            return x_target_colors[vars / mean_var <= self.VAR_THRESHOLD], y_target_colors[vars / mean_var <= self.VAR_THRESHOLD]
         if self.debug:
             print("removed outliers")
-        x_blues, y_blues = remove_outliers(x_blues, y_blues)
+        x_target_colors, y_target_colors = remove_outliers(x_target_colors, y_target_colors)
         # convert location to location relative to center of the frame
         W, H, _ = input_img.shape
         mid_x = W * self.SHRINK_FACTOR // 2
@@ -130,16 +128,16 @@ class TurtleNestTaskNode(TaskNode):
             for i in range(len(postoutliers_img)):
                 for j in range(len(postoutliers_img[0])):
                     postoutliers_img[i, j, :] = np.zeros(3)
-            for i in range(len(x_blues)):
-                postoutliers_img[x_blues[i], y_blues[i],
+            for i in range(len(x_target_colors)):
+                postoutliers_img[x_target_colors[i], y_target_colors[i],
                                  :] = np.array([120, 100, 100])
 
-            return (int(self.SHRINK_FACTOR * np.median(x_blues) - mid_x),
-                    int(self.SHRINK_FACTOR * np.median(y_blues) - mid_y)), filtered_img, postoutliers_img
+            return (int(self.SHRINK_FACTOR * np.median(x_target_colors) - mid_x),
+                    int(self.SHRINK_FACTOR * np.median(y_target_colors) - mid_y)), filtered_img, postoutliers_img
         else:
 
-            return (int(self.SHRINK_FACTOR * np.median(x_blues) - mid_x),
-                    int(self.SHRINK_FACTOR * np.median(y_blues) - mid_y), )
+            return (int(self.SHRINK_FACTOR * np.median(x_target_colors) - mid_x),
+                    int(self.SHRINK_FACTOR * np.median(y_target_colors) - mid_y), )
 
     def segment_image(self, input_img):
 
@@ -228,53 +226,11 @@ class TurtleNestTaskNode(TaskNode):
         print("stablizied center:", means[1], means[0], means[2])
         self.center_pub.publish(point)
 
-        if self.debug:
-            center_marker = Marker()
-
-            center_marker.header.frame_id = "map"
-            center_marker.header.stamp = rospy.Time()
-            center_marker.ns = "turtle_nest_center"
-            center_marker.id = 1
-            center_marker.type = 1  # Cube
-            center_marker.action = 0
-
-            center_marker.pose.position.x = point.x
-            center_marker.pose.position.y = point.y
-            center_marker.pose.position.z = point.z
-
-            center_marker.pose.orientation.x = 0.0
-            center_marker.pose.orientation.y = 0.0
-            center_marker.pose.orientation.z = 0.0
-            center_marker.pose.orientation.w = 1.0
-
-            center_marker.scale.x = 100
-            center_marker.scale.y = 100
-            center_marker.scale.z = 100
-            center_marker.color.a = 1.0  # Don't forget to set the alpha!
-            center_marker.color.r = 0.0
-            center_marker.color.g = 1.0
-            center_marker.color.b = 0.0
-
-            self.marker_pub.publish(center_marker)
 
     def run(self):
         while not rospy.is_shutdown():
             if self.active:
                 pass
-                if len(self.bag_positions) > 0:
-                    if self.flip_index >= len(self.bag_positions):
-                        continue
-                    bag_position = self.bag_positions[self.flip_index]
-                    dist = np.sqrt(
-                        (bag_position[0] - self.flip_point[0])**2 + (bag_position[1] - self.flip_point[1])**2)
-                    if dist < 50:
-                        self.stop()
-                        self.flip_bag()
-                        self.flip_index += 1
-                    else:
-                        angle = np.arctan2(
-                            bag_position[1] - self.flip_point[1], bag_position[0] - self.flip_point[0])
-                        self.update_velocity(dist, angle)
             self.rate.sleep()
 
 
@@ -282,6 +238,6 @@ if __name__ == '__main__':
 
     print("Python Script Running!")
     rospy.init_node('turtle_nest_node')
-    task_node = TurtleNestTaskNode()
+    task_node = TurtleNestTaskNode("green") #
     task_node.active = True
     task_node.run()

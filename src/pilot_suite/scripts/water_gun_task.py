@@ -61,7 +61,7 @@ class WaterGunTaskNode(TaskNode):
         self.bag_positions = []
 
         self.SHRINK_FACTOR = 4
-        self.BLUE_DEVIATION_THRESHOLD = 50
+        self.BLUE_DEVIATION_THRESHOLD = 30
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
         self.SV_THRESHOLD = 100
