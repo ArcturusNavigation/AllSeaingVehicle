@@ -61,7 +61,7 @@ void setup() {
 	node_handle.initNode();
 	node_handle.advertise(validity_publisher)
 	node_handle.subscribe(point_subscriber);
-  node_handle.subscribe(status_sub);
+	node_handle.subscribe(status_sub);
 }
 
 void loop() { 
