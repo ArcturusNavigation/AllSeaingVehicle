@@ -190,12 +190,6 @@ class WaterGunTaskNode(TaskNode):
             img = cv2.cvtColor(self.bridge.imgmsg_to_cv2(
                 img, "bgr8"), cv2.COLOR_BGR2HSV)
 
-            # depth_img = self.MIN_DEPTH + (self.MAX_DEPTH - self.MIN_DEPTH) * depth_img / 255.0
-
-            print(np.count_nonzero(~np.isnan(depth_img)) / depth_img.size)
-
-            print(depth_img)
-
         except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
 
@@ -215,7 +209,6 @@ class WaterGunTaskNode(TaskNode):
             if target_center == (None, None):
                 return
 
-            print("Center is At: ", target_center)
             for i in range(-20, 20):
                 for j in range(-20, 20):
                     try:
@@ -234,7 +227,6 @@ class WaterGunTaskNode(TaskNode):
         else:
             target_center = self.identify_center(segmented_img)
 
-        print("stabilized center has", len(self.center_history))
         self.center_history.append(
             (target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]))
         if len(self.center_history) >= 10:
@@ -254,9 +246,7 @@ class WaterGunTaskNode(TaskNode):
         point = Point()
 
         # convert pixels to meters
-        meters_over_pixels = 2 * np.tan(self.fov/2)*means[2] / W
-
-        print(meters_over_pixels)
+        meters_over_pixels = np.tan(self.fov/2)*means[2] / W
 
         # convert x and y to meters
         x_m = meters_over_pixels * (means[0] - mid_x)
