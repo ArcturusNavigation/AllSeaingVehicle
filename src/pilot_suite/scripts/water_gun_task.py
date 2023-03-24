@@ -234,7 +234,7 @@ class WaterGunTaskNode(TaskNode):
             variances = np.square(ch[:, 0] - means[0]) + np.square(
                 ch[:, 1] - means[1])
             variances_avg = np.mean(variances)
-            self.center_history = ch[variances / variances_avg <= 1.5].tolist()
+            self.center_history = ch[variances / variances_avg <= 15].tolist()
         if len(self.center_history) > 10:
             self.center_history.pop(0)
         elif len(self.center_history) < 10:
