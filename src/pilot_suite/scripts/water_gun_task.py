@@ -260,34 +260,6 @@ class WaterGunTaskNode(TaskNode):
         print("stablizied center (last two should equal):", x_m + self.s, y_m - self.y, means[2], self.D)
         self.center_pub.publish(point)
 
-        if self.debug:
-            center_marker = Marker()
-
-            center_marker.header.frame_id = "map"
-            center_marker.header.stamp = rospy.Time()
-            center_marker.ns = "water_gun_center"
-            center_marker.id = 1
-            center_marker.type = 1  # Cube
-            center_marker.action = 0
-
-            center_marker.pose.position.x = point.x
-            center_marker.pose.position.y = point.y
-            center_marker.pose.position.z = point.z
-
-            center_marker.pose.orientation.x = 0.0
-            center_marker.pose.orientation.y = 0.0
-            center_marker.pose.orientation.z = 0.0
-            center_marker.pose.orientation.w = 1.0
-
-            center_marker.scale.x = 100
-            center_marker.scale.y = 100
-            center_marker.scale.z = 100
-            center_marker.color.a = 1.0  # Don't forget to set the alpha!
-            center_marker.color.r = 0.0
-            center_marker.color.g = 1.0
-            center_marker.color.b = 0.0
-
-            self.marker_pub.publish(center_marker)
 
     def run(self):
         while not rospy.is_shutdown():
