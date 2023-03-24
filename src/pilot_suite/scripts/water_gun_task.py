@@ -68,7 +68,7 @@ class WaterGunTaskNode(TaskNode):
         self.VAR_THRESHOLD = 0.7
 
         #everything in terms of meters
-        self.pixel_width
+        self.pixel_width = 0
         self.s = 0.3 # x distance between camera and water gun (water gun to the left of camera, so smaller pixel numbers)
         self.y = 0.25 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
         self.D = 0.5
