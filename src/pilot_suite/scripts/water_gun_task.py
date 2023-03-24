@@ -86,8 +86,12 @@ class WaterGunTaskNode(TaskNode):
         return res_img
 
     def identify_center(self, input_img):
+
+        not_detected = (None, None)
+
         if self.debug:
-            print("identifying a center")
+            not_detected = ((None, None), None, None)
+
         input_img = np.array(input_img)
 
         min_diff = np.min(
@@ -96,12 +100,12 @@ class WaterGunTaskNode(TaskNode):
         blue_color = self.BLUE_CONSTANT + (min_diff if (120 + min_diff)
                                            in input_img[:, :, 0] else -min_diff)
 
-        if not self.debug and abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
-            return (-1, -1, -1)
+        if abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
+            return not_detected
 
         blues = np.argwhere(np.abs(input_img - blue_color) < 1)
         if len(blues) == 0:
-            return (-1, -1)
+            return not_detected
 
         x_blues, y_blues = blues[:, 0], blues[:, 1]
         if self.debug:
@@ -132,17 +136,12 @@ class WaterGunTaskNode(TaskNode):
 
         x_blues, y_blues = remove_outliers(x_blues, y_blues)
         if len(x_blues) == 0 or len(y_blues) == 0:
-            return (-1, -1)
+            return not_detected
 
         # convert location to location relative to center of the frame
         W, H, _ = input_img.shape
         mid_x = W * self.SHRINK_FACTOR // 2
         mid_y = H * self.SHRINK_FACTOR // 2
-
-        print(mid_x, mid_y)
-        print(np.median(x_blues))
-        print(np.median(y_blues))
-
 
         if self.debug:
             postoutliers_img = filtered_img.copy()
@@ -155,6 +154,7 @@ class WaterGunTaskNode(TaskNode):
 
             return (int(self.SHRINK_FACTOR * np.median(x_blues) - mid_x),
                     int(self.SHRINK_FACTOR * np.median(y_blues) - mid_y)), filtered_img, postoutliers_img
+
         else:
 
             return (int(self.SHRINK_FACTOR * np.median(x_blues) - mid_x),
@@ -202,8 +202,11 @@ class WaterGunTaskNode(TaskNode):
         segmented_img = self.segment_image(
             self.depth_and_sv_mask(img, depth_img))
         if self.debug:
-            target_center, filtered_img, postoutliers_img = self.identify_center(
-                segmented_img)
+            target_center, filtered_img, postoutliers_img = self.identify_center(segmented_img)
+
+            if target_center == (None, None):
+                return
+
             print("Center is At: ", target_center)
             for i in range(-20, 20):
                 for j in range(-20, 20):
@@ -211,7 +214,7 @@ class WaterGunTaskNode(TaskNode):
                         segmented_img[(i+target_center[0])//self.SHRINK_FACTOR,
                                       (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
                     except:
-                        print('Out of Bounds')
+                        pass
 
             self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(
                 cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
