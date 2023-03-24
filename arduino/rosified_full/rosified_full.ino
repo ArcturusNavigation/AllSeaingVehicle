@@ -97,15 +97,13 @@ WatergunModes watergunMode = ZERO;
 
 //---------- ROS setup ----------//
 
-ros::NodeHandle nh;
-geometry_msgs::Point waterPointMsg;
-geometry_msgs::Point ballPointMsg;
-
 void watergunCallback(const geometry_msgs::Point& waterPointMsg) {
 
 	if (waterPointMsg.x == -1 || waterPointMsg.y == -1 || waterPointMsg.z == -1) {
+		digitalWrite(LED_BUILTIN, LOW);
 		watergunMode = ZERO;	
 	} else {
+		digitalWrite(LED_BUILTIN, HIGH);
 		watergunMode = SHOOT;
 	}
 
@@ -114,23 +112,33 @@ void watergunCallback(const geometry_msgs::Point& waterPointMsg) {
 void ballshooterCallback(const geometry_msgs::Point& ballPointMsg) {
 
 	if (ballPointMsg.x == -1 || ballPointMsg.y == -1 || ballPointMsg.z == -1) {
+		digitalWrite(LED_BUILTIN, LOW);
 		shooterMode = STOPPED;
 	} else {
+		digitalWrite(LED_BUILTIN, HIGH);
 		shooterMode = SPEED_UP;
 	}
 
 }
 
+ros::NodeHandle nh;
+geometry_msgs::Point waterPointMsg;
+geometry_msgs::Point ballPointMsg;
+ros::Subscriber<geometry_msgs::Point> waterPointSubscriber("/pilot_suite/water_gun_task/target_center_pose", &watergunCallback);
+ros::Subscriber<geometry_msgs::Point> ballPointSubscriber("/pilot_suite/water_gun_task/shooter_pose", &ballshooterCallback);
+
 //---------- Main setup ----------//
 
 void setup() {
 
-	Serial.begin(9600);
+	// Initialize serial
+	//Serial.begin(9600);
 
+	// Initialize PID
 	shooterPID.begin(&rpm, &shooterSpeed, &SHOOTER_SPEED, shooterP, shooterI, shooterD);
 	shooterPID.setOutputLimits(0, 255);
 
-
+	// Initialize mechanical components
 	waterYawServo.attach(WATER_YAW_SERVO);
 	waterPitchServo.attach(WATER_PITCH_SERVO);
 	collectorServo.attach(BALL_COLLECT_SERVO);
@@ -150,6 +158,13 @@ void setup() {
 	pinMode(CH_B, INPUT_PULLUP);
 	attachInterrupt(digitalPinToInterrupt(CH_A), getEncoderVals, RISING);
 
+	pinMode(LED_BUILTIN, OUTPUT);
+
+	// Initialize ROS
+	nh.initNode();
+	nh.subscribe(ballPointSubscriber);
+	nh.subscribe(waterPointSubscriber);
+
 }
 
 //---------- Main loop ----------//
@@ -158,6 +173,9 @@ void loop() {
 
 	// Update values
 	update();
+
+	// ROS handling
+	nh.spinOnce();
 
 	// Limit switch values
 	int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
@@ -173,6 +191,7 @@ void loop() {
 	//Serial.println("Limit up: " + String(collectorLimitUpVal));
 	//Serial.println("Limit down: " + String(collectorLimitDownVal));
 
+	/*
 	if (Serial.available() > 0) {
 
 		String data = Serial.readStringUntil('\n');
@@ -206,6 +225,7 @@ void loop() {
 		}
 
 	}
+	*/
 
 	// Water gun modes
 	if (watergunMode == ZERO) {
@@ -332,12 +352,12 @@ void pump() {
 	if (pump_toggle) {
 
 		pumpTime = millis();
-		Serial.println("pump turned ON"); 
+		//Serial.println("pump turned ON"); 
 
 	} else {
 
 		pumpTime = 0;  
-		Serial.println("pump turned OFF"); 
+		//Serial.println("pump turned OFF"); 
 
 	}
 
@@ -365,7 +385,7 @@ void aimShooter(float theta) {
 void ballshooterAimShoot(float theta) {
 
 	ballAimServo.write(int(theta));
-	Serial.println("Theta: " + String(theta));
+	//Serial.println("Theta: " + String(theta));
 	delay(1000);
 	shooterSpeedUp();
 
@@ -397,7 +417,7 @@ void shooterSpeedUp() {
 
 	analogWrite(SHOOTER_LPWM, shooterSpeed);
 	analogWrite(SHOOTER_RPWM, 0);
-	Serial.println("Shooter speed: " + String(shooterSpeed)); 
+	//Serial.println("Shooter speed: " + String(shooterSpeed)); 
 
 }
 
