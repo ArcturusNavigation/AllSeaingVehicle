@@ -12,10 +12,8 @@
    IBT-2 pins 5 (R_IS) and 6 (L_IS) not connected
  */
 
-int SENSOR_PIN = 0; // center pin of the potentiometer
-
-int RPWM_Output = 5; // Arduino PWM output pin 5; connect to IBT-2 pin 1 (RPWM)
-int LPWM_Output = 6; // Arduino PWM output pin 6; connect to IBT-2 pin 2 (LPWM)
+int RPWM_Output = 10; // Arduino PWM output pin 5; connect to IBT-2 pin 1 (RPWM)
+int LPWM_Output = 9; // Arduino PWM output pin 6; connect to IBT-2 pin 2 (LPWM)
 
 void setup()
 {
@@ -25,22 +23,12 @@ void setup()
 
 void loop()
 {
-	int sensorValue = 1023;
 
 	// sensor value is in the range 0 to 1023
 	// the lower half of it we use for reverse rotation; the upper half for forward rotation
-	if (sensorValue < 512)
-	{
 		// reverse rotation
-		int reversePWM = -(sensorValue - 511) / 2;
-		analogWrite(LPWM_Output, 0);
-		analogWrite(RPWM_Output, reversePWM);
-	}
-	else
-	{
-		// forward rotation
-		int forwardPWM = (sensorValue - 512) / 2; // was 512
-		analogWrite(RPWM_Output, 0);
-		analogWrite(LPWM_Output, 200);
-	}
+  analogWrite(LPWM_Output, 100);
+  analogWrite(RPWM_Output, 0);
+  //digitalWrite(LPWM_Output, LOW);
+  //digitalWrite(RPWM_Output, HIGH);
 }
