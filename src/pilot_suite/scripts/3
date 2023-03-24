@@ -97,7 +97,7 @@ class WaterGunTaskNode(TaskNode):
                                            in input_img[:, :, 0] else -min_diff)
 
         if not self.debug and abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
-            return (-1, -1, -1)
+            return (-1, -1)
 
         blues = np.argwhere(np.abs(input_img - blue_color) < 1)
         if len(blues) == 0:
@@ -120,29 +120,21 @@ class WaterGunTaskNode(TaskNode):
             y_mean = np.mean(y_blues)
 
             variances = np.square(x_blues - x_mean) + np.square(y_blues - y_mean)
-
             mean_var = np.mean(variances)
-            if mean_var == 0:
-                return x_blues, y_blues
 
             return x_blues[variances / mean_var <= self.VAR_THRESHOLD], y_blues[variances / mean_var <= self.VAR_THRESHOLD]
-
         if self.debug:
             print("removed outliers")
-
         x_blues, y_blues = remove_outliers(x_blues, y_blues)
-        if len(x_blues) == 0 or len(y_blues) == 0:
-            return (-1, -1)
-
         # convert location to location relative to center of the frame
         W, H, _ = input_img.shape
         mid_x = W * self.SHRINK_FACTOR // 2
         mid_y = H * self.SHRINK_FACTOR // 2
 
-        print(mid_x, mid_y)
-        print(np.median(x_blues))
-        print(np.median(y_blues))
-
+        if np.median(x_blues) == None:
+            print(x_blues, "x_blues median is Nan")
+        if np.median(y_blues) == None:
+            print(y_blues, "y_blues median is Nan")
 
         if self.debug:
             postoutliers_img = filtered_img.copy()
