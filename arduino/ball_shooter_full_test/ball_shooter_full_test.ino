@@ -12,8 +12,11 @@
 #define BALL_COLLECT_SERVO 2
 #define BALL_AIM_SERVO 6
 #define SENSOR_PIN 0
-#define SHOOTER_RPWM 10 // Connect to IBT-2 pin 1 (RPWM)
-#define SHOOTER_LPWM 9 // Connect to IBT-2 pin 2 (LPWM) 
+#define SHOOTER_RPWM 7
+#define SHOOTER_LPWM 8
+#define WATER_YAW_SERVO 10
+#define WATER_PITCH_SERVO 11
+#define PUMP 12
 #define CH_A 20
 #define CH_B 21
 
@@ -50,6 +53,14 @@ const double shooterP = 0.15;
 const double shooterI = 0.001;
 const double shooterD = 0.005;
 
+// Water gun setup
+const int WATER_PITCH_ZERO = 0;
+const int WATER_YAW_ZERO = 0;
+Servo waterYawServo;
+Servo waterPitchServo; 
+unsigned long pumpTime = 0;  
+bool pump_toggle = false;
+
 void setup() {
 
 	Serial.begin(9600);
@@ -57,6 +68,9 @@ void setup() {
 	shooterPID.begin(&rpm, &shooterSpeed, &SHOOTER_SPEED, shooterP, shooterI, shooterD);
 	shooterPID.setOutputLimits(0, 255);
 
+
+	waterYawServo.attach(WATER_YAW_SERVO);
+	waterPitchServo.attach(WATER_PITCH_SERVO);
 	collectorServo.attach(BALL_COLLECT_SERVO);
 	ballAimServo.attach(BALL_AIM_SERVO);
 	hopperServo.attach(HOPPER_SERVO);
@@ -64,6 +78,7 @@ void setup() {
 	pinMode(BALL_COLLECT_LIMIT_DOWN, INPUT);
 	pinMode(BALL_COLLECT_LPWM, OUTPUT);
 	pinMode(BALL_COLLECT_RPWM, OUTPUT);	
+	pinMode(PUMP, OUTPUT);
 	pinMode(BALL_COLLECT_SERVO, OUTPUT);
 	pinMode(SHOOTER_LPWM, OUTPUT);
 	pinMode(SHOOTER_RPWM, OUTPUT);
@@ -144,6 +159,7 @@ void loop() {
 			Serial.println("Hopper moving");
 		} else if (data == "5") {
 			shooterMode = STOPPED;
+
 		}
 
 	}
@@ -252,6 +268,24 @@ void update() {
 	rpm = -((num * 1000 * 60) / TIME_INTERVAL);
 
 }
+// Turn on the water pump 
+void pump() {
+
+	pump_toggle = !pump_toggle;
+	digitalWrite(PUMP, pump_toggle);
+	if (pump_toggle) {
+
+		pumpTime = millis();
+		Serial.println("pump turned ON"); 
+
+	} else {
+
+		pumpTime = 0;  
+		Serial.println("pump turned OFF"); 
+
+	}
+
+}
 
 // Get RPM
 double getShooterRPM() {
@@ -281,6 +315,18 @@ void ballshooterAimShoot(float x, float y, float z) {
 
 }
 
+void watergun_aim_shoot(float x, float y, float z){
+
+	float theta1 = atan(z / y); 
+	float theta2 = atan(x / y); 
+	theta1 = WATER_YAW_ZERO + theta1 * 180 / PI; 
+	theta2 = WATER_PITCH_ZERO + theta2 * 180 / PI; 
+	waterYawServo.write(int(theta1)); 
+	waterPitchServo.write(int(theta2)); 
+	pump();
+
+}
+
 // Fire ball shooter
 void shooterSpeedUp() {
 
@@ -296,6 +342,14 @@ void stopShoot() {
 	analogWrite(SHOOTER_LPWM, 0);
 	analogWrite(SHOOTER_RPWM, 0);
 	//Serial.println("Ball shooter stopped!");
+
+}
+
+// Zero water gun
+void zeroWater() {
+
+	waterYawServo.write(WATER_YAW_ZERO);
+	waterPitchServo.write(WATER_PITCH_ZERO);
 
 }
 
