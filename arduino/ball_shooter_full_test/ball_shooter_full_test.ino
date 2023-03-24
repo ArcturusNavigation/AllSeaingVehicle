@@ -128,7 +128,7 @@ void loop() {
 			shooterSpeedUp();
 		} else if (data.substring(0, 1) == "s") {
 			int x = data.substring(1, 4).toInt();
-			int y = data.substring(4, 7).toInt()t;
+			int y = data.substring(4, 7).toInt();
 			int z = data.substring(7, 10).toInt();
 			Serial.println("x: " + String(x));
 			Serial.println("y: " + String(y));
