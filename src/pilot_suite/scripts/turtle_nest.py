@@ -64,6 +64,8 @@ class TurtleNestTaskNode(TaskNode):
         self.BLUE_DEVIATION_THRESHOLD = 50
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
+        self.RED_CONSTANT = 240
+        self.BLUE_CONSTANT = 0
         self.SV_THRESHOLD = 100
         self.VAR_THRESHOLD = 0.7
 
