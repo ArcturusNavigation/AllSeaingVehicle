@@ -1,85 +1,243 @@
-#!/usr/bin/env python
-from collections import namedtuple
+#!/usr/bin/env python3
+import numpy as np
+import cv2
+import os
+import cv_bridge
+import rospy
 
-import rospy 
-import numpy as np 
 from std_msgs.msg import String
-from geometry_msgs.msg import Twist 
-from pilot_suite.msg import VelocityCommand
-# from task_node import TaskNode
-from pilot_suite.task_node import TaskNode
-from pilot_suite.object_types.roboboat import Label
+from message_filters import ApproximateTimeSynchronizer, Subscriber
+from sensor_msgs.msg import Image
+from geometry_msgs.msg import Twist, Point
+from visualization_msgs.msg import Marker
 
-from perception_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
-class BuoyNavNode(TaskNode):
-    def __init__(self,img_height, img_width):
-        super().__init__("navigation_pilot")
-        self.bbox_sub = rospy.Subscriber("/perception_suite/bounding_boxes", LabeledBoundingBox2DArray, self.nav_callback)
-        self.pub = rospy.Publisher("/pilot_suite/velocity_command", VelocityCommand, queue_size=10)
-        self.img_height = img_height
-        self.img_width = img_width
-        self.active = True
-        self.set_velocity = rospy.Publisher('mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=5)
+from task_node import TaskNode
 
-    def nav_callback(self, msg):
+
+class TurtleNestTaskNode(TaskNode):
+
+    def __init__(self, target_color):
+
+        #########################################
+        ######## Execution Debug Mode ###########
+        #########################################
+
+        self.debug = True
+        super().__init__('turtle_nest_task')
+        self.bridge = cv_bridge.CvBridge()
+
+        ########################################
+        ############# PUBLISHERS ###############
+        ########################################
+
+        self.center_pub = rospy.Publisher(
+            '/pilot_suite/turtle_nest_task/target_center_pose', Point, queue_size=1)
+        self.marker_pub = rospy.Publisher(
+            '/pilot_suite/turtle_nest_task/debug/marker_pub', Marker, queue_size=1)
+
+        if(self.debug):
+            self.image_segmented_pub = rospy.Publisher(
+                '/pilot_suite/turtle_nest_task/debug/segmented_img', Image, queue_size=1)
+            self.image_filtered_pub = rospy.Publisher(
+                '/pilot_suite/turtle_nest_task/debug/filtered_img', Image, queue_size=1)
+            self.image_outliers_pub = rospy.Publisher(
+                '/pilot_suite/turtle_nest_task/debug/outliers_img', Image, queue_size=1)
+
+        # self.velocity_pub = rospy.Publisher('pilot_suite/velocity_command',VelocityCommand, queue_size=1 )
+
+        # Subscribe to approximatley synchornized depth and rgb images
+        depth_sub = Subscriber('/zed2i/zed_node/depth/depth_registered', Image)
+        rgb_sub = Subscriber('/zed2i/zed_node/rgb/image_rect_color', Image)
+
+        self.ats = ApproximateTimeSynchronizer(
+            [depth_sub, rgb_sub], queue_size=1, slop=.1)
+
+        self.ats.registerCallback(self.callback)
+        print("on callback")
+
+        self.SHRINK_FACTOR = 4
+        self.TARGET_COLOR_DEVIATION_THRESHOLD = 30
+        self.DEPTH_THRESHOLD = 10
+        if target_color == "blue":
+            self.TARGET_COLOR_CONSTANT = 120
+        elif target_color == "red":
+            self.TARGET_COLOR_CONSTANT = 0 # TODO: mod 180 later
+        elif target_color == "green":
+            self.TARGET_COLOR_CONSTANT = 60
+        self.SV_THRESHOLD = 100
+        self.VAR_THRESHOLD = 0.7
+
+        self.center_history = []
+
+    def depth_and_sv_mask(self, original_img, depth_img):
+
+        res_img = np.copy(original_img)
+
+        res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
+
+        return res_img
+
+    def identify_center(self, input_img):
+        if self.debug:
+            print("identifying a center")
+        input_img = np.array(input_img)
+
+        min_diff = np.min(
+            np.abs(input_img[:, :, 0] - 120 * np.ones(input_img.shape[:2])))
+
+        target_color_color = self.TARGET_COLOR_CONSTANT + (min_diff if (120 + min_diff)
+                                           in input_img[:, :, 0] else -min_diff)
+
+        if not self.debug and abs(target_color_color - 120) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
+            return (-1, -1)
+
+        target_colors = np.argwhere(np.abs(input_img - target_color_color) < 1)
+
+        x_target_colors, y_target_colors = target_colors[:, 0], target_colors[:, 1]
+        if self.debug:
+            filtered_img = input_img.copy()
+
+            for i in range(input_img.shape[0]):
+                for j in range(input_img.shape[1]):
+                    if (abs(input_img[i][j][0] - target_color_color) < 1):
+                        continue
+                    else:
+                        filtered_img[i, j, :] = [0, 0, 0]
+
+        def remove_outliers(x_target_colors, y_target_colors):
+
+            x_mean = np.mean(x_target_colors)
+            y_mean = np.mean(y_target_colors)
+
+            vars = np.square(x_target_colors - x_mean) + np.square(y_target_colors - y_mean)
+            mean_var = np.mean(vars)
+
+            return x_target_colors[vars / mean_var <= self.VAR_THRESHOLD], y_target_colors[vars / mean_var <= self.VAR_THRESHOLD]
+        if self.debug:
+            print("removed outliers")
+        x_target_colors, y_target_colors = remove_outliers(x_target_colors, y_target_colors)
+        # convert location to location relative to center of the frame
+        W, H, _ = input_img.shape
+        mid_x = W * self.SHRINK_FACTOR // 2
+        mid_y = H * self.SHRINK_FACTOR // 2
+
+        if self.debug:
+            postoutliers_img = filtered_img.copy()
+            for i in range(len(postoutliers_img)):
+                for j in range(len(postoutliers_img[0])):
+                    postoutliers_img[i, j, :] = np.zeros(3)
+            for i in range(len(x_target_colors)):
+                postoutliers_img[x_target_colors[i], y_target_colors[i],
+                                 :] = np.array([120, 100, 100])
+
+            return (int(self.SHRINK_FACTOR * np.median(x_target_colors) - mid_x),
+                    int(self.SHRINK_FACTOR * np.median(y_target_colors) - mid_y)), filtered_img, postoutliers_img
+        else:
+
+            return (int(self.SHRINK_FACTOR * np.median(x_target_colors) - mid_x),
+                    int(self.SHRINK_FACTOR * np.median(y_target_colors) - mid_y), )
+
+    def segment_image(self, input_img):
+
+        scaled_dim = (input_img.shape[1] // self.SHRINK_FACTOR,
+                      input_img.shape[0] // self.SHRINK_FACTOR)
+
+        img = cv2.resize(input_img, scaled_dim, interpolation=cv2.INTER_AREA)
+
+        twoDimage = np.float32(img.reshape((-1, 3)))
+
+        criteria = (cv2.TERM_CRITERIA_EPS +
+                    cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+
+        K = 7
+        attempts = 1
+
+        _, label, center = cv2.kmeans(
+            twoDimage, K, None, criteria, attempts, cv2.KMEANS_PP_CENTERS)
+        center = np.uint8(center)
+        res = center[label.flatten()]
+
+        result_image = res.reshape((img.shape))
+
+        return result_image
+
+    def callback(self, depth_img, img):
+
         if not self.active:
             return
-        rospy.loginfo_once('Active!')
-        port_pos = 0 # Left objects 
-        starboard_pos = self.img_width #Right objects
-        obstacle_pos = -1 # Only used if we find obstacles
-        # We use the object closest to the bottom of the image i.e. closest to the boat
-        port_y = 0 
-        starboard_y = 0
-        obstacle_y = 0
-        for box in msg.boxes:
-            box_pos_x = (box.max_x + box.min_x)/2
-            box_pos_y = (box.max_y + box.min_y)/2 
-            if box.label  in [Label.RED_POLE.value, Label.RED_BUOY.value]:
-                if box_pos_x < self.img_width/2:
-                    if box_pos_y > port_y:
-                        port_pos = box_pos_x
-                        port_y = box_pos_y
-                else:
-                    #TODO: Figure out what to do in this case
-                    rospy.loginfo(f"WARNING: Red object found but not on port side ({(box_pos_x,box_pos_y)})")
-                    port_pos = box_pos_x 
-                    port_y = box_pos_y
-            elif box.label in [Label.GREEN_POLE.value,Label.GREEN_BUOY.value]:
-                if box_pos_x > self.img_width/2: 
-                    if box_pos_y > starboard_y:
-                        starboard_pos = box_pos_x
-                        starboard_y = box_pos_y
-                else:
-                    #TODO: Figure out what to do in this case
-                    rospy.loginfo(f"WARNING: Green object found but not on starboard side ({(box_pos_x,box_pos_y)})")
-                    starboard_pos = box_pos_x
-                    starboard_y = box_pos_y
-            elif box.label in [Label.YELLOW_BUOY.value, Label.BLACK_BUOY.value, Label.BLUE_BUOY.value]:
-                if box_pos_y > obstacle_y:
-                    obstacle_pos = box_pos_x
-                    obstacle_y = box_pos_y
-        if obstacle_pos == -1:
-            midpoint_x = (port_pos + starboard_pos)/2.0
-        elif obstacle_pos < self.img_width/2:
-            midpoint_x = (port_pos + obstacle_pos)/2.0
+        # Convert depth and rgb image using cvBridge
+        try:
+            depth_img = self.bridge.imgmsg_to_cv2(depth_img, "32FC1")
+            img = cv2.cvtColor(self.bridge.imgmsg_to_cv2(
+                img, "bgr8"), cv2.COLOR_BGR2HSV)
+        except cv_bridge.CvBridgeError as e:
+            rospy.loginfo(e)
+
+        cv2.imwrite("~/test.jpg", self.depth_and_sv_mask(img, depth_img))
+        cv2.imwrite('~/depth_map.jpg', depth_img)
+
+        segmented_img = self.segment_image(
+            self.depth_and_sv_mask(img, depth_img))
+        if self.debug:
+            target_center, filtered_img, postoutliers_img = self.identify_center(
+                segmented_img)
+            print("Center is At: ", target_center)
+            for i in range(-20, 20):
+                for j in range(-20, 20):
+                    try:
+                        segmented_img[(i+target_center[0])//self.SHRINK_FACTOR,
+                                      (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
+                    except:
+                        print('Out of Bounds')
+
+            self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(
+                cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
+            self.image_filtered_pub.publish(self.bridge.cv2_to_imgmsg(
+                cv2.cvtColor(filtered_img, cv2.COLOR_HSV2BGR), "bgr8"))
+            self.image_outliers_pub.publish(self.bridge.cv2_to_imgmsg(
+                cv2.cvtColor(postoutliers_img, cv2.COLOR_HSV2BGR), "bgr8"))
+
         else:
-            midpoint_x = (starboard_pos + obstacle_pos)/2.0
-        command_angle = -np.arctan2(midpoint_x - self.img_width/2, self.img_height)
-        vel_command = VelocityCommand() 
-        command = Twist()
-        command.angular.z = command_angle * 1.5
-        command.linear.x = 10.0
-        vel_command.twist = command
-        vel_command.cancel = False
-        self.pub.publish(vel_command)
-        self.set_velocity.publish(command)
+            target_center = self.identify_center(segmented_img)
+        print("stabilized center has", len(self.center_history))
+        self.center_history.append(
+            [target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]])
+        if len(self.center_history) >= 10:
+            ch = np.array(self.center_history)
+            means = np.mean(ch, axis=0)
+            vars = np.square(ch[:, 0] - means[0]) + np.square(
+                ch[:, 1] - means[1])
+            vars_avg = np.mean(vars)
+            self.center_history = ch[vars / vars_avg <= 1.5].tolist()
+        if len(self.center_history) > 10:
+            self.center_history.pop(0)
+        elif len(self.center_history) < 10:
+            return
 
-if __name__ == "__main__":
-    try:
-        rospy.init_node("navigation_pilot")
-        node = BuoyNavNode(480, 640) #TODO: Make these parameters
-        rospy.spin()   
-    except rospy.ROSInterruptException:
-        pass   
+        ch = np.array(self.center_history)
+        means = np.mean(ch, axis=0)
+        point = Point()
+        # x value is the column, y value is the row. these are relative to the center of the frame, so (0,0) means the target center at frame center
+        point.x = means[1]
+        point.y = means[0]
+        point.z = means[2]
+        print("stablizied center:", means[1], means[0], means[2])
+        self.center_pub.publish(point)
 
+
+    def run(self):
+        while not rospy.is_shutdown():
+            if self.active:
+                pass
+            self.rate.sleep()
+
+
+if __name__ == '__main__':
+
+    print("Python Script Running!")
+    rospy.init_node('turtle_nest_node')
+    task_node = TurtleNestTaskNode("green") #
+    task_node.active = True
+    task_node.run()

@@ -61,12 +61,18 @@ class WaterGunTaskNode(TaskNode):
         self.bag_positions = []
 
         self.SHRINK_FACTOR = 4
-        self.BLUE_DEVIATION_THRESHOLD = 50
+        self.BLUE_DEVIATION_THRESHOLD = 30
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
         self.SV_THRESHOLD = 100
         self.VAR_THRESHOLD = 0.7
 
+        #everything in terms of meters
+        self.pixel_width = 0
+        self.s = 0.3 # x distance between camera and water gun (water gun to the left of camera, so smaller pixel numbers)
+        self.y = 0.25 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
+        self.D = 0.5
+        self.fov = 2.0944 # this is 120 degrees as the zed 2i advertises
         self.center_history = []
 
     def depth_and_sv_mask(self, original_img, depth_img):
@@ -219,11 +225,21 @@ class WaterGunTaskNode(TaskNode):
         ch = np.array(self.center_history)
         means = np.mean(ch, axis=0)
         point = Point()
+
+        # convert pixels to meters
+        meters_over_pixels = 2 * np.tan(self.fov/2)*self.D
+
+        # convert x and y to meters
+        x_m = meters_over_pixels * means[1]
+        y_m = meters_over_pixels * means[0]
+
+
         # x value is the column, y value is the row. these are relative to the center of the frame, so (0,0) means the target center at frame center
-        point.x = means[1]
-        point.y = means[0]
-        point.z = means[2]
-        print("stablizied center:", means[1], means[0], means[2])
+        point.x = x_m + self.s
+        point.y = y_m - self.y
+        point.z = means[2] # maybe it should just be self.D?
+
+        print("stablizied center (last two should equal):", x_m + self.s, y_m - self.y, means[2], self.D)
         self.center_pub.publish(point)
 
         if self.debug:
