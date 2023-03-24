@@ -1,18 +1,18 @@
 #include <Servo.h>
 #include <AFMotor.h>
 
-#define HALL_EFFECT_BACK 12
-#define HALL_EFFECT_FRONT 13
+#define HALL_EFFECT_BACK 14
+#define HALL_EFFECT_FRONT 15
 #define HOPPER_SERVO 5
 #define BALL_COLLECT_LIMIT_UP 1
 #define BALL_COLLECT_LIMIT_DOWN 2
 #define BALL_COLLECT_LPWM 3
 #define BALL_COLLECT_RPWM 4
-#define BALL_COLLECT_SERVO 4
-#define BALL_AIM_SERVO 7
+#define BALL_COLLECT_SERVO 2
+#define BALL_AIM_SERVO 6
 #define SENSOR_PIN 0
-#define RPWM_OUTPUT 5 // Connect to IBT-2 pin 1 (RPWM)
-#define LPWM_OUTPUT 6 // Connect to IBT-2 pin 2 (LPWM) 
+#define SHOOTER_RPWM 10 // Connect to IBT-2 pin 1 (RPWM)
+#define SHOOTER_LPWM 6 // Connect to IBT-2 pin 2 (LPWM) 
 #define CH_A 20
 #define CH_B 21
 
@@ -21,6 +21,7 @@ Servo collectorServo;
 Servo hopperServo;
 const int COLLECT_MOTOR_SPEED = 50; // MAX 255
 const int COLLECT_SERVO_SPEED = 50; // MAX 360
+const int HOPPER_SERVO_SPEED = 110;
 const int REVERSE_TIME = 5000;
 
 unsigned long timeSinceReverse = 0;
@@ -39,23 +40,24 @@ const int GEAR_RATIO = 2;
 // Ball shooter hopper movement
 bool isHopperMoving = false;
 unsigned long timeSinceHopperMove = 0;
+long deltaCounter = 0;
 
 void setup() {
 
-  Serial.begin(9600);
+	Serial.begin(9600);
 
-  collectorServo.attach(BALL_COLLECT_SERVO);
-  hopperServo.attach(HOPPER_SERVO);
+	collectorServo.attach(BALL_COLLECT_SERVO);
+	hopperServo.attach(HOPPER_SERVO);
 	pinMode(BALL_COLLECT_LIMIT_UP, INPUT);
 	pinMode(BALL_COLLECT_LIMIT_DOWN, INPUT);
-  pinMode(BALL_COLLECT_LPWM, OUTPUT);
-  pinMode(BALL_COLLECT_RPWM, OUTPUT);	
-  pinMode(BALL_COLLECT_SERVO, OUTPUT);
-  pinMode(HALL_EFFECT_BACK, INPUT_PULLUP);
+	pinMode(BALL_COLLECT_LPWM, OUTPUT);
+	pinMode(BALL_COLLECT_RPWM, OUTPUT);	
+	pinMode(BALL_COLLECT_SERVO, OUTPUT);
+	pinMode(HALL_EFFECT_BACK, INPUT_PULLUP);
 	pinMode(HALL_EFFECT_FRONT, INPUT_PULLUP);
-  pinMode(CH_A, INPUT_PULLUP);
-  pinMode(CH_B, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(CH_A), getEncoderVals, RISING);
+	pinMode(CH_A, INPUT_PULLUP);
+	pinMode(CH_B, INPUT_PULLUP);
+	attachInterrupt(digitalPinToInterrupt(CH_A), getEncoderVals, RISING);
 
 }
 
@@ -65,7 +67,7 @@ enum CollectorModes {
 	MOVE_DOWN,
 	MOVE_UP,
 	INACTIVATED,
-  REVERSE
+	REVERSE
 
 };
 
@@ -73,107 +75,107 @@ CollectorModes collectorMode = INACTIVATED;
 
 void loop() {
 
-  // Change in encoder values
-  unsigned long deltaTime = millis() - lastTime;
-  lastTime = millis();
-  long deltaCounter = counter - prevCounter;
-  prevCounter = counter;
+	// Change in encoder values
+	if (millis() - lastTime > TIME_INTERVAL) {
+		lastTime = millis();
+		deltaCounter = counter - prevCounter;
+		prevCounter = counter;
+	}
 
-  // Calculate RPM
-  double num = GEAR_RATIO * deltaCounter / PPR;
-  //Serial.println(num);
-  float rpm = (num * 1000 * 60) / deltaTime;
-  Serial.println(rpm);
+	// Calculate RPM
+	double num = GEAR_RATIO * deltaCounter / PPR;
+	//Serial.println(num);
+	float rpm = (num * 1000 * 60) / TIME_INTERVAL;
 
-  // Limit switch values
-  int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
+	// Limit switch values
+	int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
 	int collectorLimitDownVal = digitalRead(BALL_COLLECT_LIMIT_DOWN);
 
-  // Hall effect sensor values
-  int hallEffectBackVal = digitalRead(HALL_EFFECT_BACK);
+	// Hall effect sensor values
+	int hallEffectBackVal = digitalRead(HALL_EFFECT_BACK);
 	int hallEffectFrontVal = digitalRead(HALL_EFFECT_FRONT);
-  //Serial.println("deltaCounter: " + String(deltaCounter));
-  //Serial.println("deltaTime:" + String(deltaTime));
-  //Serial.println("RPM: " + String(rpm));
-  //Serial.println("Limit up: " + String(collectorLimitUpVal));
+	//Serial.println("deltaCounter: " + String(deltaCounter));
+	//Serial.println("deltaTime:" + String(deltaTime));
+	Serial.println("RPM: " + String(rpm));
+	//Serial.println("Limit up: " + String(collectorLimitUpVal));
 	//Serial.println("Limit down: " + String(collectorLimitDownVal));
 
-  if (Serial.available() > 0) {
+	if (Serial.available() > 0) {
 
-    String data = Serial.readStringUntil('\n');
-    if (data == "0") {
-      isHopperMoving = true;
-      timeSinceHopperMove = millis();
-      Serial.println("Hopper moving");
-    } else if (data == "1") {
-      collectorMode = MOVE_DOWN;
-    } else if (data == "2") {
-      collectorMode = MOVE_UP;
-    } else if (data == "3") {
-      ballShoot();
-    } else if (data[0] == "s") {
-      int x = data.substring(1, 4).toInt();
-      int y = data.substring(4, 7).toInt();
-      int z = data.substring(7, 10).toInt();
-      ballshooterAimShoot(x, y, z);
-    }
+		String data = Serial.readStringUntil('\n');
+		if (data == "0") {
+			isHopperMoving = true;
+			timeSinceHopperMove = millis();
+			Serial.println("Hopper moving");
+		} else if (data == "1") {
+			collectorMode = MOVE_DOWN;
+		} else if (data == "2") {
+			collectorMode = MOVE_UP;
+		} else if (data == "3") {
+			ballShoot();
+		} else if (data[0] == "s") {
+			int x = data.substring(1, 4).toInt();
+			int y = data.substring(4, 7).toInt();
+			int z = data.substring(7, 10).toInt();
+			ballshooterAimShoot(x, y, z);
+		}
 
 	}
 
-  // Moving the hopper
+	// Moving the hopper
 	if (isHopperMoving) {
 
-		hopperServo.write(0);
+		hopperServo.write(HOPPER_SERVO_SPEED);
 		Serial.println(timeSinceHopperMove);
 
 	} else {
 
-		hopperServo.write(60);
+		hopperServo.write(90);
 
 	}
 
-  // Stopping the hopper
-	if ((hallEffectFrontVal == HIGH || hallEffectBackVal == HIGH) &&
-		millis() - timeSinceHopperMove > 500) {
+	// Stopping the hopper
+	if ((hallEffectFrontVal == LOW || hallEffectBackVal == LOW) &&
+			millis() - timeSinceHopperMove > 500) {
 
 		isHopperMoving = false;
 		//Serial.println("Hopper stopped");
 
 	}
 
-  // Ball collector modes
-  if (collectorMode == INACTIVATED) {
-    analogWrite(BALL_COLLECT_LPWM, 0);
-    analogWrite(BALL_COLLECT_RPWM, 0);
-    collectorServo.write(0);
-  } else if (collectorMode == COLLECT) {
-    analogWrite(BALL_COLLECT_LPWM, 0);
-    analogWrite(BALL_COLLECT_RPWM, 0);
-    collectorServo.write(COLLECT_SERVO_SPEED);
-  } else if (collectorMode == MOVE_UP) {
-    analogWrite(BALL_COLLECT_LPWM, COLLECT_MOTOR_SPEED);
-    analogWrite(BALL_COLLECT_RPWM, 0);
-    collectorServo.write(0);
-    if (collectorLimitUpVal == HIGH) {
-      collectorMode = INACTIVATED;
-    }
-  } else if (collectorMode == MOVE_DOWN) {
-    analogWrite(BALL_COLLECT_LPWM, 0);
-    analogWrite(BALL_COLLECT_RPWM, -COLLECT_MOTOR_SPEED);
-    collectorServo.write(0);
-    if (collectorLimitDownVal == HIGH) {
-      collectorMode = COLLECT;
-    }
-  } else if (collectorMode == REVERSE) {
-    analogWrite(BALL_COLLECT_LPWM, 0);
-    analogWrite(BALL_COLLECT_RPWM, 0);
-    collectorServo.write(-COLLECT_SERVO_SPEED);
-    if (millis() - timeSinceReverse > REVERSE_TIME) {
-      collectorMode = INACTIVATED;
-    }
-  } else {
-    Serial.println("wfh is going on");
-  }
+	// Ball collector modes
+	if (collectorMode == INACTIVATED) {
+		analogWrite(BALL_COLLECT_LPWM, 0);
+		analogWrite(BALL_COLLECT_RPWM, 0);
+		collectorServo.write(0);
+	} else if (collectorMode == COLLECT) {
+		analogWrite(BALL_COLLECT_LPWM, 0);
+		analogWrite(BALL_COLLECT_RPWM, 0);
+		collectorServo.write(COLLECT_SERVO_SPEED);
+	} else if (collectorMode == MOVE_UP) {
+		analogWrite(BALL_COLLECT_LPWM, COLLECT_MOTOR_SPEED);
+		analogWrite(BALL_COLLECT_RPWM, 0);
+		collectorServo.write(0);
+		if (collectorLimitUpVal == HIGH) {
+			collectorMode = INACTIVATED;
+		}
+	} else if (collectorMode == MOVE_DOWN) {
+		analogWrite(BALL_COLLECT_LPWM, 0);
+		analogWrite(BALL_COLLECT_RPWM, -COLLECT_MOTOR_SPEED);
+		collectorServo.write(0);
+		if (collectorLimitDownVal == HIGH) {
+			collectorMode = COLLECT;
+		}
+	} else if (collectorMode == REVERSE) {
+		analogWrite(BALL_COLLECT_LPWM, 0);
+		analogWrite(BALL_COLLECT_RPWM, 0);
+		collectorServo.write(-COLLECT_SERVO_SPEED);
+		if (millis() - timeSinceReverse > REVERSE_TIME) {
+			collectorMode = INACTIVATED;
+		}
+	} else {
+		Serial.println("wth is going on");
+	}
 
 }
 
@@ -196,13 +198,13 @@ void ballShoot() {
 	if (sensorValue < 512){
 		// reverse rotation
 		int reversePWM = -(sensorValue - 511) / 2;
-		analogWrite(LPWM_OUTPUT, 0);
-		analogWrite(RPWM_OUTPUT, reversePWM);
+		analogWrite(SHOOTER_LPWM, 0);
+		analogWrite(SHOOTER_RPWM, reversePWM);
 	} else {
 		// forward rotation
 		int forwardPWM = (sensorValue - 512) / 2;
-		analogWrite(RPWM_OUTPUT, 0);
-		analogWrite(LPWM_OUTPUT, forwardPWM);
+		analogWrite(SHOOTER_RPWM, 0);
+		analogWrite(SHOOTER_LPWM, forwardPWM);
 	}
 	Serial.println("Ball shooter fired!"); 
 
@@ -211,10 +213,10 @@ void ballShoot() {
 // Update ball shooter encoder values
 void getEncoderVals() {
 
-  if (digitalRead(CH_B) != digitalRead(CH_A)) {
-    counter--;
-  } else {
-    counter++;
-  }
+	if (digitalRead(CH_B) != digitalRead(CH_A)) {
+		counter--;
+	} else {
+		counter++;
+	}
 
 }
