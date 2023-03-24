@@ -190,12 +190,18 @@ class WaterGunTaskNode(TaskNode):
             img = cv2.cvtColor(self.bridge.imgmsg_to_cv2(
                 img, "bgr8"), cv2.COLOR_BGR2HSV)
 
+            # depth_img = self.MIN_DEPTH + (self.MAX_DEPTH - self.MIN_DEPTH) * depth_img / 255.0
+
+            print(np.count_nonzero(~np.isnan(depth_img)) / depth_img.size)
+
+            print(depth_img)
+
         except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
 
-        H, W, _ = img.shape
-        mid_x = W // 2
-        mid_y = H // 2
+        W, H, _ = img.shape
+        mid_x = W * self.SHRINK_FACTOR // 2
+        mid_y = H * self.SHRINK_FACTOR // 2
 
         cv2.imwrite("~/test.jpg", self.depth_and_sv_mask(img, depth_img))
         cv2.imwrite('~/depth_map.jpg', depth_img)
@@ -209,6 +215,7 @@ class WaterGunTaskNode(TaskNode):
             if target_center == (None, None):
                 return
 
+            print("Center is At: ", target_center)
             for i in range(-20, 20):
                 for j in range(-20, 20):
                     try:
@@ -227,6 +234,7 @@ class WaterGunTaskNode(TaskNode):
         else:
             target_center = self.identify_center(segmented_img)
 
+        print("stabilized center has", len(self.center_history))
         self.center_history.append(
             (target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]))
         if len(self.center_history) >= 10:
@@ -246,11 +254,11 @@ class WaterGunTaskNode(TaskNode):
         point = Point()
 
         # convert pixels to meters
-        meters_over_pixels = np.tan(self.fov/2)*means[2] / W
+        meters_over_pixels = 2 * np.tan(self.fov/2)*means[2] / W
 
         # convert x and y to meters
-        x_m = meters_over_pixels * (means[0] - mid_x)
-        y_m = meters_over_pixels * (means[1] - mid_y)
+        x_m = meters_over_pixels * means[1] - mid_y
+        y_m = meters_over_pixels * means[0] - mid_x
 
 
         # x value is the column, y value is the row. these are relative to the center of the frame, so (0,0) means the target center at frame center
@@ -258,7 +266,7 @@ class WaterGunTaskNode(TaskNode):
         point.y = y_m - self.y
         point.z = means[2] # maybe it should just be self.D?
 
-        print("stablizied center (last two should equal):", x_m, y_m, means[2], self.D)
+        print("stablizied center (last two should equal):", x_m + self.s, y_m - self.y, means[2], self.D)
         self.center_pub.publish(point)
 
 
