@@ -2,6 +2,7 @@
 #include <ros.h>
 #include <ArduPID.h>
 #include <geometry_msgs/Point.h>
+#include <std_msgs/String.h>
 #include <Servo.h>
 #include <AFMotor.h>
 
@@ -45,7 +46,7 @@ double rpm = 0;
 // Ball shooter hopper movement
 const int NUM_ROTATION = 3;
 const int HOPPER_SERVO_SPEED = 110;
-const double SHOOTER_SPEED = 2000;
+const double SHOOTER_SPEED = 1000;
 unsigned long timeSinceHopperMove = 0;
 long deltaCounter = 0;
 int rotateCounter = 0;
@@ -97,135 +98,18 @@ WatergunModes watergunMode = ZERO;
 
 //---------- ROS setup ----------//
 
-void watergunCallback(const geometry_msgs::Point& waterPointMsg) {
-
-	if (waterPointMsg.x == -1 || waterPointMsg.y == -1 || waterPointMsg.z == -1) {
-		digitalWrite(LED_BUILTIN, LOW);
-		watergunMode = ZERO;	
-	} else {
-		digitalWrite(LED_BUILTIN, HIGH);
-		watergunMode = SHOOT;
-	}
-
-}
-
-void ballshooterCallback(const geometry_msgs::Point& ballPointMsg) {
-
-	if (ballPointMsg.x == -1 || ballPointMsg.y == -1 || ballPointMsg.z == -1) {
-		digitalWrite(LED_BUILTIN, LOW);
-		shooterMode = STOPPED;
-	} else {
-		digitalWrite(LED_BUILTIN, HIGH);
-		shooterMode = SPEED_UP;
-	}
-
-}
-
+// Messages
 ros::NodeHandle nh;
 geometry_msgs::Point waterPointMsg;
 geometry_msgs::Point ballPointMsg;
-ros::Subscriber<geometry_msgs::Point> waterPointSubscriber("/pilot_suite/water_gun_task/target_center_pose", &watergunCallback);
-ros::Subscriber<geometry_msgs::Point> ballPointSubscriber("/pilot_suite/water_gun_task/shooter_pose", &ballshooterCallback);
 
-//---------- Main setup ----------//
+void watergunCallback(const geometry_msgs::Point& waterPointMsg) {
 
-void setup() {
-
-	// Initialize serial
-	//Serial.begin(9600);
-
-	// Initialize PID
-	shooterPID.begin(&rpm, &shooterSpeed, &SHOOTER_SPEED, shooterP, shooterI, shooterD);
-	shooterPID.setOutputLimits(0, 255);
-
-	// Initialize mechanical components
-	waterYawServo.attach(WATER_YAW_SERVO);
-	waterPitchServo.attach(WATER_PITCH_SERVO);
-	collectorServo.attach(BALL_COLLECT_SERVO);
-	ballAimServo.attach(BALL_AIM_SERVO);
-	hopperServo.attach(HOPPER_SERVO);
-	pinMode(BALL_COLLECT_LIMIT_UP, INPUT);
-	pinMode(BALL_COLLECT_LIMIT_DOWN, INPUT);
-	pinMode(BALL_COLLECT_LPWM, OUTPUT);
-	pinMode(BALL_COLLECT_RPWM, OUTPUT);	
-	pinMode(PUMP, OUTPUT);
-	pinMode(BALL_COLLECT_SERVO, OUTPUT);
-	pinMode(SHOOTER_LPWM, OUTPUT);
-	pinMode(SHOOTER_RPWM, OUTPUT);
-	pinMode(HALL_EFFECT_BACK, INPUT_PULLUP);
-	pinMode(HALL_EFFECT_FRONT, INPUT_PULLUP);
-	pinMode(CH_A, INPUT_PULLUP);
-	pinMode(CH_B, INPUT_PULLUP);
-	attachInterrupt(digitalPinToInterrupt(CH_A), getEncoderVals, RISING);
-
-	pinMode(LED_BUILTIN, OUTPUT);
-
-	// Initialize ROS
-	nh.initNode();
-	nh.subscribe(ballPointSubscriber);
-	nh.subscribe(waterPointSubscriber);
-
-}
-
-//---------- Main loop ----------//
-
-void loop() {
-
-	// Update values
-	update();
-
-	// ROS handling
-	nh.spinOnce();
-
-	// Limit switch values
-	int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
-	int collectorLimitDownVal = digitalRead(BALL_COLLECT_LIMIT_DOWN);
-
-	// Hall effect sensor values
-	int hallEffectBackVal = digitalRead(HALL_EFFECT_BACK);
-	int hallEffectFrontVal = digitalRead(HALL_EFFECT_FRONT);
-
-	//Serial.println("deltaCounter: " + String(deltaCounter));
-	//Serial.println("deltaTime:" + String(deltaTime));
-	//Serial.println("RPM: " + String(rpm));
-	//Serial.println("Limit up: " + String(collectorLimitUpVal));
-	//Serial.println("Limit down: " + String(collectorLimitDownVal));
-
-	/*
-	if (Serial.available() > 0) {
-
-		String data = Serial.readStringUntil('\n');
-		if (data == "0") {
-			shooterMode = ROTATE;
-			timeSinceHopperMove = millis();
-			Serial.println("Hopper moving");
-		} else if (data == "1") {
-			collectorMode = MOVE_DOWN;
-		} else if (data == "2") {
-			collectorMode = MOVE_UP;
-		} else if (data == "3") {
-			shooterMode = SPEED_UP;
-		} else if (data.substring(0, 1) == "s") {
-			int x = data.substring(1, 4).toInt();
-			int y = data.substring(4, 7).toInt();
-			int z = data.substring(7, 10).toInt();
-			Serial.println("x: " + String(x));
-			Serial.println("y: " + String(y));
-			Serial.println("z: " + String(z));
-			ballshooterAimShoot(x, y, z);
-		} else if (data.substring(0, 1) == "t") {
-			int theta = data.substring(1, 4).toInt();
-			ballshooterAimShoot(theta);
-		} else if (data == "4") {
-			shooterMode = SPEED_UP;
-			Serial.println("Hopper moving");
-		} else if (data == "5") {
-			shooterMode = STOPPED;
-			zeroWater();
-		}
-
+	if (waterPointMsg.x == -1 || waterPointMsg.y == -1 || waterPointMsg.z == -1) {
+		watergunMode = ZERO;	
+	} else {
+		watergunMode = SHOOT;
 	}
-	*/
 
 	// Water gun modes
 	if (watergunMode == ZERO) {
@@ -233,8 +117,22 @@ void loop() {
 	} else if (watergunMode == SHOOT) {
 		watergunAimShoot(waterPointMsg.x, waterPointMsg.y, waterPointMsg.z);
 	} else {
-		Serial.println("rip watergun");
+		//Serial.println("rip watergun");
 	}
+
+}
+
+void ballshooterCallback(const geometry_msgs::Point& ballPointMsg) {
+
+	if (ballPointMsg.x == -1 || ballPointMsg.y == -1 || ballPointMsg.z == -1) {
+		shooterMode = STOPPED;
+	} else {
+		shooterMode = SPEED_UP;
+	}
+
+	// Hall effect sensor values
+	int hallEffectBackVal = digitalRead(HALL_EFFECT_BACK);
+	int hallEffectFrontVal = digitalRead(HALL_EFFECT_FRONT);
 
 	// Ball shooter modes
 	shooterPID.compute();
@@ -280,6 +178,98 @@ void loop() {
 		Serial.println("sketchy shooter mode");
 	}
 
+}
+
+// Subscribers and publishers
+ros::Subscriber<geometry_msgs::Point> waterPointSubscriber("/pilot_suite/water_gun_task/target_center_pose", &watergunCallback);
+ros::Subscriber<geometry_msgs::Point> ballPointSubscriber("/pilot_suite/water_gun_task/shooter_pose", &ballshooterCallback);
+
+//---------- Main setup ----------//
+
+void setup() {
+
+	// Initialize PID
+	shooterPID.begin(&rpm, &shooterSpeed, &SHOOTER_SPEED, shooterP, shooterI, shooterD);
+	shooterPID.setOutputLimits(0, 255);
+
+	// Initialize mechanical components
+	waterYawServo.attach(WATER_YAW_SERVO);
+	waterPitchServo.attach(WATER_PITCH_SERVO);
+	collectorServo.attach(BALL_COLLECT_SERVO);
+	ballAimServo.attach(BALL_AIM_SERVO);
+	hopperServo.attach(HOPPER_SERVO);
+	pinMode(BALL_COLLECT_LIMIT_UP, INPUT);
+	pinMode(BALL_COLLECT_LIMIT_DOWN, INPUT);
+	pinMode(BALL_COLLECT_LPWM, OUTPUT);
+	pinMode(BALL_COLLECT_RPWM, OUTPUT);	
+	pinMode(PUMP, OUTPUT);
+	pinMode(BALL_COLLECT_SERVO, OUTPUT);
+	pinMode(SHOOTER_LPWM, OUTPUT);
+	pinMode(SHOOTER_RPWM, OUTPUT);
+	pinMode(HALL_EFFECT_BACK, INPUT_PULLUP);
+	pinMode(HALL_EFFECT_FRONT, INPUT_PULLUP);
+	pinMode(CH_A, INPUT_PULLUP);
+	pinMode(CH_B, INPUT_PULLUP);
+	attachInterrupt(digitalPinToInterrupt(CH_A), getEncoderVals, RISING);
+
+	// Initialize ROS
+	nh.initNode();
+	nh.subscribe(ballPointSubscriber);
+	nh.subscribe(waterPointSubscriber);
+
+}
+
+//---------- Main loop ----------//
+
+void loop() {
+
+	// Update values
+	update();
+
+	// ROS handling
+	nh.spinOnce();
+
+	// Limit switch values
+	int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
+	int collectorLimitDownVal = digitalRead(BALL_COLLECT_LIMIT_DOWN);
+
+	/*
+	if (Serial.available() > 0) {
+
+		String data = Serial.readStringUntil('\n');
+		if (data == "0") {
+			shooterMode = ROTATE;
+			timeSinceHopperMove = millis();
+			Serial.println("Hopper moving");
+		} else if (data == "1") {
+			collectorMode = MOVE_DOWN;
+		} else if (data == "2") {
+			collectorMode = MOVE_UP;
+		} else if (data == "3") {
+			shooterMode = SPEED_UP;
+		} else if (data.substring(0, 1) == "s") {
+			int x = data.substring(1, 4).toInt();
+			int y = data.substring(4, 7).toInt();
+			int z = data.substring(7, 10).toInt();
+			Serial.println("x: " + String(x));
+			Serial.println("y: " + String(y));
+			Serial.println("z: " + String(z));
+			ballshooterAimShoot(x, y, z);
+		} else if (data.substring(0, 1) == "t") {
+			int theta = data.substring(1, 4).toInt();
+			ballshooterAimShoot(theta);
+		} else if (data == "4") {
+			shooterMode = SPEED_UP;
+			Serial.println("Hopper moving");
+		} else if (data == "5") {
+			shooterMode = STOPPED;
+			zeroWater();
+		}
+
+	}
+	*/
+
+	
 
 	// Ball collector modes
 	if (collectorMode == INACTIVATED) {
