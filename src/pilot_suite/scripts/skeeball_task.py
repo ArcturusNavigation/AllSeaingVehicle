@@ -44,7 +44,6 @@ class SkeeballTaskNode(TaskNode):
         self.flip_point = flip_point
         self.flip_index = -1
 
-
         # Subscribe to approximatley synchornized depth and rgb images
         depth_sub = Subscriber('/zed2i/zed_node/depth/depth_registered', Image)
         rgb_sub = Subscriber('/zed2i/zed_node/rgb/image_rect_color', Image)
