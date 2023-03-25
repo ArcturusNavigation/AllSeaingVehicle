@@ -16,7 +16,7 @@ from task_node import TaskNode
 
 class TurtleNestTaskNode(TaskNode):
 
-    def __init__(self, target_color):
+    def __init__(self, color):
 
         #########################################
         ######## Execution Debug Mode ###########
@@ -44,6 +44,10 @@ class TurtleNestTaskNode(TaskNode):
                 '/pilot_suite/turtle_nest_task/debug/outliers_img', Image, queue_size=1)
 
         # self.velocity_pub = rospy.Publisher('pilot_suite/velocity_command',VelocityCommand, queue_size=1 )
+        self.detection_method = detection_method
+        self.bag_bounds = bag_bounds
+        self.flip_point = flip_point
+        self.flip_index = -1
 
         # Subscribe to approximatley synchornized depth and rgb images
         depth_sub = Subscriber('/zed2i/zed_node/depth/depth_registered', Image)
@@ -53,20 +57,29 @@ class TurtleNestTaskNode(TaskNode):
             [depth_sub, rgb_sub], queue_size=1, slop=.1)
 
         self.ats.registerCallback(self.callback)
-        print("on callback")
+        self.bag_positions = []
 
         self.SHRINK_FACTOR = 4
         self.TARGET_COLOR_DEVIATION_THRESHOLD = 30
-        self.DEPTH_THRESHOLD = 10
-        if target_color == "blue":
+        self.DEPTH_THRESHOLD = 15
+        if color == "blue":
             self.TARGET_COLOR_CONSTANT = 120
-        elif target_color == "red":
-            self.TARGET_COLOR_CONSTANT = 0 # TODO: mod 180 later
-        elif target_color == "green":
+        elif color == "green"
             self.TARGET_COLOR_CONSTANT = 60
+        elif color == "red"
+            self.TARGET_COLOR_CONSTANT = 0
         self.SV_THRESHOLD = 100
         self.VAR_THRESHOLD = 0.7
 
+        self.MIN_DEPTH = 0.5
+        self.MAX_DEPTH = 15.0
+
+        #everything in terms of meters
+        self.pixel_width = 0
+        self.s = 0.3 # x distance between camera and water gun (water gun to the left of camera, so smaller pixel numbers)
+        self.y = 0.25 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
+        self.D = 0.5
+        self.fov = 2.0944 # this is 120 degrees as the zed 2i advertises
         self.center_history = []
 
     def depth_and_sv_mask(self, original_img, depth_img):
@@ -74,14 +87,18 @@ class TurtleNestTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
-        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
-        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
+        #res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        #res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
     def identify_center(self, input_img):
+
+        not_detected = (None, None)
+
         if self.debug:
-            print("identifying a center")
+            not_detected = ((None, None), None, None)
+
         input_img = np.array(input_img)
 
         min_diff = np.min(
@@ -90,10 +107,12 @@ class TurtleNestTaskNode(TaskNode):
         target_color_color = self.TARGET_COLOR_CONSTANT + (min_diff if (120 + min_diff)
                                            in input_img[:, :, 0] else -min_diff)
 
-        if not self.debug and abs(target_color_color - 120) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
-            return (-1, -1)
+        if abs(target_color_color - 120) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
+            return not_detected
 
         target_colors = np.argwhere(np.abs(input_img - target_color_color) < 1)
+        if len(target_colors) == 0:
+            return not_detected
 
         x_target_colors, y_target_colors = target_colors[:, 0], target_colors[:, 1]
         if self.debug:
@@ -111,17 +130,19 @@ class TurtleNestTaskNode(TaskNode):
             x_mean = np.mean(x_target_colors)
             y_mean = np.mean(y_target_colors)
 
-            vars = np.square(x_target_colors - x_mean) + np.square(y_target_colors - y_mean)
-            mean_var = np.mean(vars)
+            variances = np.square(x_target_colors - x_mean) + np.square(y_target_colors - y_mean)
 
-            return x_target_colors[vars / mean_var <= self.VAR_THRESHOLD], y_target_colors[vars / mean_var <= self.VAR_THRESHOLD]
-        if self.debug:
-            print("removed outliers")
+            mean_var = np.mean(variances)
+            if mean_var == 0:
+                return x_target_colors, y_target_colors
+
+            return x_target_colors[variances / mean_var <= self.VAR_THRESHOLD], y_target_colors[variances / mean_var <= self.VAR_THRESHOLD]
+
         x_target_colors, y_target_colors = remove_outliers(x_target_colors, y_target_colors)
+        if len(x_target_colors) == 0 or len(y_target_colors) == 0:
+            return not_detected
+
         # convert location to location relative to center of the frame
-        W, H, _ = input_img.shape
-        mid_x = W * self.SHRINK_FACTOR // 2
-        mid_y = H * self.SHRINK_FACTOR // 2
 
         if self.debug:
             postoutliers_img = filtered_img.copy()
@@ -132,12 +153,13 @@ class TurtleNestTaskNode(TaskNode):
                 postoutliers_img[x_target_colors[i], y_target_colors[i],
                                  :] = np.array([120, 100, 100])
 
-            return (int(self.SHRINK_FACTOR * np.median(x_target_colors) - mid_x),
-                    int(self.SHRINK_FACTOR * np.median(y_target_colors) - mid_y)), filtered_img, postoutliers_img
+            return (int(self.SHRINK_FACTOR * np.median(x_target_colors)),
+                    int(self.SHRINK_FACTOR * np.median(y_target_colors))), filtered_img, postoutliers_img
+
         else:
 
-            return (int(self.SHRINK_FACTOR * np.median(x_target_colors) - mid_x),
-                    int(self.SHRINK_FACTOR * np.median(y_target_colors) - mid_y), )
+            return (int(self.SHRINK_FACTOR * np.median(x_target_colors)),
+                    int(self.SHRINK_FACTOR * np.median(y_target_colors)), )
 
     def segment_image(self, input_img):
 
@@ -172,25 +194,33 @@ class TurtleNestTaskNode(TaskNode):
             depth_img = self.bridge.imgmsg_to_cv2(depth_img, "32FC1")
             img = cv2.cvtColor(self.bridge.imgmsg_to_cv2(
                 img, "bgr8"), cv2.COLOR_BGR2HSV)
+
         except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
+
+        H, W, _ = img.shape
+        mid_x = W // 2
+        mid_y = H // 2
 
         cv2.imwrite("~/test.jpg", self.depth_and_sv_mask(img, depth_img))
         cv2.imwrite('~/depth_map.jpg', depth_img)
 
         segmented_img = self.segment_image(
             self.depth_and_sv_mask(img, depth_img))
+
         if self.debug:
-            target_center, filtered_img, postoutliers_img = self.identify_center(
-                segmented_img)
-            print("Center is At: ", target_center)
+            target_center, filtered_img, postoutliers_img = self.identify_center(segmented_img)
+
+            if target_center == (None, None):
+                return
+
             for i in range(-20, 20):
                 for j in range(-20, 20):
                     try:
                         segmented_img[(i+target_center[0])//self.SHRINK_FACTOR,
                                       (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
                     except:
-                        print('Out of Bounds')
+                        pass
 
             self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(
                 cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
@@ -201,16 +231,16 @@ class TurtleNestTaskNode(TaskNode):
 
         else:
             target_center = self.identify_center(segmented_img)
-        print("stabilized center has", len(self.center_history))
+
         self.center_history.append(
-            [target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]])
+            (target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]))
         if len(self.center_history) >= 10:
             ch = np.array(self.center_history)
             means = np.mean(ch, axis=0)
-            vars = np.square(ch[:, 0] - means[0]) + np.square(
+            variances = np.square(ch[:, 0] - means[0]) + np.square(
                 ch[:, 1] - means[1])
-            vars_avg = np.mean(vars)
-            self.center_history = ch[vars / vars_avg <= 1.5].tolist()
+            variances_avg = np.mean(variances)
+            self.center_history = ch[variances / variances_avg <= 15].tolist()
         if len(self.center_history) > 10:
             self.center_history.pop(0)
         elif len(self.center_history) < 10:
@@ -219,11 +249,21 @@ class TurtleNestTaskNode(TaskNode):
         ch = np.array(self.center_history)
         means = np.mean(ch, axis=0)
         point = Point()
+
+        # convert pixels to meters
+        meters_over_pixels = np.tan(self.fov/2)*means[2] / W
+
+        # convert x and y to meters
+        x_m = meters_over_pixels * (means[0] - mid_x)
+        y_m = meters_over_pixels * (means[1] - mid_y)
+
+
         # x value is the column, y value is the row. these are relative to the center of the frame, so (0,0) means the target center at frame center
-        point.x = means[1]
-        point.y = means[0]
-        point.z = means[2]
-        print("stablizied center:", means[1], means[0], means[2])
+        point.x = x_m + self.s
+        point.y = y_m - self.y
+        point.z = means[2] # maybe it should just be self.D?
+
+        print("stablizied center (last two should equal):", x_m, y_m, means[2], self.D)
         self.center_pub.publish(point)
 
 
@@ -231,6 +271,20 @@ class TurtleNestTaskNode(TaskNode):
         while not rospy.is_shutdown():
             if self.active:
                 pass
+                if len(self.bag_positions) > 0:
+                    if self.flip_index >= len(self.bag_positions):
+                        continue
+                    bag_position = self.bag_positions[self.flip_index]
+                    dist = np.sqrt(
+                        (bag_position[0] - self.flip_point[0])**2 + (bag_position[1] - self.flip_point[1])**2)
+                    if dist < 50:
+                        self.stop()
+                        self.flip_bag()
+                        self.flip_index += 1
+                    else:
+                        angle = np.arctan2(
+                            bag_position[1] - self.flip_point[1], bag_position[0] - self.flip_point[0])
+                        self.update_velocity(dist, angle)
             self.rate.sleep()
 
 
@@ -238,6 +292,6 @@ if __name__ == '__main__':
 
     print("Python Script Running!")
     rospy.init_node('turtle_nest_node')
-    task_node = TurtleNestTaskNode("green") #
+    task_node = TurtleNestTaskNode()
     task_node.active = True
     task_node.run()
