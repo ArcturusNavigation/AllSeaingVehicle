@@ -313,6 +313,7 @@ void setup() {
 	pinMode(BALL_COLLECT_LIMIT_DOWN, INPUT);
 	pinMode(BALL_COLLECT_LPWM, OUTPUT);
 	pinMode(BALL_COLLECT_RPWM, OUTPUT);	
+
 	pinMode(PUMP_LPWM, OUTPUT);
 	pinMode(PUMP_RPWM, OUTPUT);
 	pinMode(BALL_COLLECT_SERVO, OUTPUT);
@@ -343,11 +344,9 @@ void loop() {
 	// ROS handling
 	nh.spinOnce();
 
-	//---------- Soft e-stop ----------//
-
+	// Soft e-stop
 	int RCValue = pulseIn(RC_PIN, HIGH);
 	float DCValue = map(RCValue, 1099, 1901, 0, 255); // Convert PWM value to DC value
-
 	if (DCValue > 135) {
 		digitalWrite(DC_PIN, HIGH);
 	} else {
