@@ -16,14 +16,16 @@
 #define BALL_COLLECT_RPWM 4
 #define BALL_COLLECT_SERVO 2
 #define BALL_AIM_SERVO 6
-#define SENSOR_PIN 0
 #define SHOOTER_RPWM 7
 #define SHOOTER_LPWM 8
 #define WATER_YAW_SERVO 10
 #define WATER_PITCH_SERVO 11
-#define PUMP 13
-#define CH_A 20
-#define CH_B 21
+#define PUMP_LPWM 12
+#define PUMP_RPWM 13
+#define CH_A 18
+#define CH_B 19
+#define RC_PIN 9
+#define DC_PIN 22
 
 // Servo setup
 Servo collectorServo;
@@ -64,8 +66,6 @@ const int WATER_PITCH_ZERO = 60;
 const int WATER_YAW_ZERO = 135;
 Servo waterYawServo;
 Servo waterPitchServo; 
-unsigned long pumpTime = 0;  
-bool pump_toggle = false;
 
 //--------- Modes for tasks ---------//
 
@@ -310,7 +310,8 @@ void setup() {
 	pinMode(BALL_COLLECT_LIMIT_DOWN, INPUT);
 	pinMode(BALL_COLLECT_LPWM, OUTPUT);
 	pinMode(BALL_COLLECT_RPWM, OUTPUT);	
-	pinMode(PUMP, OUTPUT);
+	pinMode(PUMP_LPWM, OUTPUT);
+	pinMode(PUMP_RPWM, OUTPUT);
 	pinMode(BALL_COLLECT_SERVO, OUTPUT);
 	pinMode(SHOOTER_LPWM, OUTPUT);
 	pinMode(SHOOTER_RPWM, OUTPUT);
@@ -318,6 +319,8 @@ void setup() {
 	pinMode(HALL_EFFECT_FRONT, INPUT_PULLUP);
 	pinMode(CH_A, INPUT_PULLUP);
 	pinMode(CH_B, INPUT_PULLUP);
+	pinMode(RC_PIN, INPUT);
+	pinMode(DC_PIN, OUTPUT);
 	attachInterrupt(digitalPinToInterrupt(CH_A), getEncoderVals, RISING);
 
 	// Initialize ROS
@@ -337,6 +340,17 @@ void loop() {
 	// ROS handling
 	nh.spinOnce();
 
+	//---------- Soft e-stop ----------//
+
+	int RCValue = pulseIn(RC_PIN, HIGH);
+	float DCValue = map(RCValue, 1099, 1901, 0, 255); // Convert PWM value to DC value
+
+	if (DCValue > 135) {
+		digitalWrite(DC_PIN, HIGH);
+	} else {
+		digitalWrite(DC_PIN, LOW);
+	}
+
 }
 
 //---------- Helper functions ----------//
@@ -354,24 +368,6 @@ void update() {
 	// Calculate rpm
 	double num = GEAR_RATIO * deltaCounter / PPR;
 	rpm = -((num * 1000 * 60) / TIME_INTERVAL);
-
-}
-// Turn on the water pump 
-void pump() {
-
-	pump_toggle = !pump_toggle;
-	digitalWrite(PUMP, pump_toggle);
-	if (pump_toggle) {
-
-		pumpTime = millis();
-		//Serial.println("pump turned ON"); 
-
-	} else {
-
-		pumpTime = 0;  
-		//Serial.println("pump turned OFF"); 
-
-	}
 
 }
 
@@ -418,7 +414,7 @@ void watergunAimShoot(float x, float y, float z) {
 	float theta2 = WATER_PITCH_ZERO + atan(y / z) * 180 / PI; 
 	waterYawServo.write(theta1); 
 	waterPitchServo.write(theta2); 
-	pump();
+	digitalWrite(PUMP_LPWM, HIGH);
 
 }
 
@@ -445,6 +441,7 @@ void zeroWater() {
 
 	waterYawServo.write(WATER_YAW_ZERO);
 	waterPitchServo.write(WATER_PITCH_ZERO);
+	digitalWrite(PUMP_LPWM, LOW);
 
 }
 
