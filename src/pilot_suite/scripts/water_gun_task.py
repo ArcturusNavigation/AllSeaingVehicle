@@ -61,12 +61,12 @@ class WaterGunTaskNode(TaskNode):
 
         self.SHRINK_FACTOR = 4
         self.BLUE_DEVIATION_THRESHOLD = 30
-        self.DEPTH_THRESHOLD = 15
+        self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
         self.SV_THRESHOLD = 100
         self.VAR_THRESHOLD = 0.7
 
-        self.MIN_DEPTH = 0.5
+        self.MIN_DEPTH = 1
         self.MAX_DEPTH = 15.0
 
         #everything in terms of meters
@@ -189,7 +189,6 @@ class WaterGunTaskNode(TaskNode):
             depth_img = self.bridge.imgmsg_to_cv2(depth_img, "32FC1")
             img = cv2.cvtColor(self.bridge.imgmsg_to_cv2(
                 img, "bgr8"), cv2.COLOR_BGR2HSV)
-
         except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
 
@@ -197,25 +196,29 @@ class WaterGunTaskNode(TaskNode):
         mid_x = W // 2
         mid_y = H // 2
 
-        cv2.imwrite("~/test.jpg", self.depth_and_sv_mask(img, depth_img))
-        cv2.imwrite('~/depth_map.jpg', depth_img)
-
         segmented_img = self.segment_image(
             self.depth_and_sv_mask(img, depth_img))
 
         if self.debug:
+
             target_center, filtered_img, postoutliers_img = self.identify_center(segmented_img)
 
-            if target_center == (None, None):
-                return
+            if filtered_img is None:
+                filtered_img = np.zeros((H, W, 3), dtype=np.uint8)
+                print("No filtered image exists!")
+            if postoutliers_img is None:
+                postoutliers_img = np.zeros((H, W, 3), dtype=np.uint8)
+                print("No post-outliers image exists!")
 
-            for i in range(-20, 20):
-                for j in range(-20, 20):
-                    try:
-                        segmented_img[(i+target_center[0])//self.SHRINK_FACTOR,
-                                      (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
-                    except:
-                        pass
+            if target_center != (None, None):
+
+                for i in range(-20, 20):
+                    for j in range(-20, 20):
+                        try:
+                            segmented_img[(i+target_center[0])//self.SHRINK_FACTOR,
+                                          (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
+                        except:
+                            pass
 
             self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(
                 cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
@@ -226,6 +229,9 @@ class WaterGunTaskNode(TaskNode):
 
         else:
             target_center = self.identify_center(segmented_img)
+
+        if target_center == (None, None):
+            return
 
         self.center_history.append(
             (target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]))
