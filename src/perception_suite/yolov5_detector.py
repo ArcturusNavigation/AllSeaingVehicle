@@ -19,8 +19,8 @@ class Yolov5Detector():
     def __init__(self, img_topic=ZED_TOPIC):
         self.bridge = cv_bridge.CvBridge()
         self.model = torch.hub.load('ultralytics/yolov5', 'custom', path='yolov5s.pt', force_reload=True)
-        self.pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray)
-        self.img_pub = rospy.Publisher('/perception_suite/segmented_image', Image)
+        self.pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
+        self.img_pub = rospy.Publisher('/perception_suite/segmented_image', Image, queue_size=1)
         self.img_sub = rospy.Subscriber('/zed2i/zed_node/rgb/image_rect_color', Image, self.img_callback, queue_size=1, buff_size=2**24)
     
     def img_callback(self, img):
