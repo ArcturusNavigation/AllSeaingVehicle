@@ -2,7 +2,7 @@
 #include <ros.h>
 #include <ArduPID.h>
 #include <geometry_msgs/Point.h>
-#include <std_msgs/String.h>
+#include <std_msgs/Bool.h>
 #include <Servo.h>
 #include <AFMotor.h>
 
@@ -21,7 +21,7 @@
 #define SHOOTER_LPWM 8
 #define WATER_YAW_SERVO 10
 #define WATER_PITCH_SERVO 11
-#define PUMP 12
+#define PUMP 13
 #define CH_A 20
 #define CH_B 21
 
@@ -32,7 +32,9 @@ Servo ballAimServo;
 const int COLLECT_MOTOR_SPEED = 50; // MAX 255
 const int COLLECT_SERVO_SPEED = 50; // MAX 360
 const int REVERSE_TIME = 5000; // Time the collector will be in reverse mode
-unsigned long timeSinceReverse = 0;
+const int FORWARD_TIME = 5000; // Time the collector will be in forward mode
+unsigned long timeForward = 0;
+unsigned long timeReverse = 0;
 
 // Encoder counter
 volatile long counter = 0;
@@ -47,7 +49,7 @@ double rpm = 0;
 const int NUM_ROTATION = 3;
 const int HOPPER_SERVO_SPEED = 110;
 const double SHOOTER_SPEED = 1000;
-unsigned long timeSinceHopperMove = 0;
+unsigned long timeHopperMove = 0;
 long deltaCounter = 0;
 int rotateCounter = 0;
 double shooterSpeed = 0;
@@ -58,8 +60,8 @@ const double shooterI = 0.001;
 const double shooterD = 0.005;
 
 // Water gun setup
-const int WATER_PITCH_ZERO = 0;
-const int WATER_YAW_ZERO = 0;
+const int WATER_PITCH_ZERO = 60;
+const int WATER_YAW_ZERO = 135;
 Servo waterYawServo;
 Servo waterPitchServo; 
 unsigned long pumpTime = 0;  
@@ -102,13 +104,27 @@ WatergunModes watergunMode = ZERO;
 ros::NodeHandle nh;
 geometry_msgs::Point waterPointMsg;
 geometry_msgs::Point ballPointMsg;
+std_msgs::Bool collectorMsg;
+const int CALLBACK_THRESHOLD = 1; //TODO: Check what value works well
 
+int waterRunCount = 0;
+int waterStopCount = CALLBACK_THRESHOLD;
 void watergunCallback(const geometry_msgs::Point& waterPointMsg) {
 
-	if (waterPointMsg.x == -1 || waterPointMsg.y == -1 || waterPointMsg.z == -1) {
-		watergunMode = ZERO;	
+	if (waterPointMsg.x >= 10000 || waterPointMsg.y >= 10000 || waterPointMsg.z >= 10000) {
+		waterRunCount = 0;
+		waterStopCount++;
 	} else {
+		waterRunCount++;
+		waterStopCount = 0;
+	}
+
+	if (waterRunCount == 1) {
+		digitalWrite(LED_BUILTIN, HIGH);
 		watergunMode = SHOOT;
+	} else if (waterStopCount >= CALLBACK_THRESHOLD) {
+		digitalWrite(LED_BUILTIN, LOW);
+		watergunMode = ZERO;	
 	}
 
 	// Water gun modes
@@ -122,12 +138,23 @@ void watergunCallback(const geometry_msgs::Point& waterPointMsg) {
 
 }
 
+int shooterRunCount = 0;
+int shooterStopCount = CALLBACK_THRESHOLD;
 void ballshooterCallback(const geometry_msgs::Point& ballPointMsg) {
 
-	if (ballPointMsg.x == -1 || ballPointMsg.y == -1 || ballPointMsg.z == -1) {
-		shooterMode = STOPPED;
+	if (ballPointMsg.x >= 10000 || ballPointMsg.y >= 10000 || ballPointMsg.z >= 10000) {
+		shooterStopCount++;
+		shooterRunCount = 0;
 	} else {
+		shooterRunCount++;
+		shooterStopCount = 0;
+	}
+
+	if (shooterRunCount == 1) {
 		shooterMode = SPEED_UP;
+	} 
+	if (shooterStopCount >= CALLBACK_THRESHOLD) {
+		shooterMode = STOPPED;
 	}
 
 	// Hall effect sensor values
@@ -146,7 +173,7 @@ void ballshooterCallback(const geometry_msgs::Point& ballPointMsg) {
 		// Rotate hopper when speed is in threshold
 		if (SHOOTER_SPEED - SPEED_THRESHOLD < rpm && rpm < SHOOTER_SPEED + SPEED_THRESHOLD) { 
 
-			timeSinceHopperMove = millis();
+			timeHopperMove = millis();
 			shooterMode = ROTATE;
 
 		}
@@ -157,7 +184,7 @@ void ballshooterCallback(const geometry_msgs::Point& ballPointMsg) {
 		aimShooter(ballPointMsg.x, ballPointMsg.y, ballPointMsg.z);
 
 		if ((hallEffectFrontVal == LOW || hallEffectBackVal == LOW) &&
-				millis() - timeSinceHopperMove > 500) {
+				millis() - timeHopperMove > 500) {
 
 			rotateCounter++;
 			if (rotateCounter <= NUM_ROTATION)
@@ -175,7 +202,82 @@ void ballshooterCallback(const geometry_msgs::Point& ballPointMsg) {
 		shooterPID.stop();
 
 	} else {
-		Serial.println("sketchy shooter mode");
+		//Serial.println("sketchy shooter mode");
+	}
+
+}
+
+int collectorRunCount = 0;
+int collectorStopCount = CALLBACK_THRESHOLD;
+void collectorCallback(const std_msgs::Bool& collectorMsg) {
+
+	if (collectorMsg.data) {
+		collectorStopCount = 0;
+		collectorRunCount++;
+	} else {
+		collectorStopCount++;
+		collectorRunCount = 0;
+	}
+
+	if (collectorRunCount == 1) {
+		collectorMode = MOVE_DOWN;
+	}
+	if (collectorStopCount >= CALLBACK_THRESHOLD) {
+		collectorMode = INACTIVATED;
+		collectorRunCount = 0;
+	}
+
+	// Limit switch values
+	int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
+	int collectorLimitDownVal = digitalRead(BALL_COLLECT_LIMIT_DOWN);
+
+	// Ball collector modes
+	if (collectorMode == INACTIVATED) {
+
+		analogWrite(BALL_COLLECT_LPWM, 0);
+		analogWrite(BALL_COLLECT_RPWM, 0);
+		collectorServo.write(0);
+
+	} else if (collectorMode == COLLECT) {
+
+		analogWrite(BALL_COLLECT_LPWM, 0);
+		analogWrite(BALL_COLLECT_RPWM, 0);
+		collectorServo.write(COLLECT_SERVO_SPEED);
+		if (millis() - timeForward > FORWARD_TIME) {
+			collectorMode = MOVE_UP;
+		}
+
+	} else if (collectorMode == MOVE_UP) {
+
+		analogWrite(BALL_COLLECT_LPWM, COLLECT_MOTOR_SPEED);
+		analogWrite(BALL_COLLECT_RPWM, 0);
+		collectorServo.write(0);
+		if (collectorLimitUpVal == HIGH) {
+			collectorMode = REVERSE;
+			timeReverse = millis();
+		}
+
+	} else if (collectorMode == MOVE_DOWN) {
+
+		analogWrite(BALL_COLLECT_LPWM, 0);
+		analogWrite(BALL_COLLECT_RPWM, -COLLECT_MOTOR_SPEED);
+		collectorServo.write(0);
+		if (collectorLimitDownVal == HIGH) {
+			collectorMode = COLLECT;
+			timeForward = millis();
+		}
+
+	} else if (collectorMode == REVERSE) {
+
+		analogWrite(BALL_COLLECT_LPWM, 0);
+		analogWrite(BALL_COLLECT_RPWM, 0);
+		collectorServo.write(-COLLECT_SERVO_SPEED);
+		if (millis() - timeReverse > REVERSE_TIME) {
+			collectorMode = INACTIVATED;
+		}
+
+	} else {
+		//Serial.println("wth is going on with collector mode");
 	}
 
 }
@@ -188,13 +290,19 @@ ros::Subscriber<geometry_msgs::Point> ballPointSubscriber("/pilot_suite/water_gu
 
 void setup() {
 
+	// For debugging
+	pinMode(LED_BUILTIN, OUTPUT);
+	digitalWrite(LED_BUILTIN, LOW);
+
 	// Initialize PID
 	shooterPID.begin(&rpm, &shooterSpeed, &SHOOTER_SPEED, shooterP, shooterI, shooterD);
 	shooterPID.setOutputLimits(0, 255);
 
 	// Initialize mechanical components
 	waterYawServo.attach(WATER_YAW_SERVO);
+	waterYawServo.write(WATER_YAW_ZERO);
 	waterPitchServo.attach(WATER_PITCH_SERVO);
+	waterPitchServo.write(WATER_PITCH_ZERO);
 	collectorServo.attach(BALL_COLLECT_SERVO);
 	ballAimServo.attach(BALL_AIM_SERVO);
 	hopperServo.attach(HOPPER_SERVO);
@@ -228,92 +336,6 @@ void loop() {
 
 	// ROS handling
 	nh.spinOnce();
-
-	// Limit switch values
-	int collectorLimitUpVal = digitalRead(BALL_COLLECT_LIMIT_UP);
-	int collectorLimitDownVal = digitalRead(BALL_COLLECT_LIMIT_DOWN);
-
-	/*
-	if (Serial.available() > 0) {
-
-		String data = Serial.readStringUntil('\n');
-		if (data == "0") {
-			shooterMode = ROTATE;
-			timeSinceHopperMove = millis();
-			Serial.println("Hopper moving");
-		} else if (data == "1") {
-			collectorMode = MOVE_DOWN;
-		} else if (data == "2") {
-			collectorMode = MOVE_UP;
-		} else if (data == "3") {
-			shooterMode = SPEED_UP;
-		} else if (data.substring(0, 1) == "s") {
-			int x = data.substring(1, 4).toInt();
-			int y = data.substring(4, 7).toInt();
-			int z = data.substring(7, 10).toInt();
-			Serial.println("x: " + String(x));
-			Serial.println("y: " + String(y));
-			Serial.println("z: " + String(z));
-			ballshooterAimShoot(x, y, z);
-		} else if (data.substring(0, 1) == "t") {
-			int theta = data.substring(1, 4).toInt();
-			ballshooterAimShoot(theta);
-		} else if (data == "4") {
-			shooterMode = SPEED_UP;
-			Serial.println("Hopper moving");
-		} else if (data == "5") {
-			shooterMode = STOPPED;
-			zeroWater();
-		}
-
-	}
-	*/
-
-	
-
-	// Ball collector modes
-	if (collectorMode == INACTIVATED) {
-
-		analogWrite(BALL_COLLECT_LPWM, 0);
-		analogWrite(BALL_COLLECT_RPWM, 0);
-		collectorServo.write(0);
-
-	} else if (collectorMode == COLLECT) {
-
-		analogWrite(BALL_COLLECT_LPWM, 0);
-		analogWrite(BALL_COLLECT_RPWM, 0);
-		collectorServo.write(COLLECT_SERVO_SPEED);
-
-	} else if (collectorMode == MOVE_UP) {
-
-		analogWrite(BALL_COLLECT_LPWM, COLLECT_MOTOR_SPEED);
-		analogWrite(BALL_COLLECT_RPWM, 0);
-		collectorServo.write(0);
-		if (collectorLimitUpVal == HIGH) {
-			collectorMode = INACTIVATED;
-		}
-
-	} else if (collectorMode == MOVE_DOWN) {
-
-		analogWrite(BALL_COLLECT_LPWM, 0);
-		analogWrite(BALL_COLLECT_RPWM, -COLLECT_MOTOR_SPEED);
-		collectorServo.write(0);
-		if (collectorLimitDownVal == HIGH) {
-			collectorMode = COLLECT;
-		}
-
-	} else if (collectorMode == REVERSE) {
-
-		analogWrite(BALL_COLLECT_LPWM, 0);
-		analogWrite(BALL_COLLECT_RPWM, 0);
-		collectorServo.write(-COLLECT_SERVO_SPEED);
-		if (millis() - timeSinceReverse > REVERSE_TIME) {
-			collectorMode = INACTIVATED;
-		}
-
-	} else {
-		Serial.println("wth is going on with collector mode");
-	}
 
 }
 
@@ -384,7 +406,7 @@ void ballshooterAimShoot(float theta) {
 // Fire ball shooter 
 void ballshooterAimShoot(float x, float y, float z) {
 
-	float theta = atan(x / y) * 180 / PI;
+	float theta = atan(x / z) * 180 / PI;
 	ballshooterAimShoot(theta);
 
 }
@@ -392,12 +414,10 @@ void ballshooterAimShoot(float x, float y, float z) {
 // Shoot watergun
 void watergunAimShoot(float x, float y, float z) {
 
-	float theta1 = atan(z / y); 
-	float theta2 = atan(x / y); 
-	theta1 = WATER_YAW_ZERO + theta1 * 180 / PI; 
-	theta2 = WATER_PITCH_ZERO + theta2 * 180 / PI; 
-	waterYawServo.write(int(theta1)); 
-	waterPitchServo.write(int(theta2)); 
+	float theta1 = WATER_YAW_ZERO + atan(x / z) * 180 / PI; 
+	float theta2 = WATER_PITCH_ZERO + atan(y / z) * 180 / PI; 
+	waterYawServo.write(theta1); 
+	waterPitchServo.write(theta2); 
 	pump();
 
 }
