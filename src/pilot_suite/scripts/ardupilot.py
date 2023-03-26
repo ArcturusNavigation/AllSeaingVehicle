@@ -10,7 +10,7 @@ import numpy as np
 
 from std_msgs.msg import String 
 from sensor_msgs.msg import Imu
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist, GeoPoint
 import message_filters
 
 from pilot_suite.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint, VelocityCommand, ProcessedTask
@@ -78,7 +78,9 @@ class Ardupilot():
         self.state = State()
         self.imu = Imu()
         self.local_position = PoseStamped()
+        self.global_position = GeoPoseStamped()
         self.init_local_position = None
+	self.init_global_position = None
         self.set_arming_srv = None
         self.set_mode_srv = None
 
@@ -109,13 +111,14 @@ class Ardupilot():
         rospy.Subscriber('mavros/imu/data', Imu, self.imu_callback)
         # rospy.Subscriber('mavros/local_position/pose', PoseStamped, self.local_position_callback)
         pix_pos_sub = message_filters.Subscriber('mavros/local_position/pose', PoseStamped)
+	pix_pos_gps_sub = message_filters.Subscriber("mavros/global_position/pose", GeoPoseStamped)
         zed_pos_sub = message_filters.Subscriber('/zed2i/zed_node/pos', PoseStamped) #TODO: Get actual topic
         ts = message_filters.ApproximateTimeSynchronizer([pix_pos_sub, zed_pos_sub], 10, 0.1, allow_headerless=True)
         ts.registerCallback(self.combined_pos_callback)
 
         self.sub_topics_ready = {
             key: False
-            for key in ['state', 'imu', 'local_pos']
+            for key in ['state', 'imu', 'local_pos', 'global_pos']
         }
 
         rospy.Subscriber('pilot_suite/processed_waypoint', ProcessedWaypoint, self.waypoint_callback)
@@ -126,7 +129,10 @@ class Ardupilot():
 
 
         self.send_waypoint_reached = rospy.Publisher('pilot_suite/waypoint_reached', WaypointReached, queue_size=5)
+
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
+	self.set_global_setpoint = rospy.Publisher('mavros/setpoint_position/global', GlobalPoseStamped, queue_size=5)
+
         self.set_velocity = rospy.Publisher('mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=5)
         self.toggle_task = rospy.Publisher('pilot_suite/task', String, queue_size= 5)
         self.send_pose = rospy.Publisher('pilot_suite/pose', PoseStamped, queue_size=5)
