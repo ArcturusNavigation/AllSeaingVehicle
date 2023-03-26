@@ -394,7 +394,6 @@ void ballshooterAimShoot(float theta) {
 
 	ballAimServo.write(int(theta));
 	//Serial.println("Theta: " + String(theta));
-	delay(1000);
 	shooterSpeedUp();
 
 }
