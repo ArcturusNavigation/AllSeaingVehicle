@@ -272,20 +272,6 @@ class WaterGunTaskNode(TaskNode):
         while not rospy.is_shutdown():
             if self.active:
                 pass
-                if len(self.bag_positions) > 0:
-                    if self.flip_index >= len(self.bag_positions):
-                        continue
-                    bag_position = self.bag_positions[self.flip_index]
-                    dist = np.sqrt(
-                        (bag_position[0] - self.flip_point[0])**2 + (bag_position[1] - self.flip_point[1])**2)
-                    if dist < 50:
-                        self.stop()
-                        self.flip_bag()
-                        self.flip_index += 1
-                    else:
-                        angle = np.arctan2(
-                            bag_position[1] - self.flip_point[1], bag_position[0] - self.flip_point[0])
-                        self.update_velocity(dist, angle)
             self.rate.sleep()
 
 
