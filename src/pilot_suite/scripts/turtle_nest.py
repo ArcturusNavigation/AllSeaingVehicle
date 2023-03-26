@@ -202,9 +202,6 @@ class TurtleNestTaskNode(TaskNode):
         mid_x = W // 2
         mid_y = H // 2
 
-        cv2.imwrite("~/test.jpg", self.depth_and_sv_mask(img, depth_img))
-        cv2.imwrite('~/depth_map.jpg', depth_img)
-
         segmented_img = self.segment_image(
             self.depth_and_sv_mask(img, depth_img))
 

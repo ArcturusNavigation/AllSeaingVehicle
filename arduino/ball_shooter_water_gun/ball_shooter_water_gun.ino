@@ -34,7 +34,7 @@ void statusCB( const std_msgs::Empty& toggle_msg){
 }
 
 void subscriberCallback(const geometry_msgs::Point& point_msg) {
-	if (point_msg.x == -1 || point_msg.y == -1 || point_msg.z == -1) {
+	if (point_msg.x == None || point_msg.y == None || point_msg.z == None) {
 		validity_msg = false;			
 		pump();
 	} else {
@@ -122,8 +122,8 @@ void parse_input(){
 void watergun_aim_shoot(float x, float y, float z){
 	//find theta values through trig
 	//dependent on zeroed angle values
-	float theta1 = atan(z/y); 
-	float theta2 = atan(x/y); 
+	float theta1 = atan(x/z); 
+	float theta2 = atan(y/z); 
 	theta1 = water_yaw_zero + theta1*180/3.14; 
 	theta2 = water_pitch_zero + theta2*180/3.14; 
 	water_yaw_servo.write(int(theta1)); 

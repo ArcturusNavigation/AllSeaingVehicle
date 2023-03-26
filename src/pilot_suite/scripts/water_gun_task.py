@@ -22,7 +22,7 @@ class WaterGunTaskNode(TaskNode):
         ######## Execution Debug Mode ###########
         #########################################
 
-        self.debug = True
+        self.debug = False
         super().__init__('water_gun_task')
         self.bridge = cv_bridge.CvBridge()
 
@@ -31,7 +31,7 @@ class WaterGunTaskNode(TaskNode):
         ########################################
 
         self.center_pub = rospy.Publisher(
-            '/pilot_suite/water_gun_task/target_center_pose', Point, queue_size=1)
+            '/pilot_suite/water_gun_task/', Point, queue_size=1)
         self.marker_pub = rospy.Publisher(
             '/pilot_suite/water_gun_task/debug/marker_pub', Marker, queue_size=1)
 
@@ -65,6 +65,8 @@ class WaterGunTaskNode(TaskNode):
         self.BLUE_CONSTANT = 120
         self.SV_THRESHOLD = 100
         self.VAR_THRESHOLD = 0.7
+
+        self.COUNT_THRESHOLD = 100
 
         self.MIN_DEPTH = 1
         self.MAX_DEPTH = 15.0
@@ -106,7 +108,7 @@ class WaterGunTaskNode(TaskNode):
             return not_detected
 
         blues = np.argwhere(np.abs(input_img - blue_color) < 1)
-        if len(blues) == 0:
+        if len(blues) <= self.COUNT_THRESHOLD:
             return not_detected
 
         x_blues, y_blues = blues[:, 0], blues[:, 1]
@@ -134,7 +136,7 @@ class WaterGunTaskNode(TaskNode):
             return x_blues[variances / mean_var <= self.VAR_THRESHOLD], y_blues[variances / mean_var <= self.VAR_THRESHOLD]
 
         x_blues, y_blues = remove_outliers(x_blues, y_blues)
-        if len(x_blues) == 0 or len(y_blues) == 0:
+        if len(x_blues) <= self.COUNT_THRESHOLD or len(y_blues) <=self.COUNT_THRESHOLD:
             return not_detected
 
         # convert location to location relative to center of the frame
@@ -235,16 +237,16 @@ class WaterGunTaskNode(TaskNode):
 
         self.center_history.append(
             (target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]))
-        if len(self.center_history) >= 10:
+        if len(self.center_history) >= 15:
             ch = np.array(self.center_history)
             means = np.mean(ch, axis=0)
             variances = np.square(ch[:, 0] - means[0]) + np.square(
                 ch[:, 1] - means[1])
             variances_avg = np.mean(variances)
             self.center_history = ch[variances / variances_avg <= 15].tolist()
-        if len(self.center_history) > 10:
+        if len(self.center_history) > 15:
             self.center_history.pop(0)
-        elif len(self.center_history) < 10:
+        elif len(self.center_history) < 15:
             return
 
         ch = np.array(self.center_history)
@@ -261,7 +263,7 @@ class WaterGunTaskNode(TaskNode):
 
         # x value is the column, y value is the row. these are relative to the center of the frame, so (0,0) means the target center at frame center
         point.x = x_m + self.s
-        point.y = y_m - self.y
+        point.y = - y_m + self.y
         point.z = means[2] # maybe it should just be self.D?
 
         print("stablizied center (last two should equal):", x_m, y_m, means[2], self.D)
