@@ -51,18 +51,19 @@ double rpm = 0;
 const int NUM_ROTATION = 3;
 const int HOPPER_SERVO_SPEED = 110;
 const double SHOOTER_SPEED = 1000;
+const int BALL_SHOOTER_ZERO = 90; //TODO: Check zero position
 unsigned long timeHopperMove = 0;
 long deltaCounter = 0;
 int rotateCounter = 0;
 double shooterSpeed = 0;
 const int SPEED_THRESHOLD = 50;
 ArduPID shooterPID;
-const double shooterP = 0.15;
+const double shooterP = 0.15; //TODO: Tune PID
 const double shooterI = 0.001;
 const double shooterD = 0.005;
 
 // Water gun setup
-const int WATER_PITCH_ZERO = 60;
+const int WATER_PITCH_ZERO = 60; //TODO: Check zero position
 const int WATER_YAW_ZERO = 135;
 Servo waterYawServo;
 Servo waterPitchServo; 
@@ -236,7 +237,7 @@ void collectorCallback(const std_msgs::Bool& collectorMsg) {
 
 		analogWrite(BALL_COLLECT_LPWM, 0);
 		analogWrite(BALL_COLLECT_RPWM, 0);
-		collectorServo.write(0);
+		collectorServo.write(90);
 
 	} else if (collectorMode == COLLECT) {
 
@@ -251,7 +252,7 @@ void collectorCallback(const std_msgs::Bool& collectorMsg) {
 
 		analogWrite(BALL_COLLECT_LPWM, COLLECT_MOTOR_SPEED);
 		analogWrite(BALL_COLLECT_RPWM, 0);
-		collectorServo.write(0);
+		collectorServo.write(90);
 		if (collectorLimitUpVal == HIGH) {
 			collectorMode = REVERSE;
 			timeReverse = millis();
@@ -261,7 +262,7 @@ void collectorCallback(const std_msgs::Bool& collectorMsg) {
 
 		analogWrite(BALL_COLLECT_LPWM, 0);
 		analogWrite(BALL_COLLECT_RPWM, -COLLECT_MOTOR_SPEED);
-		collectorServo.write(0);
+		collectorServo.write(90);
 		if (collectorLimitDownVal == HIGH) {
 			collectorMode = COLLECT;
 			timeForward = millis();
@@ -298,7 +299,7 @@ void setup() {
 	shooterPID.begin(&rpm, &shooterSpeed, &SHOOTER_SPEED, shooterP, shooterI, shooterD);
 	shooterPID.setOutputLimits(0, 255);
 
-	// Initialize mechanical components
+	// Initialize servos
 	waterYawServo.attach(WATER_YAW_SERVO);
 	waterYawServo.write(WATER_YAW_ZERO);
 	waterPitchServo.attach(WATER_PITCH_SERVO);
@@ -306,6 +307,8 @@ void setup() {
 	collectorServo.attach(BALL_COLLECT_SERVO);
 	ballAimServo.attach(BALL_AIM_SERVO);
 	hopperServo.attach(HOPPER_SERVO);
+
+	// Initialize mechanical components
 	pinMode(BALL_COLLECT_LIMIT_UP, INPUT);
 	pinMode(BALL_COLLECT_LIMIT_DOWN, INPUT);
 	pinMode(BALL_COLLECT_LPWM, OUTPUT);
@@ -379,21 +382,20 @@ double getShooterRPM() {
 // Aim ball shooter with x, y, z
 void aimShooter(float x, float y, float z) {
 
-	float theta = atan(x / y) * 180 / PI;
-	ballAimServo.write(int(theta));
+	float theta = atan(x / z) * 180 / PI;
+	aimShooter(theta);
 
 }
 
 // Aim ball shooter with angle
 void aimShooter(float theta) {
-	ballAimServo.write(int(theta));
+	ballAimServo.write(BALL_SHOOTER_ZERO + theta);
 }
 
 // Fire ball shooter with theta
 void ballshooterAimShoot(float theta) {
 
-	ballAimServo.write(int(theta));
-	//Serial.println("Theta: " + String(theta));
+	aimShooter(theta);
 	shooterSpeedUp();
 
 }
