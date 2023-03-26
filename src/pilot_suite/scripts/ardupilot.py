@@ -80,7 +80,7 @@ class Ardupilot():
         self.local_position = PoseStamped()
         self.global_position = GeoPoseStamped()
         self.init_local_position = None
-	self.init_global_position = None
+        self.init_global_position = None
         self.set_arming_srv = None
         self.set_mode_srv = None
 
