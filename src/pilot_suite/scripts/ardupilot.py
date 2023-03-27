@@ -9,13 +9,15 @@ from mavros_msgs.srv import CommandBool, SetMode
 import numpy as np 
 
 from std_msgs.msg import String 
-from sensor_msgs.msg import Imu
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist, GeoPoint
+from sensor_msgs.msg import Imu, NavSatFix
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist
+from geographic_msgs.msg import GeoPoint, GeoPoseStamped
+
 import message_filters
 
 from pilot_suite.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint, VelocityCommand, ProcessedTask
 from pilot_suite.srv import GoToWaypoint, GoToWaypointResponse
-from sensor_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
+from perception_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
 
 from pilot_suite.geom_utils import quaternion_from_angle
 
@@ -131,7 +133,7 @@ class Ardupilot():
         self.send_waypoint_reached = rospy.Publisher('pilot_suite/waypoint_reached', WaypointReached, queue_size=5)
 
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
-	self.set_global_setpoint = rospy.Publisher('mavros/setpoint_position/global', GlobalPoseStamped, queue_size=5)
+        self.set_global_setpoint = rospy.Publisher('mavros/setpoint_position/global', GlobalPoseStamped, queue_size=5)
 
         self.set_velocity = rospy.Publisher('mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=5)
         self.toggle_task = rospy.Publisher('pilot_suite/task', String, queue_size= 5)
