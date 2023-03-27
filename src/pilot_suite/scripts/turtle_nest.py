@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import statistics
 import numpy as np
 import cv2
 import os
 import cv_bridge
+import statistics
 import rospy
 
 from std_msgs.msg import String, Int8
@@ -12,9 +12,7 @@ from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist, Point
 from visualization_msgs.msg import Marker
 
-import task_node
-
-# from task_node import TaskNode
+from task_node import TaskNode
 
 
 class TurtleNestTaskNode(TaskNode):
