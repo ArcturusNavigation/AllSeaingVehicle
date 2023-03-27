@@ -31,7 +31,7 @@ class WaterGunTaskNode(TaskNode):
         ########################################
 
         self.center_pub = rospy.Publisher(
-            '/pilot_suite/water_gun_task/', Point, queue_size=1)
+            '/pilot_suite/water_gun_task/target_center_pose', Point, queue_size=1)
         self.marker_pub = rospy.Publisher(
             '/pilot_suite/water_gun_task/debug/marker_pub', Marker, queue_size=1)
 
