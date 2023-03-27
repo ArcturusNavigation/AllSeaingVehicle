@@ -32,7 +32,7 @@ class TurtleNestTaskNode(TaskNode):
         ########################################
 
         self.num_circles = rospy.Publisher(
-            '/pilot_suite/turtle_nest_task/num-circles_pub', Int8, queue_size=1)
+            '/pilot_suite/turtle_nest_task/num_circles_pub', Int8, queue_size=1)
 
 
         if(self.debug):
@@ -53,7 +53,7 @@ class TurtleNestTaskNode(TaskNode):
         self.ats.registerCallback(self.callback)
         self.bag_positions = []
 
-        self.SHRINK_FACTOR = 4
+        self.SHRINK_FACTOR = 2
         self.TARGET_COLOR_DEVIATION_THRESHOLD = 30
         self.DEPTH_THRESHOLD = 15
         if color == "blue":
@@ -63,7 +63,7 @@ class TurtleNestTaskNode(TaskNode):
         elif color == "red":
             self.TARGET_COLOR_CONSTANT = 0
 
-        self.SV_THRESHOLD = 100
+        self.SV_THRESHOLD = 50
         self.VAR_THRESHOLD = 0.7
 
         self.MIN_DEPTH = 0.5
@@ -82,8 +82,10 @@ class TurtleNestTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 0] < self.TARGET_COLOR_CONSTANT - self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 0] > self.TARGET_COLOR_CONSTANT + self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
@@ -115,6 +117,7 @@ class TurtleNestTaskNode(TaskNode):
 
         target_color_color = self.TARGET_COLOR_CONSTANT + (min_diff if (self.TARGET_COLOR_CONSTANT + min_diff)
                                            in input_img[:, :, 0] else -min_diff)
+    
 
         if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
             return not_detected
@@ -124,7 +127,7 @@ class TurtleNestTaskNode(TaskNode):
             return not_detected
 
         x_target_colors, y_target_colors = target_colors[:, 0], target_colors[:, 1]
-        x_target_colors, y_target_colors = self.remove_outliers(x_target_colors, y_target_colors)
+        # x_target_colors, y_target_colors = self.remove_outliers(x_target_colors, y_target_colors)
         if len(x_target_colors) == 0 or len(y_target_colors) == 0:
             return not_detected
 
@@ -133,14 +136,12 @@ class TurtleNestTaskNode(TaskNode):
 
         for i in range(input_img.shape[0]):
             for j in range(input_img.shape[1]):
-                if (abs(input_img[i][j][0] - target_color_color) < 1):
-                    continue
-                else:
+                if (abs(input_img[i][j][0] - target_color_color) > self.TARGET_COLOR_DEVIATION_THRESHOLD):
                     filtered_img[i, j, :] = [0, 0, 0]
 
 
         # convert location to location relative to center of the frame
-
+        """
         postoutliers_img = filtered_img.copy()
         for i in range(len(postoutliers_img)):
             for j in range(len(postoutliers_img[0])):
@@ -148,11 +149,12 @@ class TurtleNestTaskNode(TaskNode):
         for i in range(len(x_target_colors)):
             postoutliers_img[x_target_colors[i], y_target_colors[i],
                              :] = np.array([0, 100, 255])
+        """
 
         if self.debug:
-            return (filtered_img, postoutliers_img)
+            return (filtered_img, filtered_img)
         
-        return postoutliers_img
+        return filtered_img
 
 
     def segment_image(self, input_img):
@@ -167,7 +169,7 @@ class TurtleNestTaskNode(TaskNode):
         criteria = (cv2.TERM_CRITERIA_EPS +
                     cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
-        K = 7
+        K = 15
         attempts = 1
 
         _, label, center = cv2.kmeans(
@@ -180,10 +182,24 @@ class TurtleNestTaskNode(TaskNode):
         return result_image
 
     def count_cicles(self, filtered_img):
-
-        dots = cv2.HoughCircles(filtered_img, cv2.HOUGH_GRADIENT, 1, minDist=80, param1=70, param2=10, minRadius=20, maxRadius=35)
-
-        return len(dots)
+        if (filtered_img is None):
+            return 0
+        
+        
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(filtered_img[:,:,2])
+        #dots = [-1]
+        #dots = cv2.HoughCircles(filtered_img[:,:,2], cv2.HOUGH_GRADIENT, 2, minDist=1, param1=20, param2=10, minRadius=5, maxRadius=100)
+        print(stats)
+        #print(dots)
+        num_large_cc = 0
+        for i in range(1, num_labels):
+            if stats[i, cv2.CC_STAT_AREA] >= 15:
+                num_large_cc += 1
+        return num_large_cc 
+        #if dots is None:
+            #return 0
+        return num_labels
+        #return len(dots[0, :])
         
 
     def callback(self, depth_img, img):
@@ -203,8 +219,10 @@ class TurtleNestTaskNode(TaskNode):
         mid_x = W // 2
         mid_y = H // 2
 
-        segmented_img = self.segment_image(
-            self.depth_and_sv_mask(img, depth_img))
+        segmented_img = self.depth_and_sv_mask(img, depth_img)
+
+        if self.TARGET_COLOR_CONSTANT == 120:
+            segmented_img = self.segment_image(segmented_img)
 
         if self.debug:
             filtered_img, postoutliers_img = self.filter_circles(segmented_img)
@@ -223,15 +241,19 @@ class TurtleNestTaskNode(TaskNode):
             self.image_outliers_pub.publish(self.bridge.cv2_to_imgmsg(
                 cv2.cvtColor(postoutliers_img, cv2.COLOR_HSV2BGR), "bgr8"))
 
+        num_circles = self.count_cicles(postoutliers_img)
+        if num_circles == 0:
+            print("no circles detected...")
+            return
+        print("we detected ", num_circles, " dots")
+        self.num_history.append(num_circles)
 
-        self.num_history.append(self.count_cicles(postoutliers_img))
         if len(self.num_history) >= 10:
             ch = np.array(self.num_history)
-            means = np.mean(ch, axis=0)
-            variances = np.square(ch[:, 0] - means[0]) + np.square(
-                ch[:, 1] - means[1])
+            mode_dots = statistics.mode(ch)
+            variances = np.square(ch - mode_dots)
             variances_avg = np.mean(variances)
-            self.num_history = ch[variances / variances_avg <= 15].tolist()
+            self.num_history = ch[variances / (variances_avg + 1e-6) <= 15].tolist()
         if len(self.num_history) > 10:
             self.num_history.pop(0)
         elif len(self.num_history) < 10:
@@ -240,9 +262,9 @@ class TurtleNestTaskNode(TaskNode):
         ch = np.array(self.num_history)
 
         num_dots = Int8()
-        num_dots.data = statistics.mode(ch)
+        num_dots.data = mode_dots
 
-        print("Number of dots detected", num_dots.data)
+        #print("Number of dots detected", num_dots.data)
         self.num_circles.publish(num_dots)
 
 
