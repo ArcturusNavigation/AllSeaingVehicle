@@ -49,6 +49,6 @@ if __name__ == '__main__':
 
     print("Python Script Running!")
     rospy.init_node('straight_nav_task')
-    task_node = StraightNavNode()
+    task_node = StraightNavNode(10.0)
     task_node.active = True
     task_node.run()
