@@ -10,8 +10,8 @@
 #define HALL_EFFECT_BACK 14
 #define HALL_EFFECT_FRONT 15
 #define HOPPER_SERVO 5
-#define BALL_COLLECT_LIMIT_UP 1
-#define BALL_COLLECT_LIMIT_DOWN 2
+#define BALL_COLLECT_LIMIT_UP 16
+#define BALL_COLLECT_LIMIT_DOWN 17
 #define BALL_COLLECT_LPWM 3
 #define BALL_COLLECT_RPWM 4
 #define BALL_COLLECT_SERVO 2
@@ -20,8 +20,8 @@
 #define SHOOTER_LPWM 8
 #define WATER_YAW_SERVO 10
 #define WATER_PITCH_SERVO 11
-#define PUMP_LPWM 12
-#define PUMP_RPWM 13
+#define PUMP_LPWM 52
+#define PUMP_RPWM 53
 #define CH_A 18
 #define CH_B 19
 #define RC_PIN 9
@@ -50,20 +50,21 @@ double rpm = 0;
 // Ball shooter hopper movement
 const int NUM_ROTATION = 3;
 const int HOPPER_SERVO_SPEED = 110;
-const double SHOOTER_SPEED = 1000;
+const double SHOOTER_SPEED = 0; //TODO: Change this
+const int BALL_SHOOTER_ZERO = 80; 
 unsigned long timeHopperMove = 0;
 long deltaCounter = 0;
 int rotateCounter = 0;
 double shooterSpeed = 0;
 const int SPEED_THRESHOLD = 50;
 ArduPID shooterPID;
-const double shooterP = 0.15;
+const double shooterP = 0.15; //TODO: Tune PID
 const double shooterI = 0.001;
 const double shooterD = 0.005;
 
 // Water gun setup
-const int WATER_PITCH_ZERO = 60;
-const int WATER_YAW_ZERO = 135;
+const int WATER_PITCH_ZERO = 40;
+const int WATER_YAW_ZERO = 120;
 Servo waterYawServo;
 Servo waterPitchServo; 
 
@@ -236,7 +237,7 @@ void collectorCallback(const std_msgs::Bool& collectorMsg) {
 
 		analogWrite(BALL_COLLECT_LPWM, 0);
 		analogWrite(BALL_COLLECT_RPWM, 0);
-		collectorServo.write(0);
+		collectorServo.write(90);
 
 	} else if (collectorMode == COLLECT) {
 
@@ -251,7 +252,7 @@ void collectorCallback(const std_msgs::Bool& collectorMsg) {
 
 		analogWrite(BALL_COLLECT_LPWM, COLLECT_MOTOR_SPEED);
 		analogWrite(BALL_COLLECT_RPWM, 0);
-		collectorServo.write(0);
+		collectorServo.write(90);
 		if (collectorLimitUpVal == HIGH) {
 			collectorMode = REVERSE;
 			timeReverse = millis();
@@ -261,7 +262,7 @@ void collectorCallback(const std_msgs::Bool& collectorMsg) {
 
 		analogWrite(BALL_COLLECT_LPWM, 0);
 		analogWrite(BALL_COLLECT_RPWM, -COLLECT_MOTOR_SPEED);
-		collectorServo.write(0);
+		collectorServo.write(90);
 		if (collectorLimitDownVal == HIGH) {
 			collectorMode = COLLECT;
 			timeForward = millis();
@@ -298,18 +299,22 @@ void setup() {
 	shooterPID.begin(&rpm, &shooterSpeed, &SHOOTER_SPEED, shooterP, shooterI, shooterD);
 	shooterPID.setOutputLimits(0, 255);
 
-	// Initialize mechanical components
+	// Initialize servos
 	waterYawServo.attach(WATER_YAW_SERVO);
 	waterYawServo.write(WATER_YAW_ZERO);
 	waterPitchServo.attach(WATER_PITCH_SERVO);
 	waterPitchServo.write(WATER_PITCH_ZERO);
 	collectorServo.attach(BALL_COLLECT_SERVO);
 	ballAimServo.attach(BALL_AIM_SERVO);
+	ballAimServo.write(BALL_SHOOTER_ZERO);
 	hopperServo.attach(HOPPER_SERVO);
+
+	// Initialize mechanical components
 	pinMode(BALL_COLLECT_LIMIT_UP, INPUT);
 	pinMode(BALL_COLLECT_LIMIT_DOWN, INPUT);
 	pinMode(BALL_COLLECT_LPWM, OUTPUT);
 	pinMode(BALL_COLLECT_RPWM, OUTPUT);	
+
 	pinMode(PUMP_LPWM, OUTPUT);
 	pinMode(PUMP_RPWM, OUTPUT);
 	pinMode(BALL_COLLECT_SERVO, OUTPUT);
@@ -340,11 +345,9 @@ void loop() {
 	// ROS handling
 	nh.spinOnce();
 
-	//---------- Soft e-stop ----------//
-
+	// Soft e-stop
 	int RCValue = pulseIn(RC_PIN, HIGH);
 	float DCValue = map(RCValue, 1099, 1901, 0, 255); // Convert PWM value to DC value
-
 	if (DCValue > 135) {
 		digitalWrite(DC_PIN, HIGH);
 	} else {
@@ -379,22 +382,20 @@ double getShooterRPM() {
 // Aim ball shooter with x, y, z
 void aimShooter(float x, float y, float z) {
 
-	float theta = atan(x / y) * 180 / PI;
-	ballAimServo.write(int(theta));
+	float theta = atan(x / z) * 180 / PI;
+	aimShooter(theta);
 
 }
 
 // Aim ball shooter with angle
 void aimShooter(float theta) {
-	ballAimServo.write(int(theta));
+	ballAimServo.write(BALL_SHOOTER_ZERO - theta);
 }
 
 // Fire ball shooter with theta
 void ballshooterAimShoot(float theta) {
 
-	ballAimServo.write(int(theta));
-	//Serial.println("Theta: " + String(theta));
-	delay(1000);
+	aimShooter(theta);
 	shooterSpeedUp();
 
 }
@@ -414,15 +415,18 @@ void watergunAimShoot(float x, float y, float z) {
 	float theta2 = WATER_PITCH_ZERO + atan(y / z) * 180 / PI; 
 	waterYawServo.write(theta1); 
 	waterPitchServo.write(theta2); 
-	digitalWrite(PUMP_LPWM, HIGH);
+	//digitalWrite(PUMP_RPWM, HIGH);
 
 }
 
 // Fire ball shooter
 void shooterSpeedUp() {
-
-	analogWrite(SHOOTER_LPWM, shooterSpeed);
+	//TODO: FIX
+	//analogWrite(SHOOTER_LPWM, shooterSpeed);
+	digitalWrite(LED_BUILTIN, HIGH);
 	analogWrite(SHOOTER_RPWM, 0);
+	analogWrite(SHOOTER_LPWM, SHOOTER_SPEED);
+
 	//Serial.println("Shooter speed: " + String(shooterSpeed)); 
 
 }
@@ -442,6 +446,7 @@ void zeroWater() {
 	waterYawServo.write(WATER_YAW_ZERO);
 	waterPitchServo.write(WATER_PITCH_ZERO);
 	digitalWrite(PUMP_LPWM, LOW);
+	digitalWrite(PUMP_RPWM, LOW);
 
 }
 
