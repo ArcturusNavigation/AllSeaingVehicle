@@ -31,7 +31,7 @@ class WaterGunTaskNode(TaskNode):
         ########################################
 
         self.center_pub = rospy.Publisher(
-            '/pilot_suite/water_gun_task/target_center_pose', Point, queue_size=1)
+            '/pilot_suite/water_gun_task/', Point, queue_size=1)
         self.marker_pub = rospy.Publisher(
             '/pilot_suite/water_gun_task/debug/marker_pub', Marker, queue_size=1)
 
@@ -57,16 +57,26 @@ class WaterGunTaskNode(TaskNode):
             [depth_sub, rgb_sub], queue_size=1, slop=.1)
 
         self.ats.registerCallback(self.callback)
-        print("on callback")
         self.bag_positions = []
 
         self.SHRINK_FACTOR = 4
-        self.BLUE_DEVIATION_THRESHOLD = 50
+        self.BLUE_DEVIATION_THRESHOLD = 30
         self.DEPTH_THRESHOLD = 10
         self.BLUE_CONSTANT = 120
         self.SV_THRESHOLD = 100
         self.VAR_THRESHOLD = 0.7
 
+        self.COUNT_THRESHOLD = 100
+
+        self.MIN_DEPTH = 1
+        self.MAX_DEPTH = 15.0
+
+        #everything in terms of meters
+        self.pixel_width = 0
+        self.s = 0.3 # x distance between camera and water gun (water gun to the left of camera, so smaller pixel numbers)
+        self.y = 0.25 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
+        self.D = 0.5
+        self.fov = 2.0944 # this is 120 degrees as the zed 2i advertises
         self.center_history = []
 
     def depth_and_sv_mask(self, original_img, depth_img):
@@ -74,14 +84,18 @@ class WaterGunTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
-        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
-        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
+        #res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        #res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
     def identify_center(self, input_img):
+
+        not_detected = (None, None)
+
         if self.debug:
-            print("identifying a center")
+            not_detected = ((None, None), None, None)
+
         input_img = np.array(input_img)
 
         min_diff = np.min(
@@ -90,10 +104,12 @@ class WaterGunTaskNode(TaskNode):
         blue_color = self.BLUE_CONSTANT + (min_diff if (120 + min_diff)
                                            in input_img[:, :, 0] else -min_diff)
 
-        if not self.debug and abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
-            return (-1, -1)
+        if abs(blue_color - 120) > self.BLUE_DEVIATION_THRESHOLD:
+            return not_detected
 
         blues = np.argwhere(np.abs(input_img - blue_color) < 1)
+        if len(blues) <= self.COUNT_THRESHOLD:
+            return not_detected
 
         x_blues, y_blues = blues[:, 0], blues[:, 1]
         if self.debug:
@@ -111,17 +127,19 @@ class WaterGunTaskNode(TaskNode):
             x_mean = np.mean(x_blues)
             y_mean = np.mean(y_blues)
 
-            vars = np.square(x_blues - x_mean) + np.square(y_blues - y_mean)
-            mean_var = np.mean(vars)
+            variances = np.square(x_blues - x_mean) + np.square(y_blues - y_mean)
 
-            return x_blues[vars / mean_var <= self.VAR_THRESHOLD], y_blues[vars / mean_var <= self.VAR_THRESHOLD]
-        if self.debug:
-            print("removed outliers")
+            mean_var = np.mean(variances)
+            if mean_var == 0:
+                return x_blues, y_blues
+
+            return x_blues[variances / mean_var <= self.VAR_THRESHOLD], y_blues[variances / mean_var <= self.VAR_THRESHOLD]
+
         x_blues, y_blues = remove_outliers(x_blues, y_blues)
+        if len(x_blues) <= self.COUNT_THRESHOLD or len(y_blues) <=self.COUNT_THRESHOLD:
+            return not_detected
+
         # convert location to location relative to center of the frame
-        W, H, _ = input_img.shape
-        mid_x = W * self.SHRINK_FACTOR // 2
-        mid_y = H * self.SHRINK_FACTOR // 2
 
         if self.debug:
             postoutliers_img = filtered_img.copy()
@@ -132,12 +150,13 @@ class WaterGunTaskNode(TaskNode):
                 postoutliers_img[x_blues[i], y_blues[i],
                                  :] = np.array([120, 100, 100])
 
-            return (int(self.SHRINK_FACTOR * np.median(x_blues) - mid_x),
-                    int(self.SHRINK_FACTOR * np.median(y_blues) - mid_y)), filtered_img, postoutliers_img
+            return (int(self.SHRINK_FACTOR * np.median(x_blues)),
+                    int(self.SHRINK_FACTOR * np.median(y_blues))), filtered_img, postoutliers_img
+
         else:
 
-            return (int(self.SHRINK_FACTOR * np.median(x_blues) - mid_x),
-                    int(self.SHRINK_FACTOR * np.median(y_blues) - mid_y), )
+            return (int(self.SHRINK_FACTOR * np.median(x_blues)),
+                    int(self.SHRINK_FACTOR * np.median(y_blues)), )
 
     def segment_image(self, input_img):
 
@@ -175,22 +194,33 @@ class WaterGunTaskNode(TaskNode):
         except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
 
-        cv2.imwrite("~/test.jpg", self.depth_and_sv_mask(img, depth_img))
-        cv2.imwrite('~/depth_map.jpg', depth_img)
+        H, W, _ = img.shape
+        mid_x = W // 2
+        mid_y = H // 2
 
         segmented_img = self.segment_image(
             self.depth_and_sv_mask(img, depth_img))
+
         if self.debug:
-            target_center, filtered_img, postoutliers_img = self.identify_center(
-                segmented_img)
-            print("Center is At: ", target_center)
-            for i in range(-20, 20):
-                for j in range(-20, 20):
-                    try:
-                        segmented_img[(i+target_center[0])//self.SHRINK_FACTOR,
-                                      (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
-                    except:
-                        print('Out of Bounds')
+
+            target_center, filtered_img, postoutliers_img = self.identify_center(segmented_img)
+
+            if filtered_img is None:
+                filtered_img = np.zeros((H, W, 3), dtype=np.uint8)
+                print("No filtered image exists!")
+            if postoutliers_img is None:
+                postoutliers_img = np.zeros((H, W, 3), dtype=np.uint8)
+                print("No post-outliers image exists!")
+
+            if target_center != (None, None):
+
+                for i in range(-20, 20):
+                    for j in range(-20, 20):
+                        try:
+                            segmented_img[(i+target_center[0])//self.SHRINK_FACTOR,
+                                          (j+target_center[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
+                        except:
+                            pass
 
             self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(
                 cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"))
@@ -201,78 +231,46 @@ class WaterGunTaskNode(TaskNode):
 
         else:
             target_center = self.identify_center(segmented_img)
-        print("stabilized center has", len(self.center_history))
+
         self.center_history.append(
-            [target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]])
-        if len(self.center_history) >= 10:
+            (target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]))
+        if len(self.center_history) >= 15:
             ch = np.array(self.center_history)
             means = np.mean(ch, axis=0)
             vars = np.square(ch[:, 0] - means[0]) + np.square(
-                ch[:, 1] - means[1])
+                ch[:, 1] - means[1]) + np.square(ch[:, 2] - means[2])
             vars_avg = np.mean(vars)
-            self.center_history = ch[vars / vars_avg <= 1.5].tolist()
+            self.center_history = ch[vars / vars_avg <= 0.5].tolist()
         if len(self.center_history) > 10:
             self.center_history.pop(0)
-        elif len(self.center_history) < 10:
+        elif len(self.center_history) < 15:
             return
 
         ch = np.array(self.center_history)
         means = np.mean(ch, axis=0)
         point = Point()
+
+        # convert pixels to meters
+        meters_over_pixels = np.tan(self.fov/2)*means[2] / W
+
+        # convert x and y to meters
+        x_m = meters_over_pixels * (means[0] - mid_x)
+        y_m = meters_over_pixels * (means[1] - mid_y)
+
+
         # x value is the column, y value is the row. these are relative to the center of the frame, so (0,0) means the target center at frame center
-        point.x = means[1]
-        point.y = means[0]
-        point.z = means[2]
-        print("stablizied center:", means[1], means[0], means[2])
+        point.x = x_m + self.s
+        point.y = - y_m + self.y
+        point.z = means[2] # maybe it should just be self.D?
+
+        print("stablizied center (last two should equal):", x_m, y_m, means[2], self.D)
         self.center_pub.publish(point)
 
-        if self.debug:
-            center_marker = Marker()
-
-            center_marker.header.frame_id = "map"
-            center_marker.header.stamp = rospy.Time()
-            center_marker.ns = "water_gun_center"
-            center_marker.id = 1
-            center_marker.type = 1  # Cube
-            center_marker.action = 0
-
-            center_marker.pose.position.x = point.x
-            center_marker.pose.position.y = point.y
-            center_marker.pose.position.z = point.z
-
-            center_marker.pose.orientation.x = 0.0
-            center_marker.pose.orientation.y = 0.0
-            center_marker.pose.orientation.z = 0.0
-            center_marker.pose.orientation.w = 1.0
-
-            center_marker.scale.x = 100
-            center_marker.scale.y = 100
-            center_marker.scale.z = 100
-            center_marker.color.a = 1.0  # Don't forget to set the alpha!
-            center_marker.color.r = 0.0
-            center_marker.color.g = 1.0
-            center_marker.color.b = 0.0
-
-            self.marker_pub.publish(center_marker)
 
     def run(self):
         while not rospy.is_shutdown():
             if self.active:
                 pass
-                if len(self.bag_positions) > 0:
-                    if self.flip_index >= len(self.bag_positions):
-                        continue
-                    bag_position = self.bag_positions[self.flip_index]
-                    dist = np.sqrt(
-                        (bag_position[0] - self.flip_point[0])**2 + (bag_position[1] - self.flip_point[1])**2)
-                    if dist < 50:
-                        self.stop()
-                        self.flip_bag()
-                        self.flip_index += 1
-                    else:
-                        angle = np.arctan2(
-                            bag_position[1] - self.flip_point[1], bag_position[0] - self.flip_point[0])
-                        self.update_velocity(dist, angle)
             self.rate.sleep()
 
 
