@@ -414,15 +414,20 @@ void watergunAimShoot(float x, float y, float z) {
 	float theta2 = WATER_PITCH_ZERO + atan(y / z) * 180 / PI; 
 	waterYawServo.write(theta1); 
 	waterPitchServo.write(theta2); 
-	digitalWrite(PUMP_LPWM, HIGH);
+	digitalWrite(PUMP_RPWM, HIGH);
 
 }
 
 // Fire ball shooter
 void shooterSpeedUp() {
-
-	analogWrite(SHOOTER_LPWM, shooterSpeed);
-	analogWrite(SHOOTER_RPWM, 0);
+  //TODO: FIX
+	//analogWrite(SHOOTER_LPWM, shooterSpeed);
+  digitalWrite(LED_BUILTIN, HIGH);
+  while (true) {
+    analogWrite(SHOOTER_LPWM, 100);
+    analogWrite(SHOOTER_RPWM, 0);
+  }
+	
 	//Serial.println("Shooter speed: " + String(shooterSpeed)); 
 
 }
@@ -442,6 +447,7 @@ void zeroWater() {
 	waterYawServo.write(WATER_YAW_ZERO);
 	waterPitchServo.write(WATER_PITCH_ZERO);
 	digitalWrite(PUMP_LPWM, LOW);
+	digitalWrite(PUMP_RPWM, LOW);
 
 }
 

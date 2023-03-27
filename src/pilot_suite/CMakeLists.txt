@@ -175,6 +175,7 @@ catkin_install_python(PROGRAMS
   scripts/waypoint_sim.py
   scripts/tf2.py
   scripts/local_planner.py
+  scripts/turtle_nest.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
