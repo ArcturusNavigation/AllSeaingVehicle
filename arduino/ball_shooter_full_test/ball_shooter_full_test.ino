@@ -5,20 +5,20 @@
 #define HALL_EFFECT_BACK 14
 #define HALL_EFFECT_FRONT 15
 #define HOPPER_SERVO 5
-#define BALL_COLLECT_LIMIT_UP 1
-#define BALL_COLLECT_LIMIT_DOWN 2
+#define BALL_COLLECT_LIMIT_UP 16
+#define BALL_COLLECT_LIMIT_DOWN 17
 #define BALL_COLLECT_LPWM 3
 #define BALL_COLLECT_RPWM 4
 #define BALL_COLLECT_SERVO 2
 #define BALL_AIM_SERVO 6
-#define SENSOR_PIN 0
 #define SHOOTER_RPWM 7
 #define SHOOTER_LPWM 8
 #define WATER_YAW_SERVO 10
 #define WATER_PITCH_SERVO 11
-#define PUMP 12
-#define CH_A 20
-#define CH_B 21
+#define PUMP_LPWM 12
+#define PUMP_RPWM 13
+#define CH_A 18
+#define CH_B 19
 
 // Servo setup
 Servo collectorServo;
@@ -42,7 +42,7 @@ double rpm = 0;
 // Ball shooter hopper movement
 const int NUM_ROTATION = 3;
 const int HOPPER_SERVO_SPEED = 110;
-const double SHOOTER_SPEED = 2000;
+const double SHOOTER_SPEED = 500;
 unsigned long timeSinceHopperMove = 0;
 long deltaCounter = 0;
 int rotateCounter = 0;
@@ -78,7 +78,8 @@ void setup() {
 	pinMode(BALL_COLLECT_LIMIT_DOWN, INPUT);
 	pinMode(BALL_COLLECT_LPWM, OUTPUT);
 	pinMode(BALL_COLLECT_RPWM, OUTPUT);	
-	pinMode(PUMP, OUTPUT);
+	pinMode(PUMP_LPWM, OUTPUT);
+	pinMode(PUMP_RPWM, OUTPUT);
 	pinMode(BALL_COLLECT_SERVO, OUTPUT);
 	pinMode(SHOOTER_LPWM, OUTPUT);
 	pinMode(SHOOTER_RPWM, OUTPUT);
@@ -272,7 +273,7 @@ void update() {
 void pump() {
 
 	pump_toggle = !pump_toggle;
-	digitalWrite(PUMP, pump_toggle);
+	digitalWrite(PUMP_LPWM, pump_toggle);
 	if (pump_toggle) {
 
 		pumpTime = millis();
@@ -323,7 +324,7 @@ void watergun_aim_shoot(float x, float y, float z){
 	theta2 = WATER_PITCH_ZERO + theta2 * 180 / PI; 
 	waterYawServo.write(int(theta1)); 
 	waterPitchServo.write(int(theta2)); 
-	pump();
+	//pump();
 
 }
 

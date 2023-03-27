@@ -10,8 +10,8 @@
 #define HALL_EFFECT_BACK 14
 #define HALL_EFFECT_FRONT 15
 #define HOPPER_SERVO 5
-#define BALL_COLLECT_LIMIT_UP 1
-#define BALL_COLLECT_LIMIT_DOWN 2
+#define BALL_COLLECT_LIMIT_UP 16
+#define BALL_COLLECT_LIMIT_DOWN 17
 #define BALL_COLLECT_LPWM 3
 #define BALL_COLLECT_RPWM 4
 #define BALL_COLLECT_SERVO 2
@@ -20,8 +20,8 @@
 #define SHOOTER_LPWM 8
 #define WATER_YAW_SERVO 10
 #define WATER_PITCH_SERVO 11
-#define PUMP_LPWM 12
-#define PUMP_RPWM 13
+#define PUMP_LPWM 52
+#define PUMP_RPWM 53
 #define CH_A 18
 #define CH_B 19
 #define RC_PIN 9
@@ -50,8 +50,8 @@ double rpm = 0;
 // Ball shooter hopper movement
 const int NUM_ROTATION = 3;
 const int HOPPER_SERVO_SPEED = 110;
-const double SHOOTER_SPEED = 1000;
-const int BALL_SHOOTER_ZERO = 90; //TODO: Check zero position
+const double SHOOTER_SPEED = 0; //TODO: Change this
+const int BALL_SHOOTER_ZERO = 80; 
 unsigned long timeHopperMove = 0;
 long deltaCounter = 0;
 int rotateCounter = 0;
@@ -63,8 +63,8 @@ const double shooterI = 0.001;
 const double shooterD = 0.005;
 
 // Water gun setup
-const int WATER_PITCH_ZERO = 60; //TODO: Check zero position
-const int WATER_YAW_ZERO = 135;
+const int WATER_PITCH_ZERO = 40;
+const int WATER_YAW_ZERO = 120;
 Servo waterYawServo;
 Servo waterPitchServo; 
 
@@ -306,6 +306,7 @@ void setup() {
 	waterPitchServo.write(WATER_PITCH_ZERO);
 	collectorServo.attach(BALL_COLLECT_SERVO);
 	ballAimServo.attach(BALL_AIM_SERVO);
+	ballAimServo.write(BALL_SHOOTER_ZERO);
 	hopperServo.attach(HOPPER_SERVO);
 
 	// Initialize mechanical components
@@ -388,7 +389,7 @@ void aimShooter(float x, float y, float z) {
 
 // Aim ball shooter with angle
 void aimShooter(float theta) {
-	ballAimServo.write(BALL_SHOOTER_ZERO + theta);
+	ballAimServo.write(BALL_SHOOTER_ZERO - theta);
 }
 
 // Fire ball shooter with theta
@@ -414,20 +415,18 @@ void watergunAimShoot(float x, float y, float z) {
 	float theta2 = WATER_PITCH_ZERO + atan(y / z) * 180 / PI; 
 	waterYawServo.write(theta1); 
 	waterPitchServo.write(theta2); 
-	digitalWrite(PUMP_RPWM, HIGH);
+	//digitalWrite(PUMP_RPWM, HIGH);
 
 }
 
 // Fire ball shooter
 void shooterSpeedUp() {
-  //TODO: FIX
+	//TODO: FIX
 	//analogWrite(SHOOTER_LPWM, shooterSpeed);
-  digitalWrite(LED_BUILTIN, HIGH);
-  while (true) {
-    analogWrite(SHOOTER_LPWM, 100);
-    analogWrite(SHOOTER_RPWM, 0);
-  }
-	
+	digitalWrite(LED_BUILTIN, HIGH);
+	analogWrite(SHOOTER_RPWM, 0);
+	analogWrite(SHOOTER_LPWM, SHOOTER_SPEED);
+
 	//Serial.println("Shooter speed: " + String(shooterSpeed)); 
 
 }
