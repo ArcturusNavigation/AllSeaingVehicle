@@ -1,0 +1,14 @@
+<launch>
+
+	<node pkg="pilot_suite" type="ardupilot.py" name="waypoint_pilot" />
+	<node pkg="pilot_suite" type="navigation_pilot.py" name="navigation_pilot" />
+	<node pkg="pilot_suite" type="water_gun_task.py" name="water_gun_node" />
+	<node pkg="perception_suite" type="yolov5_detector.py" name="yolov5" />
+	
+	<include file="$(find pilot_suite)/launch/mavros.launch"></include>
+	<include file="$(find pilot_suite)/launch/arduino.launch"></include>
+	<include file="$(find zed_wrapper)/launch/zed2i.launch"></include>
+	
+	
+	 
+</launch>

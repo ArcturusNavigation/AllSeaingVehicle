@@ -111,7 +111,7 @@ class Ardupilot():
         rospy.Subscriber('mavros/imu/data', Imu, self.imu_callback)
         # rospy.Subscriber('mavros/local_position/pose', PoseStamped, self.local_position_callback)
         pix_pos_sub = message_filters.Subscriber('mavros/local_position/pose', PoseStamped)
-	pix_pos_gps_sub = message_filters.Subscriber("mavros/global_position/pose", GeoPoseStamped)
+        pix_pos_gps_sub = message_filters.Subscriber("mavros/global_position/pose", GeoPoseStamped)
         zed_pos_sub = message_filters.Subscriber('/zed2i/zed_node/pos', PoseStamped) #TODO: Get actual topic
         ts = message_filters.ApproximateTimeSynchronizer([pix_pos_sub, zed_pos_sub], 10, 0.1, allow_headerless=True)
         ts.registerCallback(self.combined_pos_callback)
