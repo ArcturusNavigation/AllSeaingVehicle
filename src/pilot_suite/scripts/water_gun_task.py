@@ -84,8 +84,10 @@ class WaterGunTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 0] < self.BLUE_CONSTANT - 30] = np.zeros(3)
+        res_img[res_img[:, :, 0] > self.BLUE_CONSTANT + 30] = np.zeros(3)
+        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
