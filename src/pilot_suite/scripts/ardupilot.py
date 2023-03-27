@@ -9,13 +9,14 @@ from mavros_msgs.srv import CommandBool, SetMode
 import numpy as np 
 
 from std_msgs.msg import String 
-from sensor_msgs.msg import Imu
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist, GeoPoint
+from sensor_msgs.msg import Imu, NavSatFix
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose, PoseWithCovarianceStamped, Twist
+from geographic_msgs.msg import GeoPoint, GeoPointStamped
 import message_filters
 
 from pilot_suite.msg import ProcessedWaypoint, WaypointReached, SkipWaypoint, VelocityCommand, ProcessedTask
 from pilot_suite.srv import GoToWaypoint, GoToWaypointResponse
-from sensor_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
+from perception_suite.msg import LabeledBoundingBox2DArray, LabeledBoundingBox2D
 
 from pilot_suite.geom_utils import quaternion_from_angle
 
@@ -23,7 +24,8 @@ from geometry_msgs.msg import Quaternion
 from sklearn.decomposition import PCA
 import tf
 
-ACCEPTANCE_RADIUS = 0.2
+ACCEPTANCE_RADIUS_GPS = 0.0002
+ACCEPTANCE_RADIUS = 2
 USE_FAKE_GPS_FROM_ZED = False
 
 # see https://mavlink.io/en/messages/common.html#MAV_STATE
@@ -46,7 +48,7 @@ class Waypoint():
         self.y = y 
         self.z = z 
         self.heading = heading
-
+ 
 class Task():
     def __init__(self,task_topic, task_timeout=60, nav_control= False, pause_queue=False):
         self.task_topic = task_topic
@@ -56,11 +58,18 @@ class Task():
 
 ManagedTask = namedtuple('MangaedTask', ['start', 'timeout'])
 
+home_waypoint = Waypoint()
+home_waypoint.x = 2
+home_waypoint.y = 0
+home_waypoint.z = 0
+home_waypoint.heading = 0
 
 buoy_task = ProcessedTask()
 buoy_task.task_topic = "navigation_pilot"
 buoy_task.task_timeout = 60
-EXAMPLE_QUEUE = [buoy_task]
+
+EXAMPLE__LOCAL_QUEUE = [home_waypoint]
+
 
 class Ardupilot():
     """
@@ -109,10 +118,13 @@ class Ardupilot():
         
         rospy.Subscriber('mavros/state', State, self.state_callback)
         rospy.Subscriber('mavros/imu/data', Imu, self.imu_callback)
-        # rospy.Subscriber('mavros/local_position/pose', PoseStamped, self.local_position_callback)
+
+        pixHawk_local_pose_sub = rospy.Subscriber('mavros/local_position/pose', PoseStamped, self.local_position_callback)
+        pixHawk_global_pose_sub = rospy.Subscriber('mavros/global_position/global', NavSatFix, self.global_position_callback)
+
         pix_pos_sub = message_filters.Subscriber('mavros/local_position/pose', PoseStamped)
-	pix_pos_gps_sub = message_filters.Subscriber("mavros/global_position/pose", GeoPoseStamped)
-        zed_pos_sub = message_filters.Subscriber('/zed2i/zed_node/pos', PoseStamped) #TODO: Get actual topic
+	#pix_pos_gps_sub = message_filters.Subscriber("mavros/global_position/pose", GeoPoseStamped)
+        zed_pos_sub = message_filters.Subscriber('/zed2i/zed_node/pose', PoseStamped) #TODO: Get actual topic
         ts = message_filters.ApproximateTimeSynchronizer([pix_pos_sub, zed_pos_sub], 10, 0.1, allow_headerless=True)
         ts.registerCallback(self.combined_pos_callback)
 
@@ -120,7 +132,7 @@ class Ardupilot():
             key: False
             for key in ['state', 'imu', 'local_pos', 'global_pos']
         }
-
+	
         rospy.Subscriber('pilot_suite/processed_waypoint', ProcessedWaypoint, self.waypoint_callback)
         rospy.Subscriber('pilot_suite/waypoint_skip', SkipWaypoint, self.waypoint_skip_callback)
         rospy.Subscriber('pilot_suite/velocity_command', VelocityCommand, self.velocity_command_callback)
@@ -131,11 +143,13 @@ class Ardupilot():
         self.send_waypoint_reached = rospy.Publisher('pilot_suite/waypoint_reached', WaypointReached, queue_size=5)
 
         self.set_local_setpoint = rospy.Publisher('mavros/setpoint_position/local', PoseStamped, queue_size=5)
-	self.set_global_setpoint = rospy.Publisher('mavros/setpoint_position/global', GlobalPoseStamped, queue_size=5)
+        self.set_global_setpoint = rospy.Publisher('mavros/setpoint_position/global', GlobalPoseStamped, queue_size=5)
 
         self.set_velocity = rospy.Publisher('mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=5)
         self.toggle_task = rospy.Publisher('pilot_suite/task', String, queue_size= 5)
+        self.send_global_pose = rospy.publisher('pilot_suite/global_pose', GeoPoseStamped, queue_size=5)
         self.send_pose = rospy.Publisher('pilot_suite/pose', PoseStamped, queue_size=5)
+
         self.position_transform_broadcaster = tf.TransformBroadcaster()
         self.task_manager = dict()
 
@@ -226,6 +240,17 @@ class Ardupilot():
         if len(self.queue) <= self.current_order:
             return None
         return self.queue[self.current_order]
+    
+    def get_curr_gps_waypoint(self):
+        while self.current_order in self.skipped_waypoints:
+            # make sure the global planner is up to date with which waypoint is next
+            self.waypoint_reached_pub.publish(WaypointReached(self.current_order))
+            self.current_order += 1
+        if self.temp_waypoint is not None:
+            return self.temp_waypoint
+        if len(self.queue) <= self.current_order:
+            return None
+        return self.queue[self.current_order]
 
     # subscribes to the local position of the boat and updates the next
     # waypoint if the local position is within acceptance radius of current setpoint
@@ -254,6 +279,34 @@ class Ardupilot():
                 self.send_waypoint_reached.publish(WaypointReached(self.current_order))
                 self.current_order += 1
             self.update_controller()
+            
+    def global_position_callback(self, data):
+        if self.init_global_position is None:
+            self.init_global_position = data
+        self.global_position = data
+
+        # rospy.loginfo(f"local position: {(data.pose.position.x, data.pose.position.y, data.pose.position.z)}")
+
+        if not self.sub_topics_ready['global_pos']:
+            self.sub_topics_ready['global_pos'] = True
+
+        # publish position to pilot_suite/position
+        self.send_global_pose.publish(data)
+        curr_gps_waypoint = self.get_curr_gps_waypoint()
+        
+        if curr_gps_waypoint is None or isinstance(curr_gps_waypoint, ProcessedTask):
+            return
+
+        dist_sq = (self.global_position.latitude - curr_gps_waypoint[0]) ** 2 + (self.global_position.longitude - curr_gps_waypoint[1]) ** 2
+        
+        if dist_sq < ACCEPTANCE_RADIUS_GPS ** 2:
+            if self.temp_waypoint != None:
+                self.temp_waypoint = None
+            else:
+                self.send_waypoint_reached.publish(WaypointReached(self.current_order))
+                self.current_order += 1
+            self.update_controller()
+
     
     # combines pixhawk and zed camera data
     def combined_pos_callback(self, pixhawk_data, zed_data):
