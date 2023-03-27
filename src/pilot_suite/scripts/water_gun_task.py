@@ -183,7 +183,7 @@ class WaterGunTaskNode(TaskNode):
         return result_image
 
     def callback(self, depth_img, img):
-
+        print("in call back now")
         if not self.active:
             return
         # Convert depth and rgb image using cvBridge

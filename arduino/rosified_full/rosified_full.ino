@@ -50,7 +50,7 @@ double rpm = 0;
 // Ball shooter hopper movement
 const int NUM_ROTATION = 3;
 const int HOPPER_SERVO_SPEED = 110;
-const double SHOOTER_SPEED = 0; //TODO: Change this
+const double SHOOTER_SPEED = 100; //TODO: Change this
 const int BALL_SHOOTER_ZERO = 80; 
 unsigned long timeHopperMove = 0;
 long deltaCounter = 0;
@@ -421,10 +421,10 @@ void watergunAimShoot(float x, float y, float z) {
 
 // Fire ball shooter
 void shooterSpeedUp() {
-	//TODO: FIX
-	//analogWrite(SHOOTER_LPWM, shooterSpeed);
+
+	analogWrite(SHOOTER_LPWM, shooterSpeed);
 	digitalWrite(LED_BUILTIN, HIGH);
-	analogWrite(SHOOTER_RPWM, 0);
+	//analogWrite(SHOOTER_RPWM, 0);
 	analogWrite(SHOOTER_LPWM, SHOOTER_SPEED);
 
 	//Serial.println("Shooter speed: " + String(shooterSpeed)); 
