@@ -66,6 +66,8 @@ class SkeeballTaskNode(TaskNode):
         self.S_THRESHOLD = 127
         self.V_THRESHOLD_L = 30
         self.V_THRESHOLD_H = 100
+        self.H_THRESHOLD_H = 140
+        self.H_THRESHOLD_L = 100
         self.VAR_THRESHOLD1 = 0.1
         self.VAR_THRESHOLD2 = 1.2
 
@@ -87,6 +89,8 @@ class SkeeballTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 0] < self.H_THRESHOLD_L] = np.zeros(3)
+        res_img[res_img[:, :, 0] > self.H_THRESHOLD_H] = np.zeros(3)
         res_img[res_img[:, :, 1] < self.S_THRESHOLD] = np.zeros(3)
         res_img[res_img[:, :, 2] < self.V_THRESHOLD_L] = np.zeros(3)
         res_img[res_img[:, :, 2] > self.V_THRESHOLD_H] = np.zeros(3)
