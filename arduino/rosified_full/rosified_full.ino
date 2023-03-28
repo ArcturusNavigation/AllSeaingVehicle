@@ -50,7 +50,7 @@ double rpm = 0;
 // Ball shooter hopper movement
 const int NUM_ROTATION = 3;
 const int HOPPER_SERVO_SPEED = 110;
-const double SHOOTER_SPEED = 2500; //TODO: Change this
+double SHOOTER_SPEED = 2500; //TODO: Change this
 const int BALL_SHOOTER_ZERO = 80; 
 unsigned long timeHopperMove = 0;
 long deltaCounter = 0;
@@ -381,8 +381,10 @@ double getShooterRPM() {
 
 // Aim ball shooter with x, y, z
 void aimShooter(float x, float y, float z) {
-
+  float e = 2.71828;
 	float theta = atan(x / z) * 180 / PI;
+  // 2500 is the default, goes about 1.25 m 
+  SHOOTER_SPEED = 1500 + 2000 /((1+ pow(e, 2*(-z + 1.25)))
 	aimShooter(theta);
 
 }

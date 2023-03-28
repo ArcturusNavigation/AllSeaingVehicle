@@ -74,7 +74,7 @@ class WaterGunTaskNode(TaskNode):
         #everything in terms of meters
         self.pixel_width = 0
         self.s = 0.3 # x distance between camera and water gun (water gun to the left of camera, so smaller pixel numbers)
-        self.y = 0.25 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
+        self.y = 0.4 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
         self.D = 0.5
         self.fov = 2.0944 # this is 120 degrees as the zed 2i advertises
         self.center_history = []
