@@ -33,6 +33,9 @@ class TurtleNestTaskNode(TaskNode):
 
         self.num_circles = rospy.Publisher(
             '/pilot_suite/turtle_nest_task/num_circles_pub', Int8, queue_size=1)
+        
+        self.vel_pub = rospy.Publisher(
+            '/pilot_suite/turtle_nest_task/vel_pub', Twist, queue_size=1)
 
 
         if(self.debug):
@@ -72,9 +75,6 @@ class TurtleNestTaskNode(TaskNode):
 
         #everything in terms of meters
         self.pixel_width = 0
-        self.s = 0.3 # x distance between camera and water gun (water gun to the left of camera, so smaller pixel numbers)
-        self.y = 0.25 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
-        self.D = 0.5
         self.fov = 2.0944 # this is 120 degrees as the zed 2i advertises
         self.num_history = []
 
@@ -190,25 +190,26 @@ class TurtleNestTaskNode(TaskNode):
         return result_image
 
     def count_cicles(self, filtered_img):
+
         if (filtered_img is None):
             return 0
         
+        center = np.array([0, 0])
         
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(filtered_img[:,:,2])
-        #dots = [-1]
-        #dots = cv2.HoughCircles(filtered_img[:,:,2], cv2.HOUGH_GRADIENT, 2, minDist=1, param1=20, param2=10, minRadius=5, maxRadius=100)
-        print(stats)
-        #print(dots)
+
         num_large_cc = 0
+
         for i in range(1, num_labels):
             if stats[i, cv2.CC_STAT_AREA] >= 15:
                 num_large_cc += 1
-        return num_large_cc 
-        #if dots is None:
-            #return 0
-        return num_labels
-        #return len(dots[0, :])
+                center += centroids[i]
         
+        if num_large_cc == 0:
+            return 0, -1
+
+        return num_large_cc, center // num_large_cc
+
 
     def callback(self, depth_img, img):
 
@@ -249,12 +250,15 @@ class TurtleNestTaskNode(TaskNode):
             self.image_outliers_pub.publish(self.bridge.cv2_to_imgmsg(
                 cv2.cvtColor(postoutliers_img, cv2.COLOR_HSV2BGR), "bgr8"))
 
-        num_circles = self.count_cicles(postoutliers_img)
+        num_circles, center = self.count_cicles(postoutliers_img)
+
+        print("Detected", num_circles, " dots")
+
         if num_circles == 0:
-            print("no circles detected...")
             return
-        print("we detected ", num_circles, " dots")
+
         self.num_history.append(num_circles)
+        self.center_history.append(center)
 
         if len(self.num_history) >= 10:
             ch = np.array(self.num_history)
@@ -274,6 +278,35 @@ class TurtleNestTaskNode(TaskNode):
 
         #print("Number of dots detected", num_dots.data)
         self.num_circles.publish(num_dots)
+
+        self.center_history.append(
+            (center[1], center[0], depth_img[center[0], center[1]]))
+        if len(self.center_history) >= 15:
+            ch = np.array(self.center_history)
+            means = np.mean(ch, axis=0)
+            vars = np.square(ch[:, 0] - means[0]) + np.square(
+                ch[:, 1] - means[1]) + np.square(ch[:, 2] - means[2])
+            vars_avg = np.mean(vars)
+            self.center_history = ch[vars / vars_avg <= 0.5].tolist()
+        if len(self.center_history) > 10:
+            self.center_history.pop(0)
+        elif len(self.center_history) < 15:
+            return
+
+        ch = np.array(self.center_history)
+        means = np.mean(ch, axis=0)
+        point = Point()
+
+        # convert pixels to meters
+        meters_over_pixels = np.tan(self.fov/2)*means[2] / W
+
+        # convert x and y to meters
+        point.x = meters_over_pixels * (means[0] - mid_x)
+        point.y = meters_over_pixels * (means[1] - mid_y)
+        point.z = means[2]
+
+        print("Points", point.x, point.y, point.z)
+        self.center_pub.publish(point)
 
 
 
