@@ -64,6 +64,7 @@ class TurtleNestTaskNode(TaskNode):
             self.TARGET_COLOR_CONSTANT = 0
 
         self.SV_THRESHOLD = 50
+        self.SV_THRESHOLD = 50
         self.VAR_THRESHOLD = 0.7
 
         self.MIN_DEPTH = 0.5

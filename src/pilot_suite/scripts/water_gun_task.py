@@ -31,7 +31,7 @@ class WaterGunTaskNode(TaskNode):
         ########################################
 
         self.center_pub = rospy.Publisher(
-            '/pilot_suite/water_gun_task/', Point, queue_size=1)
+            '/pilot_suite/water_gun_task/target_center_pose', Point, queue_size=1)
         self.marker_pub = rospy.Publisher(
             '/pilot_suite/water_gun_task/debug/marker_pub', Marker, queue_size=1)
 
@@ -84,8 +84,10 @@ class WaterGunTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 0] < self.BLUE_CONSTANT - 30] = np.zeros(3)
+        res_img[res_img[:, :, 0] > self.BLUE_CONSTANT + 30] = np.zeros(3)
+        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
@@ -183,7 +185,7 @@ class WaterGunTaskNode(TaskNode):
         return result_image
 
     def callback(self, depth_img, img):
-
+        print("in call back now")
         if not self.active:
             return
         # Convert depth and rgb image using cvBridge

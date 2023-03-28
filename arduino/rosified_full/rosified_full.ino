@@ -50,7 +50,7 @@ double rpm = 0;
 // Ball shooter hopper movement
 const int NUM_ROTATION = 3;
 const int HOPPER_SERVO_SPEED = 110;
-const double SHOOTER_SPEED = 0; //TODO: Change this
+const double SHOOTER_SPEED = 2500; //TODO: Change this
 const int BALL_SHOOTER_ZERO = 80; 
 unsigned long timeHopperMove = 0;
 long deltaCounter = 0;
@@ -59,7 +59,7 @@ double shooterSpeed = 0;
 const int SPEED_THRESHOLD = 50;
 ArduPID shooterPID;
 const double shooterP = 0.15; //TODO: Tune PID
-const double shooterI = 0.001;
+const double shooterI = 0.0012;
 const double shooterD = 0.005;
 
 // Water gun setup
@@ -131,7 +131,7 @@ void watergunCallback(const geometry_msgs::Point& waterPointMsg) {
 	// Water gun modes
 	if (watergunMode == ZERO) {
 		zeroWater();
-	} else if (watergunMode == SHOOT) {
+  } else if (watergunMode == SHOOT) {
 		watergunAimShoot(waterPointMsg.x, waterPointMsg.y, waterPointMsg.z);
 	} else {
 		//Serial.println("rip watergun");
@@ -225,7 +225,7 @@ void collectorCallback(const std_msgs::Bool& collectorMsg) {
 	}
 	if (collectorStopCount >= CALLBACK_THRESHOLD) {
 		collectorMode = INACTIVATED;
-		collectorRunCount = 0;
+		collectorRunCount = -1;
 	}
 
 	// Limit switch values
@@ -396,7 +396,7 @@ void aimShooter(float theta) {
 void ballshooterAimShoot(float theta) {
 
 	aimShooter(theta);
-	shooterSpeedUp();
+	shooterSpeedUp(); //TODO: see if adding delay helps
 
 }
 
@@ -415,17 +415,18 @@ void watergunAimShoot(float x, float y, float z) {
 	float theta2 = WATER_PITCH_ZERO + atan(y / z) * 180 / PI; 
 	waterYawServo.write(theta1); 
 	waterPitchServo.write(theta2); 
-	//digitalWrite(PUMP_RPWM, HIGH);
+	digitalWrite(PUMP_RPWM, HIGH);
+  delay(5);
 
 }
 
 // Fire ball shooter
 void shooterSpeedUp() {
-	//TODO: FIX
-	//analogWrite(SHOOTER_LPWM, shooterSpeed);
+
+	analogWrite(SHOOTER_LPWM, shooterSpeed);
 	digitalWrite(LED_BUILTIN, HIGH);
 	analogWrite(SHOOTER_RPWM, 0);
-	analogWrite(SHOOTER_LPWM, SHOOTER_SPEED);
+	//analogWrite(SHOOTER_LPWM, SHOOTER_SPEED);
 
 	//Serial.println("Shooter speed: " + String(shooterSpeed)); 
 
