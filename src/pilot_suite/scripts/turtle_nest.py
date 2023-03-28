@@ -78,6 +78,7 @@ class TurtleNestTaskNode(TaskNode):
         self.pixel_width = 0
         self.fov = 2.0944 # this is 120 degrees as the zed 2i advertises
         self.num_history = []
+        self.center_history = []
 
     def depth_and_sv_mask(self, original_img, depth_img):
 
@@ -89,7 +90,7 @@ class TurtleNestTaskNode(TaskNode):
             res_img[res_img[:, :, 0] < self.TARGET_COLOR_CONSTANT - self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
             res_img[res_img[:, :, 0] > self.TARGET_COLOR_CONSTANT + self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
         else:
-            res_img[np.abs(90 - res_img[:, :, 0]) > (90 - self.TARGET_COLOR_DEVIATION_THRESHOLD)] = np.zeros(3)
+            res_img[np.abs(90 - res_img[:, :, 0]) < (90 - self.TARGET_COLOR_DEVIATION_THRESHOLD)] = np.zeros(3)
             
 
         res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
@@ -215,7 +216,7 @@ class TurtleNestTaskNode(TaskNode):
         for i in range(1, num_labels):
             if stats[i, cv2.CC_STAT_AREA] >= 15:
                 num_large_cc += 1
-                center += centroids[i]
+                center += np.uint8(centroids[i])
         
         if num_large_cc == 0:
             return 0, -1
@@ -347,6 +348,6 @@ if __name__ == '__main__':
 
     print("Python Script Running!")
     rospy.init_node('turtle_nest_node')
-    task_node = TurtleNestTaskNode("red")
+    task_node = TurtleNestTaskNode("green")
     task_node.active = True
     task_node.run()

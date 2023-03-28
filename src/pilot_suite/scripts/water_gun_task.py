@@ -243,7 +243,7 @@ class WaterGunTaskNode(TaskNode):
                 ch[:, 1] - means[1]) + np.square(ch[:, 2] - means[2])
             vars_avg = np.mean(vars)
             self.center_history = ch[vars / vars_avg <= 0.5].tolist()
-        if len(self.center_history) > 10:
+        if len(self.center_history) > 15:
             self.center_history.pop(0)
         elif len(self.center_history) < 15:
             return
