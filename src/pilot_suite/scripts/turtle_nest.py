@@ -56,7 +56,7 @@ class TurtleNestTaskNode(TaskNode):
         self.bag_positions = []
 
         self.SHRINK_FACTOR = 2
-        self.TARGET_COLOR_DEVIATION_THRESHOLD = 30
+        self.TARGET_COLOR_DEVIATION_THRESHOLD = 15
         self.DEPTH_THRESHOLD = 15
         if color == "blue":
             self.TARGET_COLOR_CONSTANT = 120
@@ -90,9 +90,8 @@ class TurtleNestTaskNode(TaskNode):
             res_img[res_img[:, :, 0] < self.TARGET_COLOR_CONSTANT - self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
             res_img[res_img[:, :, 0] > self.TARGET_COLOR_CONSTANT + self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
         else:
-
-            res_img[np.logical_not(np.logical_and(res_img[:, :, 0] < self.TARGET_COLOR_DEVIATION_THRESHOLD, res_img[:, :, 0] > (180 - self.TARGET_COLOR_DEVIATION_THRESHOLD)))] = np.zeros(3)
-
+            res_img[np.abs(90 - res_img[:, :, 0]) < (90 - self.TARGET_COLOR_DEVIATION_THRESHOLD)] = np.zeros(3)
+            
 
         res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
         res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
@@ -124,13 +123,21 @@ class TurtleNestTaskNode(TaskNode):
 
         min_diff = np.min(
             np.abs(input_img[:, :, 0] - self.TARGET_COLOR_CONSTANT * np.ones(input_img.shape[:2])))
-
+        if self.TARGET_COLOR_CONSTANT == 0:
+            min_diff2 = np.min(np.abs(input_img[:, :, 0] - (180-self.TARGET_COLOR_CONSTANT) * np.ones(input_img.shape[:2])))
+            min_diff = min(min_diff, min_diff2)
+        
         target_color_color = self.TARGET_COLOR_CONSTANT + (min_diff if (self.TARGET_COLOR_CONSTANT + min_diff)
                                            in input_img[:, :, 0] else -min_diff)
-    
+        if target_color_color < 0:
+            target_color_color += 180
 
-        if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
-            return not_detected
+        if self.TARGET_COLOR_CONSTANT != 0:
+            if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
+                return not_detected
+        else:
+            if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD and abs(target_color_color - (self.TARGET_COLOR_CONSTANT + 180)) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
+                return not_detected
 
         target_colors = np.argwhere(np.abs(input_img - target_color_color) < 1)
         if len(target_colors) == 0:
@@ -146,8 +153,12 @@ class TurtleNestTaskNode(TaskNode):
 
         for i in range(input_img.shape[0]):
             for j in range(input_img.shape[1]):
-                if (abs(input_img[i][j][0] - target_color_color) > self.TARGET_COLOR_DEVIATION_THRESHOLD):
-                    filtered_img[i, j, :] = [0, 0, 0]
+                if self.TARGET_COLOR_CONSTANT != 0:
+                    if (abs(input_img[i][j][0] - target_color_color) > self.TARGET_COLOR_DEVIATION_THRESHOLD):
+                        filtered_img[i, j, :] = [0, 0, 0]
+                else:
+                    if (abs(input_img[i][j][0] - target_color_color) > self.TARGET_COLOR_DEVIATION_THRESHOLD and abs(input_img[i][j][0] - (target_color_color + 180)) > self.TARGET_COLOR_DEVIATION_THRESHOLD):
+                        filtered_img[i, j, :] = [0, 0, 0]
 
 
         # convert location to location relative to center of the frame
@@ -179,7 +190,7 @@ class TurtleNestTaskNode(TaskNode):
         criteria = (cv2.TERM_CRITERIA_EPS +
                     cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
-        K = 15
+        K = 7
         attempts = 1
 
         _, label, center = cv2.kmeans(
@@ -212,13 +223,13 @@ class TurtleNestTaskNode(TaskNode):
         
         centers_list = np.array(centers_list)
 
-        die_center = np.mean(centers_list, axis=0)
+        die_center = np.median(centers_list, axis=0)
 
         vars = np.square(centers_list[:, 0] - die_center[0]) + np.square(centers_list[:, 1] - die_center[1]) 
+        centers_list = centers_list[vars / np.mean(vars) < 0.2]
 
-        centers_list = centers_list[vars / np.mean(vars) < 5]
 
-        return num_large_cc, np.mean(centers_list, axis=0).astype(np.uint8)
+        return len(centers_list), np.mean(centers_list, axis=0).astype(np.uint8)
 
 
     def callback(self, depth_img, img):
@@ -268,8 +279,6 @@ class TurtleNestTaskNode(TaskNode):
             return
 
         self.num_history.append(num_circles)
-        self.center_history.append(center)
-
         if len(self.num_history) >= 10:
             ch = np.array(self.num_history)
             mode_dots = statistics.mode(ch)
@@ -298,7 +307,7 @@ class TurtleNestTaskNode(TaskNode):
                 ch[:, 1] - means[1]) + np.square(ch[:, 2] - means[2])
             vars_avg = np.mean(vars)
             self.center_history = ch[vars / vars_avg <= 0.5].tolist()
-        if len(self.center_history) > 10:
+        if len(self.center_history) > 15:
             self.center_history.pop(0)
         elif len(self.center_history) < 15:
             return
@@ -345,6 +354,6 @@ if __name__ == '__main__':
 
     print("Python Script Running!")
     rospy.init_node('turtle_nest_node')
-    task_node = TurtleNestTaskNode("green")
+    task_node = TurtleNestTaskNode("red")
     task_node.active = True
     task_node.run()
