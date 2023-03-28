@@ -122,13 +122,21 @@ class TurtleNestTaskNode(TaskNode):
 
         min_diff = np.min(
             np.abs(input_img[:, :, 0] - self.TARGET_COLOR_CONSTANT * np.ones(input_img.shape[:2])))
-
+        if self.TARGET_COLOR_CONSTANT == 0:
+            min_diff2 = np.min(np.abs(input_img[:, :, 0] - (180-self.TARGET_COLOR_CONSTANT) * np.ones(input_img.shape[:2])))
+            min_diff = min(min_diff, min_diff2)
+        
         target_color_color = self.TARGET_COLOR_CONSTANT + (min_diff if (self.TARGET_COLOR_CONSTANT + min_diff)
                                            in input_img[:, :, 0] else -min_diff)
-    
+        if target_color_color < 0:
+            target_color_color += 180
 
-        if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
-            return not_detected
+        if self.TARGET_COLOR_CONSTANT != 0:
+            if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
+                return not_detected
+        else:
+            if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD and abs(target_color_color - (self.TARGET_COLOR_CONSTANT + 180)) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
+                return not_detected
 
         target_colors = np.argwhere(np.abs(input_img - target_color_color) < 1)
         if len(target_colors) == 0:
@@ -144,8 +152,12 @@ class TurtleNestTaskNode(TaskNode):
 
         for i in range(input_img.shape[0]):
             for j in range(input_img.shape[1]):
-                if (abs(input_img[i][j][0] - target_color_color) > self.TARGET_COLOR_DEVIATION_THRESHOLD):
-                    filtered_img[i, j, :] = [0, 0, 0]
+                if self.TARGET_COLOR_CONSTANT != 0:
+                    if (abs(input_img[i][j][0] - target_color_color) > self.TARGET_COLOR_DEVIATION_THRESHOLD):
+                        filtered_img[i, j, :] = [0, 0, 0]
+                else:
+                    if (abs(input_img[i][j][0] - target_color_color) > self.TARGET_COLOR_DEVIATION_THRESHOLD and abs(input_img[i][j][0] - (target_color_color + 180)) > self.TARGET_COLOR_DEVIATION_THRESHOLD):
+                        filtered_img[i, j, :] = [0, 0, 0]
 
 
         # convert location to location relative to center of the frame
@@ -177,7 +189,7 @@ class TurtleNestTaskNode(TaskNode):
         criteria = (cv2.TERM_CRITERIA_EPS +
                     cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
-        K = 15
+        K = 7
         attempts = 1
 
         _, label, center = cv2.kmeans(
