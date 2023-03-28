@@ -79,6 +79,7 @@ generate_messages(
     DEPENDENCIES
     std_msgs
     geometry_msgs
+    geographic_msgs
 )
 
 ################################################
@@ -176,6 +177,9 @@ catkin_install_python(PROGRAMS
   scripts/tf2.py
   scripts/local_planner.py
   scripts/turtle_nest.py
+  scripts/pilot_shifter.py
+  scripts/open_loop_distance.py
+  scripts/velocity_control.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

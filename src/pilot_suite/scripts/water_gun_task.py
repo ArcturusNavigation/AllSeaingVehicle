@@ -31,7 +31,7 @@ class WaterGunTaskNode(TaskNode):
         ########################################
 
         self.center_pub = rospy.Publisher(
-            '/pilot_suite/water_gun_task/', Point, queue_size=1)
+            '/pilot_suite/water_gun_task/target_center_pose', Point, queue_size=1)
         self.marker_pub = rospy.Publisher(
             '/pilot_suite/water_gun_task/debug/marker_pub', Marker, queue_size=1)
 
@@ -266,7 +266,7 @@ class WaterGunTaskNode(TaskNode):
         point.y = - y_m + self.y
         point.z = means[2] # maybe it should just be self.D?
 
-        print("stablizied center (last two should equal):", x_m, y_m, means[2], self.D)
+        print("stablizied center published:", x_m, y_m, means[2])
         self.center_pub.publish(point)
 
 
