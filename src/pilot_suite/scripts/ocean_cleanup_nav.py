@@ -279,7 +279,7 @@ class OceanCleanupTaskNode(TaskNode):
                 pass
             self.rate.sleep()
     
-if _name_ == '_main_':
+if __name__ == '__main__':
 
     print("Python Script Running!")
     rospy.init_node('ocean_cleanup_node')
