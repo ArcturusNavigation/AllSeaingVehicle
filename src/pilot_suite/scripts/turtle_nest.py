@@ -212,9 +212,9 @@ class TurtleNestTaskNode(TaskNode):
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(filtered_img[:,:,2])
 
         num_large_cc = 0
-
+        print(stats)
         for i in range(1, num_labels):
-            if stats[i, cv2.CC_STAT_AREA] >= 15:
+            if stats[i, cv2.CC_STAT_AREA] >= 10:
                 num_large_cc += 1
                 centers_list.append(centroids[i])
 
@@ -226,10 +226,12 @@ class TurtleNestTaskNode(TaskNode):
         die_center = np.median(centers_list, axis=0)
 
         vars = np.square(centers_list[:, 0] - die_center[0]) + np.square(centers_list[:, 1] - die_center[1]) 
-        centers_list = centers_list[vars / np.mean(vars) < 0.2]
+        centers_list = centers_list[vars / np.mean(vars) < 3]
 
+        print(centers_list)
 
-        return len(centers_list), np.mean(centers_list, axis=0).astype(np.uint8)
+        # print(centers_list, "with means", np.mean(centers_list, axis=0))
+        return len(centers_list), np.mean(centers_list, axis=0).astype(np.uint16)
 
 
     def callback(self, depth_img, img):
@@ -248,6 +250,8 @@ class TurtleNestTaskNode(TaskNode):
         H, W, _ = img.shape
         mid_x = W // 2
         mid_y = H // 2
+
+        print(W, H)
 
         segmented_img = self.depth_and_sv_mask(img, depth_img)
 
@@ -278,35 +282,20 @@ class TurtleNestTaskNode(TaskNode):
         if num_circles == 0:
             return
 
-        self.num_history.append(num_circles)
-        if len(self.num_history) >= 10:
-            ch = np.array(self.num_history)
-            mode_dots = statistics.mode(ch)
-            variances = np.square(ch - mode_dots)
-            variances_avg = np.mean(variances)
-            self.num_history = ch[variances / (variances_avg + 1e-6) <= 15].tolist()
-        if len(self.num_history) > 10:
-            self.num_history.pop(0)
-        elif len(self.num_history) < 10:
-            return
-
-        ch = np.array(self.num_history)
-
-        num_dots = Int8()
-        num_dots.data = mode_dots
-
+        #print(self.center_history)
         #print("Number of dots detected", num_dots.data)
-        self.num_circles.publish(num_dots)
+        self.num_circles.publish(num_circles)
+
+        print("Center", center)
 
         self.center_history.append(
-            (center[1], center[0], depth_img[center[0], center[1]]))
+            (center[0], center[1], depth_img[center[1], center[0]]))
         if len(self.center_history) >= 15:
             ch = np.array(self.center_history)
             means = np.mean(ch, axis=0)
-            vars = np.square(ch[:, 0] - means[0]) + np.square(
-                ch[:, 1] - means[1]) + np.square(ch[:, 2] - means[2])
+            vars = np.square(ch[:, 0] - means[0])
             vars_avg = np.mean(vars)
-            self.center_history = ch[vars / vars_avg <= 0.5].tolist()
+            self.center_history = ch[vars / vars_avg <= 5].tolist()
         if len(self.center_history) > 15:
             self.center_history.pop(0)
         elif len(self.center_history) < 15:
@@ -324,7 +313,7 @@ class TurtleNestTaskNode(TaskNode):
         center_y = meters_over_pixels * (means[1] - mid_y)
         center_z = means[2]
 
-        print("Point", center_x, center_z)
+        print("Point", center_x, center_y, center_z)
 
         linear_velocity, angular_velocity = Vector3(), Vector3()
 
@@ -340,7 +329,7 @@ class TurtleNestTaskNode(TaskNode):
 
         velocity_msg.linear = linear_velocity
         velocity_msg.angular = angular_velocity
-
+        print("linearly velocity", linear_velocity.x, linear_velocity.y)
         self.velocity_pub.publish(velocity_msg)
 
 
@@ -354,6 +343,6 @@ if __name__ == '__main__':
 
     print("Python Script Running!")
     rospy.init_node('turtle_nest_node')
-    task_node = TurtleNestTaskNode("red")
+    task_node = TurtleNestTaskNode("green")
     task_node.active = True
     task_node.run()
