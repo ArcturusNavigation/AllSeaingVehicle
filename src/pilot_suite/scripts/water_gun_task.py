@@ -265,7 +265,7 @@ class WaterGunTaskNode(TaskNode):
         point.y = - y_m + self.y
         point.z = means[2] # maybe it should just be self.D?
 
-        print("stablizied center (last two should equal):", x_m, y_m, means[2], self.D)
+        print("stablizied center (last two should equal):", x_m + self.s, - y_m + self.y, means[2], self.D)
         self.center_pub.publish(point)
 
 

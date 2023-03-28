@@ -23,7 +23,7 @@ class OceanCleanupTaskNode(TaskNode):
         ######## Execution Debug Mode ###########
         #########################################
 
-        self.debug = False
+        self.debug = True
         super().__init__('ocean_cleanup_task')
         self.bridge = cv_bridge.CvBridge()
 
