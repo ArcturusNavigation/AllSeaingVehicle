@@ -57,7 +57,7 @@ class TurtleNestTaskNode(TaskNode):
         self.bag_positions = []
 
         self.SHRINK_FACTOR = 2
-        self.TARGET_COLOR_DEVIATION_THRESHOLD = 30
+        self.TARGET_COLOR_DEVIATION_THRESHOLD = 15
         self.DEPTH_THRESHOLD = 15
         if color == "blue":
             self.TARGET_COLOR_CONSTANT = 120
@@ -88,9 +88,8 @@ class TurtleNestTaskNode(TaskNode):
             res_img[res_img[:, :, 0] < self.TARGET_COLOR_CONSTANT - self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
             res_img[res_img[:, :, 0] > self.TARGET_COLOR_CONSTANT + self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
         else:
-
-            res_img[np.logical_not(np.logical_and(res_img[:, :, 0] < self.TARGET_COLOR_DEVIATION_THRESHOLD, res_img[:, :, 0] > (180 - self.TARGET_COLOR_DEVIATION_THRESHOLD)))] = np.zeros(3)
-
+            res_img[np.abs(90 - res_img[:, :, 0]) > (90 - self.TARGET_COLOR_DEVIATION_THRESHOLD)] = np.zeros(3)
+            
 
         res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
         res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
