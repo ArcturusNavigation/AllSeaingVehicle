@@ -122,7 +122,7 @@ class OceanCleanupTaskNode(TaskNode):
                     if (abs(input_img[i][j][0] - orange_color) < 1):
                         continue
                     else:
-                        filtered_img[i, j, 🙂 = [0, 0, 0]
+                        filtered_img[i, j, :] = [0, 0, 0]
         
         def remove_outliers(x_oranges, y_oranges):
 
@@ -146,7 +146,7 @@ class OceanCleanupTaskNode(TaskNode):
         if self.debug:
             postoutliers_img = np.zeros(filtered_img.shape)
             for i in range(len(x_oranges)):
-                postoutliers_img[x_oranges[i], y_oranges[i], 🙂 = np.array([120, 100, 100])
+                postoutliers_img[x_oranges[i], y_oranges[i], :] = np.array([120, 100, 100])
 
             # Trying to find the leftmost 
 
