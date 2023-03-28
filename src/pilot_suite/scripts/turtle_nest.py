@@ -6,11 +6,10 @@ import cv_bridge
 import statistics
 import rospy
 
-from std_msgs.msg import String, Int8
+from std_msgs.msg import Int8
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Twist, Point
-from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Twist, Point, Vector3
 
 from task_node import TaskNode
 
@@ -34,7 +33,7 @@ class TurtleNestTaskNode(TaskNode):
         self.num_circles = rospy.Publisher(
             '/pilot_suite/turtle_nest_task/num_circles_pub', Int8, queue_size=1)
         
-        self.vel_pub = rospy.Publisher(
+        self.velocity_pub = rospy.Publisher(
             '/pilot_suite/turtle_nest_task/vel_pub', Twist, queue_size=1)
 
 
@@ -72,6 +71,8 @@ class TurtleNestTaskNode(TaskNode):
 
         self.MIN_DEPTH = 0.5
         self.MAX_DEPTH = 15.0
+
+        self.VELOCITY_SCALE = 1.5
 
         #everything in terms of meters
         self.pixel_width = 0
@@ -300,12 +301,28 @@ class TurtleNestTaskNode(TaskNode):
         meters_over_pixels = np.tan(self.fov/2)*means[2] / W
 
         # convert x and y to meters
-        point.x = meters_over_pixels * (means[0] - mid_x)
-        point.y = meters_over_pixels * (means[1] - mid_y)
-        point.z = means[2]
+        center_x = meters_over_pixels * (means[0] - mid_x)
+        center_y = meters_over_pixels * (means[1] - mid_y)
+        center_z = means[2]
 
-        print("Points", point.x, point.y, point.z)
-        self.center_pub.publish(point)
+        print("Point", center_x, center_z)
+
+        linear_velocity, angular_velocity = Vector3(), Vector3()
+
+        linear_velocity.x = self.VELOCITY_SCALE * center_z
+        linear_velocity.y = self.VELOCITY_SCALE * center_x
+        linear_velocity.z = 0
+
+        angular_velocity.x = 0
+        angular_velocity.y = 0
+        angular_velocity.z = 0
+
+        velocity_msg = Twist()
+
+        velocity_msg.linear = linear_velocity
+        velocity_msg.angular = angular_velocity
+
+        self.velocity_pub.publish(velocity_msg)
 
 
 
