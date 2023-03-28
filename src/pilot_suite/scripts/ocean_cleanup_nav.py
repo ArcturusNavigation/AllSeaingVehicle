@@ -68,10 +68,10 @@ class OceanCleanupTaskNode(TaskNode):
         self.SV_THRESHOLD = 100
         self.VAR_THRESHOLD = 0.7
 
-        self.VELOCITY_SCALE = 1.5
+        self.VELOCITY_SCALE = 0.5
 
         # THIS MIGHT CHANGE BECAUSE POOL NOODLE
-        self.COUNT_THRESHOLD = 50
+        self.COUNT_THRESHOLD = 2
 
         self.MIN_DEPTH = 1
         self.MAX_DEPTH = 15.0
@@ -127,8 +127,11 @@ class OceanCleanupTaskNode(TaskNode):
 
         else:
             oranges = np.argwhere(np.abs(input_img - self.ORANGE_CONSTANT) < self.ORANGE_DEVIATION_THRESHOLD)
+
         print("we have ", len(oranges), " oranges")
-        if len(oranges) <= self.COUNT_THRESHOLD or len(oranges) >= self.COUNT_THRESHOLD * 100:
+        # if len(oranges) <= self.COUNT_THRESHOLD or len(oranges) >= self.COUNT_THRESHOLD * 100:
+        #     return not_detected
+        if len(oranges) >= self.COUNT_THRESHOLD * 10000:
             return not_detected
         x_oranges, y_oranges = oranges[:, 0], oranges[:, 1]
         if self.debug:
@@ -275,6 +278,7 @@ class OceanCleanupTaskNode(TaskNode):
         ch = np.array(self.center_history)
         if not using_history:
             self.center_history.pop()
+        print("the shape is", ch.shape)
         means = np.mean(ch, axis=0)
         point = Point()
         print("the depth is: ", means[2])
@@ -294,7 +298,7 @@ class OceanCleanupTaskNode(TaskNode):
         print("stablizied center (last two should equal):", x_m, y_m, means[2])
         linear_velocity, angular_velocity = Vector3(), Vector3()
 
-        linear_velocity.x = self.VELOCITY_SCALE * center_z
+        linear_velocity.x = self.VELOCITY_SCALE * np.max(0, center_z - 1.0)
         linear_velocity.y = self.VELOCITY_SCALE * center_x
         linear_velocity.z = 0
 
