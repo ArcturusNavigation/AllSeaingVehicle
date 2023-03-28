@@ -23,7 +23,7 @@ class OceanCleanupTaskNode(TaskNode):
         ######## Execution Debug Mode ###########
         #########################################
 
-        self.debug = True
+        self.debug = False
         super().__init__('ocean_cleanup_task')
         self.bridge = cv_bridge.CvBridge()
 
@@ -35,15 +35,14 @@ class OceanCleanupTaskNode(TaskNode):
             '/pilot_suite/ocean_cleanup_task/', Point, queue_size=1)
         self.velocity_pub = rospy.Publisher(
             '/pilot_suite/ocean_cleanup_task/vel_pub', Twist, queue_size=1)
-        
-        if(self.debug):
-            self.image_segmented_pub = rospy.Publisher(
-                '/pilot_suite/ocean_cleanup_task/debug/segmented_img', Image, queue_size=1)
-            self.image_filtered_pub = rospy.Publisher(
-                '/pilot_suite/ocean_cleanup_task/debug/filtered_img', Image, queue_size=1)
-            self.image_outliers_pub = rospy.Publisher(
-                '/pilot_suite/ocean_cleanup_task/debug/outliers_img', Image, queue_size=1)
+
             
+        self.image_filtered_pub = rospy.Publisher(
+                '/pilot_suite/ocean_cleanup_task/debug/filtered_img', Image, queue_size=1)
+        self.image_outliers_pub = rospy.Publisher(
+                '/pilot_suite/ocean_cleanup_task/debug/outliers_img', Image, queue_size=1)
+        self.image_segmented_pub = rospy.Publisher(
+                '/pilot_suite/ocean_cleanup_task/debug/segmented_img', Image, queue_size=1)
         # do we need this
         self.detection_method = detection_method
         self_bag_bounds = bag_bounds
@@ -61,7 +60,7 @@ class OceanCleanupTaskNode(TaskNode):
         self.ats.registerCallback(self.callback)
         self.bag_positions = []
 
-        self.SHRINK_FACTOR = 4
+        self.SHRINK_FACTOR = 1
         self.ORANGE_DEVIATION_THRESHOLD = 15
         self.DEPTH_THRESHOLD = 10
         self.ORANGE_CONSTANT = 15
@@ -97,15 +96,16 @@ class OceanCleanupTaskNode(TaskNode):
 
         res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
         res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
+        
+        self.image_filtered_pub.publish(self.bridge.cv2_to_imgmsg(
+                 cv2.cvtColor(res_img, cv2.COLOR_HSV2BGR), "bgr8"
+            ))
 
         return res_img
 
     def identify_left(self, input_img):
         
         not_detected = (None, None)
-
-        if self.debug:
-            not_detected = ((None, None), None, None)
 
         input_img = np.array(input_img)
         old_detection = False
@@ -134,7 +134,7 @@ class OceanCleanupTaskNode(TaskNode):
         if len(oranges) >= self.COUNT_THRESHOLD * 10000:
             return not_detected
         x_oranges, y_oranges = oranges[:, 0], oranges[:, 1]
-        if self.debug:
+        if self.debug and False:
             filtered_img = input_img.copy()
 
             for i in range(input_img.shape[0]):
@@ -155,15 +155,15 @@ class OceanCleanupTaskNode(TaskNode):
             if mean_var == 0:
                 return x_oranges, y_oranges
 
-            return x_oranges[variances / mean_var <= self.VAR_THRESHOLD], y_oranges[variances / mean_var <- self.VAR_THRESHOLD]
+            return x_oranges[variances / mean_var <= self.VAR_THRESHOLD], y_oranges[variances / mean_var <= self.VAR_THRESHOLD]
 
         # x_oranges, y_oranges = remove_outliers(x_oranges, y_oranges) don't need to remove outliers
-        if len(x_oranges) <= self.COUNT_THRESHOLD or len(y_oranges) <= self.COUNT_THRESHOLD:
+        if len(x_oranges) == 0 or len(y_oranges) == 0:
             return not_detected
 
         # Convert location to location relative to center of the frame
-        self.SHRINK_FACTOR = 1 # set to 1 because we dont run segmentation
-        if self.debug:
+        # self.SHRINK_FACTOR = 1 # set to 1 because we dont run segmentation
+        if self.debug and False:
             postoutliers_img = np.zeros(filtered_img.shape)
             for i in range(len(x_oranges)):
                 postoutliers_img[x_oranges[i], y_oranges[i], :] = np.array([120, 100, 100])
@@ -215,7 +215,10 @@ class OceanCleanupTaskNode(TaskNode):
         H, W, _ = img.shape
         mid_x = W // 2
         mid_y = H // 2
+        scaled_dim = (img.shape[1] // self.SHRINK_FACTOR,
+                    img.shape[0] // self.SHRINK_FACTOR)
 
+        img = cv2.resize(img, scaled_dim, interpolation=cv2.INTER_AREA)
         # THIS WILL HAVE TO CHANGE DEPENDING ON FUNCTION
         if False:
             segmented_img = self.segment_image(
@@ -234,32 +237,54 @@ class OceanCleanupTaskNode(TaskNode):
                 postoutliers_img = np.zeros((H, W, 3), dtype = np.uint8)
                 print("No post-outliers image exists!")
 
-            if target_left != (None, None):
 
-                for i in range(-20, 20):
-                    for j in range(-20, 20):
-                        try:
-                            segmented_img[(i+target_left[0])//self.SHRINK_FACTOR,
-                            (j+target_left[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
-                        except:
-                            pass
-
-            self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(
-                cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"
-            ))
-            self.image_filtered_pub.publish(self.bridge.cv2_to_imgmsg(
-                cv2.cvtColor(filtered_img, cv2.COLOR_HSV2BGR), "bgr8"
-            ))
+            # self.image_filtered_pub.publish(self.bridge.cv2_to_imgmsg(
+            #     cv2.cvtColor(filtered_img, cv2.COLOR_HSV2BGR), "bgr8"
+            # ))
             #self.image_outliers_pub.publish(self.bridge.cv2_to_imgmsg(cv2.cvtColor(postoutliers_img, cv2.COLOR_HSV2BGR), "bgr8"))
 
         else:
             target_left = self.identify_left(segmented_img)
 
         if target_left == (None, None):
+            print("hi")
             return
+        
+        if target_left != (None, None):
+            for i in range(-20, 20):
+                for j in range(-20, 20):
+                    try:
+                        segmented_img[(i+target_left[0])//self.SHRINK_FACTOR,
+                        (j+target_left[1])//self.SHRINK_FACTOR] = np.array([0, 100, 75])
+                    except:
+                        pass
+
+            self.image_segmented_pub.publish(self.bridge.cv2_to_imgmsg(
+                cv2.cvtColor(segmented_img, cv2.COLOR_HSV2BGR), "bgr8"
+            ))
+
+
+        orange_depth = 0
+        num_nonnan = 0
+        for i in range(-20, 20):
+            for j in range(-20, 20):
+                try:
+                    curr_depth = depth_img[(i+target_left[0]),j + target_left[1]]
+                    if not (np.isnan(curr_depth) or np.isinf(curr_depth)):
+                        orange_depth += curr_depth                   
+                        num_nonnan += 1
+                except:
+                    pass
+
+        if num_nonnan == 0:
+            return
+        
+        orange_depth /= num_nonnan
+
+
 
         self.center_history.append(
-            (target_left[1], target_left[0], depth_img[target_left[0], target_left[1]])
+            (target_left[1], target_left[0], orange_depth)
         )
         using_history = False
         if using_history:
@@ -298,7 +323,7 @@ class OceanCleanupTaskNode(TaskNode):
         print("stablizied center (last two should equal):", x_m, y_m, means[2])
         linear_velocity, angular_velocity = Vector3(), Vector3()
 
-        linear_velocity.x = self.VELOCITY_SCALE * np.max(0, center_z - 1.0)
+        linear_velocity.x = self.VELOCITY_SCALE * max(0, center_z - 1.0)
         linear_velocity.y = self.VELOCITY_SCALE * center_x
         linear_velocity.z = 0
 
