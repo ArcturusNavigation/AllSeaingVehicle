@@ -84,6 +84,15 @@ class OceanCleanupTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
+        if self.ORANGE_CONSTANT != 0:
+            res_img[res_img[:, :, 0] < self.ORANGE_CONSTANT - self.ORANGE_DEVIATION_THRESHOLD] = np.zeros(3)
+            res_img[res_img[:, :, 0] > self.ORANGE_CONSTANT + self.ORANGE_DEVIATION_THRESHOLD] = np.zeros(3)
+        else:
+            res_img[np.abs(90 - res_img[:, :, 0]) < (90 - self.ORANGE_DEVIATION_THRESHOLD)] = np.zeros(3)
+            
+
+        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
