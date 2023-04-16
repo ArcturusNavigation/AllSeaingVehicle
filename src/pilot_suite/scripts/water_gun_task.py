@@ -74,7 +74,7 @@ class WaterGunTaskNode(TaskNode):
         #everything in terms of meters
         self.pixel_width = 0
         self.s = 0.3 # x distance between camera and water gun (water gun to the left of camera, so smaller pixel numbers)
-        self.y = 0.25 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
+        self.y = 0.4 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
         self.D = 0.5
         self.fov = 2.0944 # this is 120 degrees as the zed 2i advertises
         self.center_history = []
@@ -84,8 +84,10 @@ class WaterGunTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 0] < self.BLUE_CONSTANT - 30] = np.zeros(3)
+        res_img[res_img[:, :, 0] > self.BLUE_CONSTANT + 30] = np.zeros(3)
+        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
@@ -183,7 +185,7 @@ class WaterGunTaskNode(TaskNode):
         return result_image
 
     def callback(self, depth_img, img):
-
+        print("in call back now")
         if not self.active:
             return
         # Convert depth and rgb image using cvBridge
@@ -232,18 +234,15 @@ class WaterGunTaskNode(TaskNode):
         else:
             target_center = self.identify_center(segmented_img)
 
-        if target_center == (None, None):
-            return
-
         self.center_history.append(
             (target_center[1], target_center[0], depth_img[target_center[0], target_center[1]]))
         if len(self.center_history) >= 15:
             ch = np.array(self.center_history)
             means = np.mean(ch, axis=0)
-            variances = np.square(ch[:, 0] - means[0]) + np.square(
-                ch[:, 1] - means[1])
-            variances_avg = np.mean(variances)
-            self.center_history = ch[variances / variances_avg <= 15].tolist()
+            vars = np.square(ch[:, 0] - means[0]) + np.square(
+                ch[:, 1] - means[1]) + np.square(ch[:, 2] - means[2])
+            vars_avg = np.mean(vars)
+            self.center_history = ch[vars / vars_avg <= 0.5].tolist()
         if len(self.center_history) > 15:
             self.center_history.pop(0)
         elif len(self.center_history) < 15:
@@ -266,7 +265,7 @@ class WaterGunTaskNode(TaskNode):
         point.y = - y_m + self.y
         point.z = means[2] # maybe it should just be self.D?
 
-        print("stablizied center published:", x_m, y_m, means[2])
+        print("stablizied center (last two should equal):", x_m + self.s, - y_m + self.y, means[2], self.D)
         self.center_pub.publish(point)
 
 

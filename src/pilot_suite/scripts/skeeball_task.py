@@ -66,6 +66,8 @@ class SkeeballTaskNode(TaskNode):
         self.S_THRESHOLD = 127
         self.V_THRESHOLD_L = 30
         self.V_THRESHOLD_H = 100
+        self.H_THRESHOLD_H = 140
+        self.H_THRESHOLD_L = 100
         self.VAR_THRESHOLD1 = 0.1
         self.VAR_THRESHOLD2 = 1.2
 
@@ -87,6 +89,8 @@ class SkeeballTaskNode(TaskNode):
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 0] < self.H_THRESHOLD_L] = np.zeros(3)
+        res_img[res_img[:, :, 0] > self.H_THRESHOLD_H] = np.zeros(3)
         res_img[res_img[:, :, 1] < self.S_THRESHOLD] = np.zeros(3)
         res_img[res_img[:, :, 2] < self.V_THRESHOLD_L] = np.zeros(3)
         res_img[res_img[:, :, 2] > self.V_THRESHOLD_H] = np.zeros(3)
@@ -278,7 +282,7 @@ class SkeeballTaskNode(TaskNode):
 
         # x value is the column, y value is the row. these are relative to the center of the frame, so (0,0) means the target center at frame center
         point.x = x_m + self.s
-        point.y = y_m - self.y
+        point.y = - y_m + self.y
         point.z = means[2] # maybe it should just be self.D?
 
         print("stablizied center (last two should equal):", x_m, y_m, means[2], self.D)

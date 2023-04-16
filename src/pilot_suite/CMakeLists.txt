@@ -8,13 +8,13 @@ project(pilot_suite)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  std_msgs
-  mavros
-  message_generation
-  roslaunch
-)
+	roscpp
+	rospy
+	std_msgs
+	mavros
+	message_generation
+	roslaunch
+	)
 roslaunch_add_file_check(launch)
 
 ## System dependencies are found with CMake's conventions
@@ -52,20 +52,20 @@ catkin_python_setup()
 
 ## Generate messages in the 'msg' folder
 add_message_files(
-    FILES
-    RawWaypoint.msg
-    ProcessedWaypoint.msg
-    SkipWaypoint.msg
-    ProcessedTask.msg
-    WaypointReached.msg
-    VelocityCommand.msg
-)
+	FILES
+	RawWaypoint.msg
+	ProcessedWaypoint.msg
+	SkipWaypoint.msg
+	ProcessedTask.msg
+	WaypointReached.msg
+	VelocityCommand.msg
+	)
 
 ## Generate services in the 'srv' folder
 add_service_files(
-    FILES
-    GoToWaypoint.srv
-)
+	FILES
+	GoToWaypoint.srv
+	)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -112,11 +112,11 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES pilot_suite
-#  CATKIN_DEPENDS roscpp rospy std_msgs mavros message_runtime
-#  DEPENDS system_lib
-)
+	#  INCLUDE_DIRS include
+	#  LIBRARIES pilot_suite
+	#  CATKIN_DEPENDS roscpp rospy std_msgs mavros message_runtime
+	#  DEPENDS system_lib
+	)
 
 ###########
 ## Build ##
@@ -125,9 +125,9 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
-)
+	# include
+	${catkin_INCLUDE_DIRS}
+	)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -169,6 +169,19 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
+<<<<<<< Updated upstream
+	scripts/ardupilot.py
+	scripts/navigation_pilot.py
+	scripts/oyster_task.py  
+	scripts/roboboat_planner.py
+	scripts/waypoint_sim.py
+	scripts/tf2.py
+	scripts/local_planner.py
+	scripts/turtle_nest.py
+	scripts/ball_launch.py
+	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+	)
+=======
   scripts/ardupilot.py
   scripts/navigation_pilot.py
   scripts/oyster_task.py  
@@ -176,12 +189,14 @@ catkin_install_python(PROGRAMS
   scripts/waypoint_sim.py
   scripts/tf2.py
   scripts/local_planner.py
+  scripts/straight_nav.py
   scripts/turtle_nest.py
   scripts/pilot_shifter.py
   scripts/open_loop_distance.py
   scripts/velocity_control.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+>>>>>>> Stashed changes
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html

@@ -6,11 +6,10 @@ import cv_bridge
 import statistics
 import rospy
 
-from std_msgs.msg import String, Int8
+from std_msgs.msg import Int8
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Twist, Point
-from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Twist, Point, Vector3
 
 from task_node import TaskNode
 
@@ -32,7 +31,10 @@ class TurtleNestTaskNode(TaskNode):
         ########################################
 
         self.num_circles = rospy.Publisher(
-            '/pilot_suite/turtle_nest_task/num-circles_pub', Int8, queue_size=1)
+            '/pilot_suite/turtle_nest_task/num_circles_pub', Int8, queue_size=1)
+        
+        self.velocity_pub = rospy.Publisher(
+            '/pilot_suite/turtle_nest_task/vel_pub', Twist, queue_size=1)
 
 
         if(self.debug):
@@ -53,8 +55,8 @@ class TurtleNestTaskNode(TaskNode):
         self.ats.registerCallback(self.callback)
         self.bag_positions = []
 
-        self.SHRINK_FACTOR = 4
-        self.TARGET_COLOR_DEVIATION_THRESHOLD = 30
+        self.SHRINK_FACTOR = 2
+        self.TARGET_COLOR_DEVIATION_THRESHOLD = 15
         self.DEPTH_THRESHOLD = 15
         if color == "blue":
             self.TARGET_COLOR_CONSTANT = 120
@@ -63,27 +65,36 @@ class TurtleNestTaskNode(TaskNode):
         elif color == "red":
             self.TARGET_COLOR_CONSTANT = 0
 
-        self.SV_THRESHOLD = 100
+        self.SV_THRESHOLD = 50
+        self.SV_THRESHOLD = 50
         self.VAR_THRESHOLD = 0.7
 
         self.MIN_DEPTH = 0.5
         self.MAX_DEPTH = 15.0
 
+        self.VELOCITY_SCALE = 1.5
+
         #everything in terms of meters
         self.pixel_width = 0
-        self.s = 0.3 # x distance between camera and water gun (water gun to the left of camera, so smaller pixel numbers)
-        self.y = 0.25 # y distance between camera and water gun (water gun below camera, so higher pixel numbers)
-        self.D = 0.5
         self.fov = 2.0944 # this is 120 degrees as the zed 2i advertises
         self.num_history = []
+        self.center_history = []
 
     def depth_and_sv_mask(self, original_img, depth_img):
 
         res_img = np.copy(original_img)
 
         res_img[depth_img > self.DEPTH_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
-        #res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
+
+        if self.TARGET_COLOR_CONSTANT != 0:
+            res_img[res_img[:, :, 0] < self.TARGET_COLOR_CONSTANT - self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
+            res_img[res_img[:, :, 0] > self.TARGET_COLOR_CONSTANT + self.TARGET_COLOR_DEVIATION_THRESHOLD] = np.zeros(3)
+        else:
+            res_img[np.abs(90 - res_img[:, :, 0]) < (90 - self.TARGET_COLOR_DEVIATION_THRESHOLD)] = np.zeros(3)
+            
+
+        res_img[res_img[:, :, 1] < self.SV_THRESHOLD] = np.zeros(3)
+        res_img[res_img[:, :, 2] < self.SV_THRESHOLD] = np.zeros(3)
 
         return res_img
 
@@ -112,19 +123,28 @@ class TurtleNestTaskNode(TaskNode):
 
         min_diff = np.min(
             np.abs(input_img[:, :, 0] - self.TARGET_COLOR_CONSTANT * np.ones(input_img.shape[:2])))
-
+        if self.TARGET_COLOR_CONSTANT == 0:
+            min_diff2 = np.min(np.abs(input_img[:, :, 0] - (180-self.TARGET_COLOR_CONSTANT) * np.ones(input_img.shape[:2])))
+            min_diff = min(min_diff, min_diff2)
+        
         target_color_color = self.TARGET_COLOR_CONSTANT + (min_diff if (self.TARGET_COLOR_CONSTANT + min_diff)
                                            in input_img[:, :, 0] else -min_diff)
+        if target_color_color < 0:
+            target_color_color += 180
 
-        if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
-            return not_detected
+        if self.TARGET_COLOR_CONSTANT != 0:
+            if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
+                return not_detected
+        else:
+            if abs(target_color_color - self.TARGET_COLOR_CONSTANT) > self.TARGET_COLOR_DEVIATION_THRESHOLD and abs(target_color_color - (self.TARGET_COLOR_CONSTANT + 180)) > self.TARGET_COLOR_DEVIATION_THRESHOLD:
+                return not_detected
 
         target_colors = np.argwhere(np.abs(input_img - target_color_color) < 1)
         if len(target_colors) == 0:
             return not_detected
 
         x_target_colors, y_target_colors = target_colors[:, 0], target_colors[:, 1]
-        x_target_colors, y_target_colors = self.remove_outliers(x_target_colors, y_target_colors)
+        # x_target_colors, y_target_colors = self.remove_outliers(x_target_colors, y_target_colors)
         if len(x_target_colors) == 0 or len(y_target_colors) == 0:
             return not_detected
 
@@ -133,14 +153,16 @@ class TurtleNestTaskNode(TaskNode):
 
         for i in range(input_img.shape[0]):
             for j in range(input_img.shape[1]):
-                if (abs(input_img[i][j][0] - target_color_color) < 1):
-                    continue
+                if self.TARGET_COLOR_CONSTANT != 0:
+                    if (abs(input_img[i][j][0] - target_color_color) > self.TARGET_COLOR_DEVIATION_THRESHOLD):
+                        filtered_img[i, j, :] = [0, 0, 0]
                 else:
-                    filtered_img[i, j, :] = [0, 0, 0]
+                    if (abs(input_img[i][j][0] - target_color_color) > self.TARGET_COLOR_DEVIATION_THRESHOLD and abs(input_img[i][j][0] - (target_color_color + 180)) > self.TARGET_COLOR_DEVIATION_THRESHOLD):
+                        filtered_img[i, j, :] = [0, 0, 0]
 
 
         # convert location to location relative to center of the frame
-
+        """
         postoutliers_img = filtered_img.copy()
         for i in range(len(postoutliers_img)):
             for j in range(len(postoutliers_img[0])):
@@ -148,11 +170,12 @@ class TurtleNestTaskNode(TaskNode):
         for i in range(len(x_target_colors)):
             postoutliers_img[x_target_colors[i], y_target_colors[i],
                              :] = np.array([0, 100, 255])
+        """
 
         if self.debug:
-            return (filtered_img, postoutliers_img)
+            return (filtered_img, filtered_img)
         
-        return postoutliers_img
+        return filtered_img
 
 
     def segment_image(self, input_img):
@@ -181,10 +204,35 @@ class TurtleNestTaskNode(TaskNode):
 
     def count_cicles(self, filtered_img):
 
-        dots = cv2.HoughCircles(filtered_img, cv2.HOUGH_GRADIENT, 1, minDist=80, param1=70, param2=10, minRadius=20, maxRadius=35)
+        if (filtered_img is None):
+            return 0
 
-        return len(dots)
+        centers_list = []
+
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(filtered_img[:,:,2])
+
+        num_large_cc = 0
+        print(stats)
+        for i in range(1, num_labels):
+            if stats[i, cv2.CC_STAT_AREA] >= 10:
+                num_large_cc += 1
+                centers_list.append(centroids[i])
+
+        if num_large_cc == 0:
+            return 0, -1
         
+        centers_list = np.array(centers_list)
+
+        die_center = np.median(centers_list, axis=0)
+
+        vars = np.square(centers_list[:, 0] - die_center[0]) + np.square(centers_list[:, 1] - die_center[1]) 
+        centers_list = centers_list[vars / np.mean(vars) < 3]
+
+        print(centers_list)
+
+        # print(centers_list, "with means", np.mean(centers_list, axis=0))
+        return len(centers_list), np.mean(centers_list, axis=0).astype(np.uint16)
+
 
     def callback(self, depth_img, img):
 
@@ -203,8 +251,12 @@ class TurtleNestTaskNode(TaskNode):
         mid_x = W // 2
         mid_y = H // 2
 
-        segmented_img = self.segment_image(
-            self.depth_and_sv_mask(img, depth_img))
+        print(W, H)
+
+        segmented_img = self.depth_and_sv_mask(img, depth_img)
+
+        if self.TARGET_COLOR_CONSTANT == 120:
+            segmented_img = self.segment_image(segmented_img)
 
         if self.debug:
             filtered_img, postoutliers_img = self.filter_circles(segmented_img)
@@ -223,27 +275,62 @@ class TurtleNestTaskNode(TaskNode):
             self.image_outliers_pub.publish(self.bridge.cv2_to_imgmsg(
                 cv2.cvtColor(postoutliers_img, cv2.COLOR_HSV2BGR), "bgr8"))
 
+        num_circles, center = self.count_cicles(postoutliers_img)
 
-        self.num_history.append(self.count_cicles(postoutliers_img))
-        if len(self.num_history) >= 10:
-            ch = np.array(self.num_history)
-            means = np.mean(ch, axis=0)
-            variances = np.square(ch[:, 0] - means[0]) + np.square(
-                ch[:, 1] - means[1])
-            variances_avg = np.mean(variances)
-            self.num_history = ch[variances / variances_avg <= 15].tolist()
-        if len(self.num_history) > 10:
-            self.num_history.pop(0)
-        elif len(self.num_history) < 10:
+        print("Detected", num_circles, " dots")
+
+        if num_circles == 0:
             return
 
-        ch = np.array(self.num_history)
+        #print(self.center_history)
+        #print("Number of dots detected", num_dots.data)
+        self.num_circles.publish(num_circles)
 
-        num_dots = Int8()
-        num_dots.data = statistics.mode(ch)
+        print("Center", center)
 
-        print("Number of dots detected", num_dots.data)
-        self.num_circles.publish(num_dots)
+        self.center_history.append(
+            (center[0], center[1], depth_img[center[1], center[0]]))
+        if len(self.center_history) >= 15:
+            ch = np.array(self.center_history)
+            means = np.mean(ch, axis=0)
+            vars = np.square(ch[:, 0] - means[0])
+            vars_avg = np.mean(vars)
+            self.center_history = ch[vars / vars_avg <= 5].tolist()
+        if len(self.center_history) > 15:
+            self.center_history.pop(0)
+        elif len(self.center_history) < 15:
+            return
+
+        ch = np.array(self.center_history)
+        means = np.mean(ch, axis=0)
+        point = Point()
+
+        # convert pixels to meters
+        meters_over_pixels = np.tan(self.fov/2)*means[2] / W
+
+        # convert x and y to meters
+        center_x = meters_over_pixels * (means[0] - mid_x)
+        center_y = meters_over_pixels * (means[1] - mid_y)
+        center_z = means[2]
+
+        print("Point", center_x, center_y, center_z)
+
+        linear_velocity, angular_velocity = Vector3(), Vector3()
+
+        linear_velocity.x = self.VELOCITY_SCALE * center_z
+        linear_velocity.y = self.VELOCITY_SCALE * center_x
+        linear_velocity.z = 0
+
+        angular_velocity.x = 0
+        angular_velocity.y = 0
+        angular_velocity.z = 0
+
+        velocity_msg = Twist()
+
+        velocity_msg.linear = linear_velocity
+        velocity_msg.angular = angular_velocity
+        print("linearly velocity", linear_velocity.x, linear_velocity.y)
+        self.velocity_pub.publish(velocity_msg)
 
 
 
