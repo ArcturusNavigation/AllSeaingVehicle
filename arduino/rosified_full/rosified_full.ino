@@ -348,11 +348,11 @@ void loop() {
 	// Soft e-stop
 	int RCValue = pulseIn(RC_PIN, HIGH);
 	float DCValue = map(RCValue, 1099, 1901, 0, 255); // Convert PWM value to DC value
-	if (DCValue > 135) {
+	//if (DCValue > 135) {
 		digitalWrite(DC_PIN, HIGH);
-	} else {
-		digitalWrite(DC_PIN, LOW);
-	}
+	//} else {
+		//digitalWrite(DC_PIN, LOW);
+//	}
 
 }
 

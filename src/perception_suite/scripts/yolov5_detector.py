@@ -18,7 +18,7 @@ KEYS_TO_REMOVE = ["epoch", "best_fitness", "ema", "updates", "optimizer", "opt",
 class Yolov5Detector():
     def __init__(self, img_topic=ZED_TOPIC):
         self.bridge = cv_bridge.CvBridge()
-        self.model = torch.hub.load('ultralytics/yolov5', 'custom', path='yolov5s.pt', force_reload=True)
+        self.model = torch.hub.load('/home/toyat/.local/lib/python3.8/site-packages/yolov5', 'custom', path='model/yolov5s.pt', source='local')
         self.pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
         self.img_pub = rospy.Publisher('/perception_suite/segmented_image', Image, queue_size=1)
         self.img_sub = rospy.Subscriber('/zed2i/zed_node/rgb/image_rect_color', Image, self.img_callback, queue_size=1, buff_size=2**24)
