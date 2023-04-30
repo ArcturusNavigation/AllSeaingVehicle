@@ -2,6 +2,7 @@
 #ROS
 #########
 devel/
+bagfiles/
 logs/
 build/
 bin/

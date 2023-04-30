@@ -1,0 +1,4 @@
+int8 channel
+int32 value
+---
+bool success

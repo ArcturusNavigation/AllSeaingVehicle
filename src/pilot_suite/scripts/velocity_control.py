@@ -1,53 +1,37 @@
 #!/usr/bin/env python
 import rospy
-from geometry_msgs.msg import Twist
+from pilot_suite.srv import PwmCommand
 
-def move():
-    # Starts a new node
-    rospy.init_node('constant_velocity', anonymous=True)
-    velocity_publisher = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=1)
-    vel_msg = Twist() 
-    #Receiveing the user's input
+def move_client():
+
+    # Node initialization
+    rospy.init_node("velocity_control")
+
+    # Receiving user input
     print("Let's move Ship Happens!")
-    speed = float(input("Input your speed (m/s):"))
-    desired_time = float(input("How Long Do You Want to Drive (s):"))
-    isForward = input("Foward?: ")#True or False
+    pwm = int(input("Input your pwm value: "))
+    desired_time = float(input("How Long Do You Want to Drive (s): "))
+    current_time = rospy.Time.now().to_sec()
+    desired_time += current_time
 
-    #Checking if the movement is forward or backwards
-    if(isForward == "True"):
-        vel_msg.linear.x = abs(speed)
-    else:
-        vel_msg.linear.x = -abs(speed)
-    #Since we are moving just in x-axis
-    vel_msg.linear.y = 0
-    vel_msg.linear.z = 0
-    vel_msg.angular.x = 0
-    vel_msg.angular.y = 0
-    vel_msg.angular.z = 0
-    rate = rospy.Rate(10)
-    desired_time += rospy.Time.now().to_sec()
+    rospy.wait_for_service("/pilot_suite/request_pwm")
 
-    while not rospy.is_shutdown():
+    try:
+        request_pwm = rospy.ServiceProxy("/pilot_suite/request_pwm", PwmCommand)
+        while current_time < desired_time:
 
-        #Setting the current time for distance calculus
-        current_time = float(rospy.Time.now().to_sec())
-        print("Current time:", current_time)
-        print("Desired time:", desired_time)
+            current_time = float(rospy.Time.now().to_sec())
+            resp1 = request_pwm(channel=2, value=pwm)
+            resp2 = request_pwm(channel=3, value=pwm)
 
-        #Loop to move the turtle in an specified distance
-        if (current_time < desired_time):
-            
-            #Publish the velocity
-            velocity_publisher.publish(vel_msg)
-        else:  
-            #After the loop, stops the robot
-            vel_msg.linear.x = 0
-            #Force the robot to stop
-            #velocity_publisher.publish(vel_msg)
-        rate.sleep()
+            print("Current time:", current_time)
+            print("Desired time:", desired_time)
+            print("Service response:", resp1 and resp2)
+
+        request_pwm(channel=2, value=1500)
+        request_pwm(channel=3, value=1500)
+    except rospy.ServiceException as e:
+        print(f"Service call failed: {e}") 
 
 if __name__ == '__main__':
-    try:
-        #Testing our function
-        move()
-    except rospy.ROSInterruptException: pass
+    move_client()
