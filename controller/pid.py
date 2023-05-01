@@ -35,6 +35,9 @@ class Controller(object):
 			M = self.pidv.compute(self.Insight.get_dy()) # compute new T1+T2
 			R = self.pidw.compute(self.Insight.get_w()) # compute new T1/T2
 			self.Insight.thrust(R,M) # send thrust command
+		T1 = M*R/2
+		T2 = M/(2*R)
+		return [T1, T2]
 
 class Boat(object):
 	def __init__(self):
