@@ -65,6 +65,8 @@ class Simulation(object):
 			self.Insight.set_ddy(M)
 			self.Insight.set_dy()
 			self.Insight.set_w(R, M)
+			self.Insight.update_target()
+
 			print(self.Insight.get_w())
 			print('error: ' + str(self.pidw.error))
 			print('output: ' + str(self.pidw.output))
@@ -110,14 +112,20 @@ class Boat(object):
 		global Boat
 		self.Boat = turtle.Turtle()
 		self.Boat.shape('square')
-		self.Boat.color('black')
-		self.Boat.penup()
+		self.Boat.color('orange')
 		self.Boat.home()
 		self.Boat.speed(0)
+		self.target = turtle.Turtle()
+		self.target.shape('circle')
+		self.target.color('black')
+		self.target.home()
+		self.target.speed(0)
 		# kinematics
 		self.ddy = 0.0
 		self.dy = 0.0
 		self.w = 0.0
+		self.tdy = SETPOINT_V
+		self.tw = SETPOINT_W
 	def set_ddy(self,M):
 		self.ddy = (M-D)/(2*m)
 	def get_ddy(self):
@@ -141,6 +149,10 @@ class Boat(object):
 	def get_theta(self): 
 		self.theta = self.Boat.heading()
 		return self.theta
+	def update_target(self):
+		self.target.setheading(self.target.heading() + self.tw*TIME_STEP)
+		self.target.forward(self.tdy * TIME_STEP)
+		
 class PID(object):
 	def __init__(self,KP,KI,KD,target):
 		self.kp = KP
