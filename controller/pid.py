@@ -10,7 +10,7 @@ SETPOINT_V = 10
 V0 = 0 # initial forward velocity, m/s
 W0 = 0 # initial angular velocity, rad/s
 m = 1 # mass of one hull, kg
-MAX_THRUST = 15 #Newtons
+MAX_THRUST = 100 #Newtons
 I = 1 # Approximate boat moment of inertia
 Xt = 1 # distance from thrusters to CoM of boat
 #------------
@@ -22,6 +22,7 @@ KDV= 0.0
 KPW = 0.6
 KIW = 0.0
 KDW = 0.0
+W_ERROR_BOUND = 0.05
 #---------------
 
 
@@ -31,13 +32,18 @@ class Controller(object):
 		self.pidv = PID(KPV, KIV, KDV, SETPOINT_V)
 		self.pidw = PID(KPW, KIW, KDW, SETPOINT_W)
 	def cycle(self): 
+		M = 0
+		R = 1
 		while(True): # change to a condition for stopping controller
-			M = self.pidv.compute(self.Insight.get_dy()) # compute new T1+T2
-			R = self.pidw.compute(self.Insight.get_w()) # compute new T1/T2
+			M += self.pidv.compute(self.Insight.get_dy()) # compute new T1+T2
+			if M > MAX_THRUST: 
+				M = MAX_THRUST
+			if M < 0: 
+				M = 0
+			difw = self.Insight.get_w() - SETPOINT_W	
+			if abs(difw) > W_ERROR_BOUND: 
+				R += self.pidw.compute(self.Insight.get_w()) # compute new T1/T2
 			self.Insight.thrust(R,M) # send thrust command
-		T1 = M*R/2
-		T2 = M/(2*R)
-		return [T1, T2]
 
 class Boat(object):
 	def __init__(self):
