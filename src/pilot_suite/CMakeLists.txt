@@ -64,6 +64,7 @@ catkin_install_python(PROGRAMS
 	scripts/waypoint_sim.py
 	scripts/tf2.py
 	scripts/local_planner.py
+	scripts/mode_listener.py
 	scripts/straight_nav.py
 	scripts/turtle_nest.py
 	scripts/pilot_shifter.py

@@ -25,8 +25,8 @@ class Yolov5Detector():
     
     def img_callback(self, img):
         try:
-            img = self.bridge.imgmsg_to_cv2(img, "rgb8") # TODO: Match to model training(bgr8 or rgb8)
-        except cv_bridge.CvBridgeError as e: 
+            img = self.bridge.imgmsg_to_cv2(img, "rgb8")
+        except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
         results = self.model(img) # May need to resize image
         preds = results.pandas().xyxy[0]  # img1 predictions (pandas)
