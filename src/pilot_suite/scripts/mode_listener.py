@@ -1,17 +1,24 @@
+#!/usr/bin/env python
 import rospy
 import RPi.GPIO as GPIO
 from mavros_msgs.msg import State
 
-SIG_PIN = 23
+GUIDED = 23
+MANUAL = 12
 
 def callback(data):
     rospy.loginfo(f"Guided?: {data.guided}")
     rospy.loginfo(f"Manual?: {data.manual_input}")
 
     if data.guided:
-        GPIO.output(SIG_PIN, GPIO.HIGH)
+        GPIO.output(GUIDED, GPIO.HIGH)
     else:
-        GPIO.output(SIG_PIN, GPIO.LOW)
+        GPIO.output(GUIDED, GPIO.LOW)
+
+    if data.manual_input:
+        GPIO.output(MANUAL, GPIO.HIGH)
+    else:
+        GPIO.output(MANUAL, GPIO.LOW)
 
 def listener():
     rospy.init_node("mode_listener") 
@@ -20,5 +27,6 @@ def listener():
 
 if __name__ == "__main__":
     GPIO.setmode(GPIO.BCM) 
-    GPIO.setup(SIG_PIN, GPIO.OUT)
+    GPIO.setup(GUIDED, GPIO.OUT)
+    GPIO.setup(MANUAL, GPIO.OUT)
     listener()
