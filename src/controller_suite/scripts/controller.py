@@ -10,7 +10,7 @@ disToObstacle = 1
 def callback(msg): 
   rospy.loginfo(msg.data) #prints on terminal
 
-  # Controlller takes is boat data from msg that is subscribes to
+  # Controlller takes in boat data from msg that it subscribes to
   
   ################# Implement Controller Here #################
   
