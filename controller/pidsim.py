@@ -108,7 +108,7 @@ class Boat(object):
 	def __init__(self):
 		global Boat
 		self.Boat = turtle.Turtle()
-		boat_img = 'controller/boat.gif'
+		boat_img = 'boat.gif'
 		turtle.register_shape(boat_img)
 		# self.Boat.shape(boat_img)
 		self.Boat.shape('square')
