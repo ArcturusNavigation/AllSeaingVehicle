@@ -43,6 +43,7 @@ def callback(msg):
     pub.publish(move)
 
 
+
 rospy.init_node("visual_servoing_node")
 sub = rospy.Subscriber(
     "/perception/bounding_box_stuff", Twist, callback
@@ -50,6 +51,9 @@ sub = rospy.Subscriber(
 pub = rospy.Publisher("/visual_servoing/velocity", Twist, queue_size=2)
 rate = rospy.Rate(2)
 move = Twist()
+
+
+move.angular.x = dist_x
 
 
 rospy.spin()
