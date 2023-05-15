@@ -22,13 +22,13 @@ class Yolov5Detector():
         
         # Get pretrained yolov5 model from local
         path_hubconfig = "/home/oyster/yolov5"
-        path_trained_model = "/home/oyster/AllSeaingVehicle/src/perception_suite/model/yolov5m.pt"
+        path_trained_model = "/home/oyster/AllSeaingVehicle/src/perception_suite/model/buoy_detection_best_weights.pt"
         self.model = torch.hub.load(path_hubconfig, 'custom', path=path_trained_model, source='local')
 
         # Model inference settings
-        self.model.classes = [32] # Only detect sports ball
-        self.model.conf = 0.05    # Confidence threshold
-        self.model.iou = 0.25     # NMS IoU threshold (how close it is to an actual sports ball)
+        # self.model.classes = [32] # Only detect sports ball
+        # self.model.conf = 0.05    # Confidence threshold
+        # self.model.iou = 0.25     # NMS IoU threshold (how close it is to an actual sports ball)
         
         # Subscribers and publishers
         self.pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
