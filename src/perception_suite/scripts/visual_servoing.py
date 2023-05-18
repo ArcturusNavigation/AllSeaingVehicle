@@ -9,6 +9,7 @@ disToObstacle = 1
 
 
 def callback(msg):
+    #where msg is a list of tuple coordinates
     rospy.loginfo(msg.data)  # prints on terminal
     max_x = 200
     max_y = 200
@@ -22,7 +23,7 @@ def callback(msg):
     center_x_b1 = (top_left_b1[0] + bottom_right_b1[0])/2
     center_y_b1 = (top_left_b1[1] + bottom_right_b1[1])/2
 
-    center_x_b2 = (top_left_b2[0] + bottom_right_b1[0])/2
+    center_x_b2 = (top_left_b2[0] + bottom_right_b2[0])/2
     center_y_b2 = (top_left_b2[1] + bottom_right_b2[1])/2
 
     center_both_x = (center_x_b1 + center_x_b2)/2
