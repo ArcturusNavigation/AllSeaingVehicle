@@ -16,8 +16,8 @@ def callback(msg):
     top_left_b1 = msg.data[0]
     bottom_right_b1 = msg.data[1]
 
-    top_left_b1 = msg.data[2]
-    bottom_right_b1 = msg.data[3]
+    top_left_b2 = msg.data[2]
+    bottom_right_b2 = msg.data[3]
 
     center_x_b1 = (top_left_b1[0] + bottom_right_b1[0])/2
     center_y_b1 = (top_left_b1[1] + bottom_right_b1[1])/2
