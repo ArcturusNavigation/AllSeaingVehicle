@@ -67,7 +67,7 @@ move = Twist()
 
 if abs(dist_x) > 10:
     #will be negative(turn right) when dist_x is positive(too far left)
-    turn_speed = -3/2*dist_x
+    turn_speed = -3/2*dist_x*(3.14/180) #degrees to rads conversion
 else:
     turn_speed = 0
 
