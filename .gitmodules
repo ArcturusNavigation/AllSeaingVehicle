@@ -10,3 +10,6 @@
 [submodule "src/src/lidar_obstacle_detector"]
 	path = src/src/lidar_obstacle_detector
 	url = https://github.com/SS47816/lidar_obstacle_detector.git
+[submodule "src/lidar-obstacle-detector"]
+	path = src/lidar-obstacle-detector
+	url = https://github.com/SS47816/lidar_obstacle_detector.git
