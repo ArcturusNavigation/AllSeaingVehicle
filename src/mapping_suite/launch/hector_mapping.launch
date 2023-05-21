@@ -1,0 +1,9 @@
+<launch>
+  
+  <include file="$(find velodyne_pointcloud)/launch/32e_points.launch"></include>
+  
+  <node name="velodyne_laserscan_node" pkg="velodyne_laserscan" type="velodyne_laserscan_node.py" output="screen"/>
+  
+  <include file="$(find hector_slam_launch)/launch/tutorial.launch"></include>
+ 
+</launch>
