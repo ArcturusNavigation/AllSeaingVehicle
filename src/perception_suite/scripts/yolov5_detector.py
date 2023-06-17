@@ -22,7 +22,7 @@ class Yolov5Detector():
         
         # Get pretrained yolov5 model from local
         path_hubconfig = "/home/oyster/yolov5"
-        path_trained_model = "/home/oyster/AllSeaingVehicle/src/perception_suite/model/buoy_detection_best_weights.pt"
+        path_trained_model = "/home/oyster/Documents/AllSeaingVehicle/src/perception_suite/model/buoy_detection_best_weights_v2.pt"
         self.model = torch.hub.load(path_hubconfig, 'custom', path=path_trained_model, source='local')
 
         # Model inference settings
