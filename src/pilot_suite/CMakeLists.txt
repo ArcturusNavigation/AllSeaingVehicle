@@ -59,13 +59,11 @@ include_directories(
 catkin_install_python(PROGRAMS
 	scripts/ardupilot.py
 	scripts/navigation_pilot.py
-	scripts/oyster_task.py  
 	scripts/roboboat_planner.py
 	scripts/waypoint_sim.py
 	scripts/tf2.py
 	scripts/local_planner.py
 	scripts/mode_listener.py
-	scripts/straight_nav.py
 	scripts/turtle_nest.py
 	scripts/pilot_shifter.py
 	scripts/open_loop_distance.py
