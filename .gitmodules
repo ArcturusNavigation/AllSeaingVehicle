@@ -10,3 +10,6 @@
 [submodule "src/lidar_obstacle_detector"]
 	path = src/lidar_obstacle_detector
 	url = https://github.com/SS47816/lidar_obstacle_detector.git
+[submodule "src/hector_slam"]
+	path = src/hector_slam
+	url = https://github.com/tu-darmstadt-ros-pkg/hector_slam.git
