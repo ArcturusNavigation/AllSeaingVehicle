@@ -59,6 +59,7 @@ CATKIN_IGNORE
 #Miscellaneous
 #########
 *.deb
+*.DS_Store
 zed_sdk
 
 *.jpg

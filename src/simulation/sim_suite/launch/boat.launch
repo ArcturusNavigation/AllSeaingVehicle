@@ -1,0 +1,34 @@
+<launch>
+  <arg name="paused" default="true"/>
+  <arg name="use_sim_time" default="true"/>
+  <arg name="world" default="competition_map"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
+  <arg name="debug" default="false"/>
+  <arg name="verbose" default="false"/>
+  <arg name="world_name" default="$(find sim_suite)/worlds/empty_world.world"/>
+  <arg name="model" default="athena"/>
+  <arg name="model_path" default="$(find sim_suite)/urdf/$(arg model).urdf.xacro"/>
+  <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+      <arg name="verbose" value="$(arg verbose)"/>
+    <arg name="world_name" value="$(find sim_suite)/worlds/$(arg world).world"/>
+    <arg name="paused" value="$(arg paused)"/>
+    <arg name="gui" value="$(arg gui)"/>
+    <!-- more default parameters can be changed here -->
+  </include>
+  <arg name="gpu" default="true"/>
+      <!-- Publishes static transforms (gps, imu, cameras, etc) to /tf -->
+    <!-- <node pkg="gazebo_ros" type ="spawn_model" name="spawn_model" args="-file '${GAZEBO_MODEL_PATH}/lidar.urdf' -urdf -model lidar"/> -->
+    <!-- <node pkg="robot_state_publisher" type="robot_state_publisher" name="rob_st_pub" /> -->
+  <param name="robot_description" command="$(find xacro)/xacro $(arg model_path)" />
+
+  <!-- push robot_description to factory and spawn robot in gazebo -->
+  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
+        args="-z 1.0 -urdf -model robot -param robot_description" respawn="false" output="screen" />
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher"  name="robot_state_publisher">
+    <param name="publish_frequency" type="double" value="30.0" />
+  </node>
+    
+</launch>

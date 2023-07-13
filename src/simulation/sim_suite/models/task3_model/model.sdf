@@ -1,0 +1,213 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="Color Tutorial Model">
+    <static>true</static>
+    <link name="red marker">
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="red marker">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://task3_model/meshes/red_marker.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file:///media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Red</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="white markers">
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="white markers">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://task3_model/meshes/white_markers.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file:///media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/White</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="black marker">
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="black marker">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://task3_model/meshes/black_marker.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file:///media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Black</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="base">
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="base">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://task3_model/meshes/base.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+              <uri>model://task3_model/materials/scripts</uri>
+              <uri>model://task3_model/materials/textures</uri>
+              <name>DockBase/Image</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="sticks">
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="sticks">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://task3_model/meshes/sticks.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file:///media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Grey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+  <model name="dices">
+    <pose>-3.8 0.7 0.9 0 0 0</pose>
+    <static>true</static>
+    <link name="first dice">
+      <pose>0 0 0 0 0 0</pose>
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 0.2 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="first dice">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1 0.2 1</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://task3_model/materials/scripts</uri>
+            <uri>model://task3_model/materials/textures</uri>
+            <name>BlueDice/Image</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="second dice">
+      <pose>1.5 0 0 0 0 0</pose>
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 0.2 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="second dice">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1 0.2 1</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://task3_model/materials/scripts</uri>
+            <uri>model://task3_model/materials/textures</uri>
+            <name>GreenDice/Image</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="third dice">
+      <pose>3 0 0 0 0 0</pose>
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 0.2 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="third dice">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1 0.2 1</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://task3_model/materials/scripts</uri>
+            <uri>model://task3_model/materials/textures</uri>
+            <name>RedDice/Image</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+  </model>
+</sdf>

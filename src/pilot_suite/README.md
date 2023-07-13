@@ -1,2 +1,0 @@
-# Pilot Suite
-The pilot 

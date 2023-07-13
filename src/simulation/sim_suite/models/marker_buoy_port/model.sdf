@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="Red Marker">
+    <static>true</static>
+    <link name="robot_link">
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="wheel1_visual">
+        <pose>0 0 -0.1 1.57 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://marker_buoy_port/meshes/sur-Mark_marker.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Red</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

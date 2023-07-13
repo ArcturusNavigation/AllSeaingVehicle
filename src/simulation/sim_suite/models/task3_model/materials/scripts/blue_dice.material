@@ -1,0 +1,14 @@
+    material BlueDice/Image
+    {
+      technique
+      {
+        pass
+        {
+
+          texture_unit
+          {
+            texture blue_dots.png
+          }
+        }
+      }
+    }

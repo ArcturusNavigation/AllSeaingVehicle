@@ -1,0 +1,14 @@
+    material GreenDice/Image
+    {
+      technique
+      {
+        pass
+        {
+
+          texture_unit
+          {
+            texture green_dots.png
+          }
+        }
+      }
+    }

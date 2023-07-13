@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="Frame">
+    <static>true</static>
+    <pose>0 0 0 1.57 0 0</pose>
+
+    <link name="Base">
+    <pose>0 0 0 0 0 0</pose>
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="base">
+        <pose>0 0 0.5 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://task6_model/meshes/Czesc1_do_wiaderek.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+              <uri>model://task6_model/materials/scripts</uri>
+              <uri>model://task6_model/materials/textures</uri>
+              <name>DockBase/Image</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="Frame">
+    <pose>0 1 1.5 0 0 0</pose>
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="frame">
+        <pose>0 0 0.5 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://task6_model/meshes/Czesc2_do_wiaderek.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Blue</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="Main Box">
+    <pose>0 0 0 0 -1.57 0</pose>
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="main_box">
+        <pose>0 0 0.5 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://task6_model/meshes/Czesc3_wiaderka.stl</uri>
+            <scale>0.0001 0.0001 0.0001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/White</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+    <link name="Buckets">
+    <pose>0 0 0 0 -1.57 0</pose>
+      <collision name="body_collision">
+        <geometry>
+          <box>
+            <size>1 1 1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="buckets">
+        <pose>0 0 0.5 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://task6_model/meshes/Czesc4_wiaderkav1.stl</uri>
+            <scale>0.00001 0.00001 0.00001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Blue</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

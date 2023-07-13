@@ -1,0 +1,14 @@
+    material RedDice/Image
+    {
+      technique
+      {
+        pass
+        {
+
+          texture_unit
+          {
+            texture red_dots.png
+          }
+        }
+      }
+    }
