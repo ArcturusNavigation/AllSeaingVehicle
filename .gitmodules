@@ -1,12 +1,12 @@
-[submodule "src/zed-ros-wrapper"]
-	path = src/zed-ros-wrapper
+[submodule "src/perception/zed-ros-wrapper"]
+	path = src/perception/zed-ros-wrapper
 	url = git@github.com:stereolabs/zed-ros-wrapper.git
-[submodule "src/sim_suite"]
+[submodule "src/simulation/sim_suite"]
 	path = src/simulation/sim_suite
 	url = https://github.com/ArcturusNavigation/sim_suite
-[submodule "src/lidar_obstacle_detector"]
-	path = src/lidar_obstacle_detector
+[submodule "src/perception/lidar_obstacle_detector"]
+	path = src/perception/lidar_obstacle_detector
 	url = https://github.com/SS47816/lidar_obstacle_detector.git
-[submodule "src/hector_slam"]
-	path = src/hector_slam
+[submodule "src/perception/hector_slam"]
+	path = src/perception/hector_slam
 	url = https://github.com/tu-darmstadt-ros-pkg/hector_slam.git
