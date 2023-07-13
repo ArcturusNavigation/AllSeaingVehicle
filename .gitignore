@@ -60,6 +60,7 @@ CATKIN_IGNORE
 #########
 *.deb
 *.DS_Store
+*.vscode
 zed_sdk
 
 *.jpg
