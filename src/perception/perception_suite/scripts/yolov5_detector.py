@@ -4,25 +4,23 @@ https://pytorch.org/hub/ultralytics_yolov5/
 https://pypi.org/project/yolo5/
 """
 
-#TODO: Update requirements.txt so that after installation you can run this segmentaiton node
+import getpass
 import torch
 import cv_bridge 
 import cv2
-
 import rospy
+import rospkg
 from sensor_msgs.msg import Image
 from perception_suite.msg import LabeledBoundingBox2D, LabeledBoundingBox2DArray
 
 class Yolov5Detector():
     def __init__(self):
         self.bridge = cv_bridge.CvBridge()
-        
-        # Get pretrained yolov5 model from local
-        #path_hubconfig = "/home/oyster/yolov5"
-        #path_trained_model = "/home/oyster/Documents/AllSeaingVehicle/src/perception_suite/model/buoy_detection_best_weights_v2.pt"
-        path_hubconfig = "/home/toyat/yolov5"
-        path_trained_model = "/home/toyat/Documents/MIT/Arcturus/AllSeaingVehicle/src/perception_suite/model/buoy_detection_best_weights_v2.pt"
+        rospack = rospkg.RosPack()
 
+        # Get pretrained yolov5 model from local
+        path_hubconfig = f"/home/{getpass.getuser()}/yolov5"
+        path_trained_model = rospack.get_path("perception_suite") + "/model/buoy_detection_best_weights_v2.pt"
         self.model = torch.hub.load(path_hubconfig, 'custom', path=path_trained_model, source='local')
 
         # Model inference settings
@@ -66,11 +64,11 @@ class Yolov5Detector():
             bbox.label = row['class']
             bbox.probability = row['confidence']
             bboxes.boxes.append(bbox)
-            cv2.rectangle(img, (bbox.min_x, bbox.min_y), (bbox.max_x, bbox.max_y), (255,0,0), 4)
+            cv2.rectangle(img, (bbox.min_x, bbox.min_y), (bbox.max_x, bbox.max_y), (255, 0, 0), 4)
         self.img_pub.publish(self.bridge.cv2_to_imgmsg(img, "rgb8"))
         self.pub.publish(bboxes)
 
 if __name__ == "__main__":
-    rospy.init_node("yolov5")
+    rospy.init_node("yolov5_detector")
     detector = Yolov5Detector()
     rospy.spin()

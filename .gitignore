@@ -64,7 +64,3 @@ CATKIN_IGNORE
 #########
 *.deb
 *.DS_Store
-zed_sdk
-
-*.jpg
-*.mp4
