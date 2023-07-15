@@ -30,7 +30,6 @@ class Yolov5Detector():
         
         # Subscribers and publishers
         self.pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
-        self.img_pub = rospy.Publisher('/perception_suite/segmented_image', Image, queue_size=1)
         self.img_sub = rospy.Subscriber(
             '/zed2i/zed_node/rgb/image_rect_color', 
             Image, 
