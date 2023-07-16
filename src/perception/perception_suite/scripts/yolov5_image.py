@@ -15,7 +15,7 @@ import rospkg
 import sensor_msgs
 from perception_suite.msg import LabeledBoundingBox2D, LabeledBoundingBox2DArray
 
-class Yolov5Detector():
+class Yolov5Image():
     def __init__(self):
         bridge = cv_bridge.CvBridge()
         rospack = rospkg.RosPack()
@@ -31,7 +31,7 @@ class Yolov5Detector():
         # model.iou = 0.25     # NMS IoU threshold (how close it is to an actual sports ball)
 
         # Subscribers and publishers
-        pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
+        bbox_pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
         img_pub = rospy.Publisher('/perception_suite/segmented_image', sensor_msgs.msg.Image, queue_size=1)
 
         # Publisher loop
@@ -39,15 +39,16 @@ class Yolov5Detector():
         while not rospy.is_shutdown():
 
             # Get image
-            img = PIL.Image.open(rospack.get_path("perception_suite") + "/images/test.jpg")
+            img = PIL.Image.open(rospack.get_path("perception_suite") + "/images/straight_test.jpg")
             img = np.array(img.convert("RGB"))
 
             # Detect buoys using yolov5
             results = model(img)
-            preds = results.pandas().xyxy[0]  # Image 1 predictoins
+            preds = results.pandas().xyxy[0]  # Image predictions
             rospy.loginfo(preds)
             bboxes = LabeledBoundingBox2DArray()
-            # set header of bboxes
+
+            # Set header of bboxes
             bboxes.header.stamp = rospy.Time.now()
             bboxes.header.frame_id = "zed2i_camera_center"
 
@@ -67,10 +68,10 @@ class Yolov5Detector():
 
             # Publish image and boudnign box
             img_pub.publish(bridge.cv2_to_imgmsg(img, "rgb8"))
-            pub.publish(bboxes)
+            bbox_pub.publish(bboxes)
             rate.sleep()
 
 if __name__ == "__main__":
     rospy.init_node("yolov5_image")
-    detector = Yolov5Detector()
+    detector = Yolov5Image()
     rospy.spin()

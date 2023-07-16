@@ -29,7 +29,8 @@ class Yolov5Detector():
         # self.model.iou = 0.25     # NMS IoU threshold (how close it is to an actual sports ball)
         
         # Subscribers and publishers
-        self.pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
+        self.bbox_pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
+        self.img_pub = rospy.Publisher('/perception_suite/segmented_image', Image, queue_size=1)
         self.img_sub = rospy.Subscriber(
             '/zed2i/zed_node/rgb/image_rect_color', 
             Image, 
@@ -44,10 +45,11 @@ class Yolov5Detector():
         except cv_bridge.CvBridgeError as e:
             rospy.loginfo(e)
         results = self.model(img)
-        preds = results.pandas().xyxy[0]  # Image 1 predictoins
+        preds = results.pandas().xyxy[0]  # Image predictions
         rospy.loginfo(preds)
         bboxes = LabeledBoundingBox2DArray()
-        # set header of bboxes
+
+        # Set header of bboxes
         bboxes.header.stamp = rospy.Time.now()
         bboxes.header.frame_id = "zed2i_camera_center"
 
@@ -65,7 +67,7 @@ class Yolov5Detector():
             bboxes.boxes.append(bbox)
             cv2.rectangle(img, (bbox.min_x, bbox.min_y), (bbox.max_x, bbox.max_y), (255, 0, 0), 4)
         self.img_pub.publish(self.bridge.cv2_to_imgmsg(img, "rgb8"))
-        self.pub.publish(bboxes)
+        self.bbox_pub.publish(bboxes)
 
 if __name__ == "__main__":
     rospy.init_node("yolov5_detector")
