@@ -1,0 +1,9 @@
+simulation/wave_gazebo_plugins
+/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo_plugins/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
+/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo_plugins/share/wave_gazebo_plugins/cmake/wave_gazebo_pluginsConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wave_gazebo_plugins/cmake/wave_gazebo_pluginsConfig.cmake
+/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo_plugins/share/wave_gazebo_plugins/cmake/wave_gazebo_pluginsConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wave_gazebo_plugins/cmake/wave_gazebo_pluginsConfig-version.cmake
+/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo_plugins/lib/libHydrodynamics.so /home/jacobdr/AllSeaingVehicle/devel/lib/libHydrodynamics.so
+/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo_plugins/lib/libWavefieldModelPlugin.so /home/jacobdr/AllSeaingVehicle/devel/lib/libWavefieldModelPlugin.so
+/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo_plugins/lib/libWavefieldVisualPlugin.so /home/jacobdr/AllSeaingVehicle/devel/lib/libWavefieldVisualPlugin.so
+/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo_plugins/lib/libwavegauge_plugin.so /home/jacobdr/AllSeaingVehicle/devel/lib/libwavegauge_plugin.so
+/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo_plugins/lib/pkgconfig/wave_gazebo_plugins.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/wave_gazebo_plugins.pc

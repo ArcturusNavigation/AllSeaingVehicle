@@ -10,3 +10,6 @@
 [submodule "src/perception/hector_slam"]
 	path = src/perception/hector_slam
 	url = https://github.com/tu-darmstadt-ros-pkg/hector_slam.git
+[submodule "src/perception/ar_track_alvar"]
+	path = src/perception/ar_track_alvar
+	url = git@github.com:ros-perception/ar_track_alvar.git

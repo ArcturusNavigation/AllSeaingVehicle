@@ -1,0 +1,7 @@
+navigation/controller_suite
+/home/jacobdr/AllSeaingVehicle/devel/.private/controller_suite/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
+/home/jacobdr/AllSeaingVehicle/devel/.private/controller_suite/share/controller_suite/cmake/controller_suiteConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/controller_suite/cmake/controller_suiteConfig.cmake
+/home/jacobdr/AllSeaingVehicle/devel/.private/controller_suite/share/controller_suite/cmake/controller_suiteConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/controller_suite/cmake/controller_suiteConfig-version.cmake
+/home/jacobdr/AllSeaingVehicle/devel/.private/controller_suite/lib/pkgconfig/controller_suite.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/controller_suite.pc
+/home/jacobdr/AllSeaingVehicle/devel/.private/controller_suite/lib/controller_suite/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/lib/controller_suite/cmake.lock
+/home/jacobdr/AllSeaingVehicle/devel/.private/controller_suite/lib/controller_suite/controller.py /home/jacobdr/AllSeaingVehicle/devel/lib/controller_suite/controller.py

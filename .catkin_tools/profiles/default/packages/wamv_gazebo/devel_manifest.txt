@@ -1,0 +1,6 @@
+simulation/wamv_gazebo
+/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_gazebo/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
+/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_gazebo/share/wamv_gazebo/cmake/wamv_gazeboConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wamv_gazebo/cmake/wamv_gazeboConfig.cmake
+/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_gazebo/share/wamv_gazebo/cmake/wamv_gazeboConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wamv_gazebo/cmake/wamv_gazeboConfig-version.cmake
+/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_gazebo/share/wamv_gazebo/urdf/wamv_gazebo.urdf /home/jacobdr/AllSeaingVehicle/devel/share/wamv_gazebo/urdf/wamv_gazebo.urdf
+/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_gazebo/lib/pkgconfig/wamv_gazebo.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/wamv_gazebo.pc
