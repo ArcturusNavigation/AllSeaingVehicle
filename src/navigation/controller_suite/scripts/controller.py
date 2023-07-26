@@ -15,17 +15,18 @@ MIN_PWM = 1100
 ZERO_PWM = 1500
 MAX_PWM = 1900	
 # FORWARD VELOCITY PID GAINS
-KPV = 0.6
+KPV = 1
 KIV = 0.0
-KDV= 0.0
+KDV = 0.0
 # ANGULAR VELOCITY PID GAINS
-KPW = 0.6
-KIW = 0.0
-KDW = 0.0
+KPW = 0.025
+KIW = 0.001
+KDW = 0.001
 W_ERROR_BOUND = 0.05
-#---------------
+# ---------------
 
-class VelocityController(object): 
+class Controller(object): 
+
 	def __init__(self): 
 		self.pidv = None
 		self.pidw = None
@@ -38,13 +39,13 @@ class VelocityController(object):
 		# self.sub2 = rospy.Subscriber('/mavros', Twist, c.commandCallback) #We subscribe to the boats velocity
 		self.pub = rospy.Publisher('/controller/output_pwm', Twist, queue_size=2)
 		## send PWM command
-	def stateCallback(msg, self): 
+	def stateCallback(self,msg): 
 		# Controller takes in boat data from msg that it subscribes to
 		rospy.loginfo(msg.data)#prints on terminal
 		self.feedback_linear = msg.twist.linear.x
 		self.feedback_angular = msg.twist.angular.z
 
-	def callback2(msg, self):
+	def callback2(self, msg):
 		rospy.loginfo(msg.data)
 		self.commanded_linear = msg.twist.linear.x
 		self.commanded_angular = msg.twist.angular.z
@@ -60,7 +61,7 @@ class VelocityController(object):
 		PWM2 = M / (R + 1)
 		self.pub.publish([self.bounded(PWM1), self.bounded(PWM2)])
 
-	def bounded(PWM, self): 
+	def bounded(self, PWM): 
 		if PWM< MIN_PWM: 
 			return MIN_PWM
 		if PWM > MAX_PWM: 
@@ -99,6 +100,6 @@ class PID(object):
 
 def __main__():
 	rospy.init_node('controller_node')
-	c = VelocityController()
+	c = Controller()
 
 	rospy.spin()

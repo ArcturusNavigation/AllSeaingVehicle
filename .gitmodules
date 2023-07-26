@@ -1,6 +1,9 @@
 [submodule "src/perception/zed-ros-wrapper"]
 	path = src/perception/zed-ros-wrapper
 	url = git@github.com:stereolabs/zed-ros-wrapper.git
+[submodule "src/perception/zed-ros-examples"]
+	path = src/perception/zed-ros-examples
+	url = git@github.com:stereolabs/zed-ros-examples.git
 [submodule "src/simulation/sim_suite"]
 	path = src/simulation/sim_suite
 	url = https://github.com/ArcturusNavigation/sim_suite

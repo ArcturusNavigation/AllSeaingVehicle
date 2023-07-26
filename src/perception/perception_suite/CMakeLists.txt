@@ -69,3 +69,7 @@ add_dependencies(segmentation perception_suite_generate_messages_cpp)
 add_executable(processor src/processor_nodes.cpp)
 target_link_libraries(processor ${catkin_LIBRARIES})
 add_dependencies(processor perception_suite_generate_messages_cpp)
+
+add_executable(zed_velocity_publisher src/zed_velocity_publisher.cpp)
+target_link_libraries(zed_velocity_publisher ${catkin_LIBRARIES})
+add_dependencies(zed_velocity_publisher perception_suite_generate_messages_cpp)
