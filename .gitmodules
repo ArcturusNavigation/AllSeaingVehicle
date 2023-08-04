@@ -16,3 +16,6 @@
 [submodule "src/navigation/--branch"]
 	path = src/navigation/--branch
 	url = https://github.com/cra-ros-pkg/robot_localization.git
+[submodule "src/simulation/sim_suite/ardupilot"]
+	path = src/simulation/sim_suite/ardupilot
+	url = https://github.com/ArduPilot/ardupilot.git
