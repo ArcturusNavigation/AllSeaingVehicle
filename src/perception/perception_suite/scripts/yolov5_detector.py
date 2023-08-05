@@ -20,7 +20,7 @@ class Yolov5Detector():
 
         # Get pretrained yolov5 model from local
         path_hubconfig = f"/home/{getpass.getuser()}/yolov5"
-        path_trained_model = rospack.get_path("perception_suite") + "/model/buoy_detection_best_weights_v2.pt"
+        path_trained_model = rospack.get_path("perception_suite") + "/model/buoy_detection_best_weights_v7.pt"
         self.model = torch.hub.load(path_hubconfig, 'custom', path=path_trained_model, source='local')
 
         # Model inference settings
