@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include "vrx_gazebo/waypoint_markers.hh"
 
 /////////////////////////////////////////////////
 WaypointMarkers::WaypointMarkers(std::string _namespace)
-  : ns(_namespace), material("Gazebo/Red"), scaling{0.2, 0.2, 1.5}, height(4.0)
+  : ns(_namespace), material("Gazebo/Red"), scaling{ 0.2, 0.2, 1.5 }, height(4.0)
 {
 }
 
@@ -58,31 +58,26 @@ bool WaypointMarkers::IsAvailable()
 }
 
 /////////////////////////////////////////////////
-bool WaypointMarkers::DrawMarker(double _x, double _y, double _yaw,
-  std::string _text)
+bool WaypointMarkers::DrawMarker(double _x, double _y, double _yaw, std::string _text)
 {
   return this->DrawMarker(this->id++, _x, _y, _yaw, _text);
 }
 
 /////////////////////////////////////////////////
-bool WaypointMarkers::DrawMarker(int _marker_id, double _x, double _y,
-    double _yaw, std::string _text)
+bool WaypointMarkers::DrawMarker(int _marker_id, double _x, double _y, double _yaw, std::string _text)
 {
 #if GAZEBO_MAJOR_VERSION >= 8
   ignition::msgs::Marker markerMsg;
   markerMsg.set_ns(this->ns);
   markerMsg.set_action(ignition::msgs::Marker::ADD_MODIFY);
-  ignition::msgs::Material *matMsg = markerMsg.mutable_material();
+  ignition::msgs::Material* matMsg = markerMsg.mutable_material();
   matMsg->mutable_script()->set_name(this->material);
 
   // draw cylinder
   markerMsg.set_type(ignition::msgs::Marker::CYLINDER);
-  ignition::msgs::Set(markerMsg.mutable_scale(),
-                      this->scaling);
+  ignition::msgs::Set(markerMsg.mutable_scale(), this->scaling);
   ignition::msgs::Set(markerMsg.mutable_pose(),
-                      ignition::math::Pose3d(_x, _y,
-                          this->height + this->scaling.Z() / 2.0,
-                          0, 0, 0));
+                      ignition::math::Pose3d(_x, _y, this->height + this->scaling.Z() / 2.0, 0, 0, 0));
   markerMsg.set_id(_marker_id);
   bool result = node.Request("/marker", markerMsg);
   if (!result)
@@ -91,13 +86,11 @@ bool WaypointMarkers::DrawMarker(int _marker_id, double _x, double _y,
   }
   // draw direction cylinder
   markerMsg.set_type(ignition::msgs::Marker::CYLINDER);
-  ignition::msgs::Set(markerMsg.mutable_scale(),
-                      this->scaling);
+  ignition::msgs::Set(markerMsg.mutable_scale(), this->scaling);
   ignition::msgs::Set(markerMsg.mutable_pose(),
-                      ignition::math::Pose3d(_x + cos(_yaw), _y + sin(_yaw),
-                          this->height + this->scaling.Z() / 2.0,
-                          0, M_PI/2, _yaw));
-  markerMsg.set_id((_marker_id+1)*1000);
+                      ignition::math::Pose3d(_x + cos(_yaw), _y + sin(_yaw), this->height + this->scaling.Z() / 2.0, 0,
+                                             M_PI / 2, _yaw));
+  markerMsg.set_id((_marker_id + 1) * 1000);
   result = node.Request("/marker", markerMsg);
   if (!result)
   {
@@ -108,12 +101,9 @@ bool WaypointMarkers::DrawMarker(int _marker_id, double _x, double _y,
   {
     markerMsg.set_type(ignition::msgs::Marker::TEXT);
     markerMsg.set_text(_text);
-    ignition::msgs::Set(markerMsg.mutable_scale(),
-                        ignition::math::Vector3d(1.0, 1.0, 1.0));
+    ignition::msgs::Set(markerMsg.mutable_scale(), ignition::math::Vector3d(1.0, 1.0, 1.0));
     ignition::msgs::Set(markerMsg.mutable_pose(),
-                        ignition::math::Pose3d(_x, _y - 0.2,
-                            this->height + this->scaling.Z() + 0.8,
-                            0, 0, 0));
+                        ignition::math::Pose3d(_x, _y - 0.2, this->height + this->scaling.Z() + 0.8, 0, 0, 0));
     markerMsg.set_id((_marker_id + 1) * 10000);
     result = node.Request("/marker", markerMsg);
   }

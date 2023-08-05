@@ -1,6 +1,0 @@
-perception/zed-ros-examples/rviz-plugin-zed-od
-/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_plugin_zed_od/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
-/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_plugin_zed_od/share/rviz_plugin_zed_od/cmake/rviz_plugin_zed_odConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/rviz_plugin_zed_od/cmake/rviz_plugin_zed_odConfig.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_plugin_zed_od/share/rviz_plugin_zed_od/cmake/rviz_plugin_zed_odConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/rviz_plugin_zed_od/cmake/rviz_plugin_zed_odConfig-version.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_plugin_zed_od/lib/librviz_plugin_zed_od.so /home/jacobdr/AllSeaingVehicle/devel/lib/librviz_plugin_zed_od.so
-/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_plugin_zed_od/lib/pkgconfig/rviz_plugin_zed_od.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/rviz_plugin_zed_od.pc

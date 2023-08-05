@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <geographic_msgs/GeoPoseStamped.h>
 #include <geographic_msgs/GeoPath.h>
@@ -25,13 +25,9 @@
 #include "vrx_gazebo/wildlife_scoring_plugin.hh"
 
 /////////////////////////////////////////////////
-WildlifeScoringPlugin::VirtualGate::VirtualGate(
-    const gazebo::physics::LinkPtr _leftMakerLink,
-    const ignition::math::Vector3d &_offset,
-    double _width)
-  : leftMarkerLink(_leftMakerLink),
-    offset(_offset),
-    width(_width)
+WildlifeScoringPlugin::VirtualGate::VirtualGate(const gazebo::physics::LinkPtr _leftMakerLink,
+                                                const ignition::math::Vector3d& _offset, double _width)
+  : leftMarkerLink(_leftMakerLink), offset(_offset), width(_width)
 {
   this->Update();
 }
@@ -42,7 +38,7 @@ void WildlifeScoringPlugin::VirtualGate::Update()
   if (!this->leftMarkerLink)
     return;
 
-  // The pose of the markers delimiting the virtual gate.
+    // The pose of the markers delimiting the virtual gate.
 #if GAZEBO_MAJOR_VERSION >= 8
   const auto leftMarkerPos = this->leftMarkerLink->WorldPose().Pos();
 #else
@@ -69,13 +65,11 @@ void WildlifeScoringPlugin::VirtualGate::Update()
 
 /////////////////////////////////////////////////
 WildlifeScoringPlugin::GateState
-  WildlifeScoringPlugin::VirtualGate::IsPoseInGate(
-    const ignition::math::Pose3d &_robotWorldPose) const
+WildlifeScoringPlugin::VirtualGate::IsPoseInGate(const ignition::math::Pose3d& _robotWorldPose) const
 {
   // Transform to gate frame.
   const ignition::math::Vector3d robotLocalPosition =
-    this->pose.Rot().Inverse().RotateVector(_robotWorldPose.Pos() -
-    this->pose.Pos());
+      this->pose.Rot().Inverse().RotateVector(_robotWorldPose.Pos() - this->pose.Pos());
 
   // Are we within the width?
   if (fabs(robotLocalPosition.Y()) <= this->width / 2.0)
@@ -90,13 +84,9 @@ WildlifeScoringPlugin::GateState
 }
 
 /////////////////////////////////////////////////
-WildlifeScoringPlugin::Buoy::Buoy(
-    const gazebo::physics::LinkPtr _buoyLink,
-    const BuoyGoal _buoyGoal,
-    double _engagementDistance)
-  : link(_buoyLink),
-    goal(_buoyGoal),
-    engagementDistance(_engagementDistance)
+WildlifeScoringPlugin::Buoy::Buoy(const gazebo::physics::LinkPtr _buoyLink, const BuoyGoal _buoyGoal,
+                                  double _engagementDistance)
+  : link(_buoyLink), goal(_buoyGoal), engagementDistance(_engagementDistance)
 {
   if (this->goal == BuoyGoal::AVOID)
     return;
@@ -115,8 +105,7 @@ WildlifeScoringPlugin::Buoy::Buoy(
     offset.Z(this->link->GetWorldPose().Ign().Pos().Z());
 #endif
 
-    this->virtualGates.push_back(
-      VirtualGate(_buoyLink, offset, _engagementDistance));
+    this->virtualGates.push_back(VirtualGate(_buoyLink, offset, _engagementDistance));
   }
 
   this->Update();
@@ -132,8 +121,7 @@ void WildlifeScoringPlugin::Buoy::Update()
   const ignition::math::Pose3d vehiclePose = this->vehicleModel->WorldPose();
   const ignition::math::Pose3d buoyPose = this->link->WorldPose();
 #else
-  const ignition::math::Pose3d vehiclePose =
-    this->vehicleModel->GetWorldPose().Ign();
+  const ignition::math::Pose3d vehiclePose = this->vehicleModel->GetWorldPose().Ign();
   const ignition::math::Pose3d buoyPose = this->link->GetWorldPose().Ign();
 #endif
   const double vehicleBuoyDistance = vehiclePose.Pos().Distance(buoyPose.Pos());
@@ -144,8 +132,8 @@ void WildlifeScoringPlugin::Buoy::Update()
     {
       // Transition to ENGAGED.
       this->state = BuoyState::ENGAGED;
-      gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName()
-            << " Transition from NEVER_ENGAGED" << " to ENGAGED" << std::endl;
+      gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName() << " Transition from NEVER_ENGAGED"
+            << " to ENGAGED" << std::endl;
       return;
     }
   }
@@ -155,8 +143,8 @@ void WildlifeScoringPlugin::Buoy::Update()
     {
       // Transition to ENGAGED.
       this->state = BuoyState::ENGAGED;
-      gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName()
-            << " Transition from NOT_ENGAGED" << " to ENGAGED" << std::endl;
+      gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName() << " Transition from NOT_ENGAGED"
+            << " to ENGAGED" << std::endl;
       return;
     }
   }
@@ -166,8 +154,8 @@ void WildlifeScoringPlugin::Buoy::Update()
     {
       // Transition to NOT ENGAGED.
       this->state = BuoyState::NOT_ENGAGED;
-      gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName()
-            << " Transition from ENGAGED" << " to NOT_ENGAGED" << std::endl;
+      gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName() << " Transition from ENGAGED"
+            << " to NOT_ENGAGED" << std::endl;
 
       // You need to start over.
       this->numVirtualGatesCrossed = 0u;
@@ -178,58 +166,48 @@ void WildlifeScoringPlugin::Buoy::Update()
       return;
 
     // Check circumnavigation using the virtual gates.
-    for (auto &virtualGate : this->virtualGates)
+    for (auto& virtualGate : this->virtualGates)
     {
       virtualGate.Update();
 
       // Check if we have crossed this gate.
       auto currentState = virtualGate.IsPoseInGate(vehiclePose);
-      if (currentState == GateState::VEHICLE_AFTER &&
-          virtualGate.state == GateState::VEHICLE_BEFORE)
+      if (currentState == GateState::VEHICLE_AFTER && virtualGate.state == GateState::VEHICLE_BEFORE)
       {
         currentState = GateState::CROSSED;
 
         if (this->goal == BuoyGoal::CIRCUMNAVIGATE_COUNTERCLOCKWISE)
         {
           ++this->numVirtualGatesCrossed;
-          gzdbg << "[WildlifeScoringPlugin::Buoy] "
-                << this->link->GetScopedName()
+          gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName()
                 << " Virtual gate crossed counterclockwise! ("
-                << 100 * this->numVirtualGatesCrossed / this->kNumVirtualGates
-                << "% completed)" << std::endl;
+                << 100 * this->numVirtualGatesCrossed / this->kNumVirtualGates << "% completed)" << std::endl;
         }
         else
         {
           this->numVirtualGatesCrossed = 0u;
-          gzdbg << "[WildlifeScoringPlugin::Buoy] "
-                << this->link->GetScopedName()
+          gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName()
                 << " Virtual gate incorrectly crossed counterclockwise! ("
-                << 100 * this->numVirtualGatesCrossed / this->kNumVirtualGates
-                << "% completed)" << std::endl;
+                << 100 * this->numVirtualGatesCrossed / this->kNumVirtualGates << "% completed)" << std::endl;
         }
       }
-      else if (currentState == GateState::VEHICLE_BEFORE &&
-               virtualGate.state == GateState::VEHICLE_AFTER)
+      else if (currentState == GateState::VEHICLE_BEFORE && virtualGate.state == GateState::VEHICLE_AFTER)
       {
         currentState = GateState::CROSSED;
 
         if (this->goal == BuoyGoal::CIRCUMNAVIGATE_CLOCKWISE)
         {
           ++this->numVirtualGatesCrossed;
-          gzdbg << "[WildlifeScoringPlugin::Buoy] "
-                << this->link->GetScopedName()
-                << " Virtual gate crossed clockwise! ("
-                << 100 * this->numVirtualGatesCrossed / this->kNumVirtualGates
+          gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName()
+                << " Virtual gate crossed clockwise! (" << 100 * this->numVirtualGatesCrossed / this->kNumVirtualGates
                 << "% completed)" << std::endl;
         }
         else
         {
           this->numVirtualGatesCrossed = 0u;
-          gzdbg << "[WildlifeScoringPlugin::Buoy] "
-                << this->link->GetScopedName()
+          gzdbg << "[WildlifeScoringPlugin::Buoy] " << this->link->GetScopedName()
                 << " Virtual gate incorrectly crossed clockwise! ("
-                << 100 * this->numVirtualGatesCrossed / this->kNumVirtualGates
-                << "% completed)" << std::endl;
+                << 100 * this->numVirtualGatesCrossed / this->kNumVirtualGates << "% completed)" << std::endl;
         }
       }
 
@@ -242,8 +220,7 @@ void WildlifeScoringPlugin::Buoy::Update()
 }
 
 /////////////////////////////////////////////////
-void WildlifeScoringPlugin::Buoy::SetVehicleModel(
-  gazebo::physics::ModelPtr _vehicleModel)
+void WildlifeScoringPlugin::Buoy::SetVehicleModel(gazebo::physics::ModelPtr _vehicleModel)
 {
   this->vehicleModel = _vehicleModel;
 }
@@ -255,8 +232,7 @@ WildlifeScoringPlugin::WildlifeScoringPlugin()
 }
 
 /////////////////////////////////////////////////
-void WildlifeScoringPlugin::Load(gazebo::physics::WorldPtr _world,
-    sdf::ElementPtr _sdf)
+void WildlifeScoringPlugin::Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf)
 {
   ScoringPlugin::Load(_world, _sdf);
 
@@ -277,7 +253,7 @@ void WildlifeScoringPlugin::Load(gazebo::physics::WorldPtr _world,
   // parameters.
   if (_sdf->HasElement("buoys"))
   {
-    auto const &buoysElem = _sdf->GetElement("buoys");
+    auto const& buoysElem = _sdf->GetElement("buoys");
     if (!this->ParseBuoys(buoysElem))
     {
       gzerr << "Score has been disabled" << std::endl;
@@ -290,12 +266,10 @@ void WildlifeScoringPlugin::Load(gazebo::physics::WorldPtr _world,
   // Setup ROS node and publisher
   this->rosNode.reset(new ros::NodeHandle());
 
-  this->animalsPub =
-    this->rosNode->advertise<geographic_msgs::GeoPath>(
-      this->animalsTopic, 10, true);
+  this->animalsPub = this->rosNode->advertise<geographic_msgs::GeoPath>(this->animalsTopic, 10, true);
 
-  this->updateConnection = gazebo::event::Events::ConnectWorldUpdateBegin(
-    std::bind(&WildlifeScoringPlugin::Update, this));
+  this->updateConnection =
+      gazebo::event::Events::ConnectWorldUpdateBegin(std::bind(&WildlifeScoringPlugin::Update, this));
 }
 
 //////////////////////////////////////////////////
@@ -318,8 +292,7 @@ bool WildlifeScoringPlugin::ParseBuoys(sdf::ElementPtr _sdf)
     // The buoy's model.
     if (!buoyElem->HasElement("model_name"))
     {
-      gzerr << "Unable to find <buoys><buoy><model_name> element in SDF."
-            << std::endl;
+      gzerr << "Unable to find <buoys><buoy><model_name> element in SDF." << std::endl;
       return false;
     }
 
@@ -328,8 +301,7 @@ bool WildlifeScoringPlugin::ParseBuoys(sdf::ElementPtr _sdf)
     // The buoy's main link.
     if (!buoyElem->HasElement("link_name"))
     {
-      gzerr << "Unable to find <buoys><buoy><link_name> element in SDF."
-            << std::endl;
+      gzerr << "Unable to find <buoys><buoy><link_name> element in SDF." << std::endl;
       return false;
     }
 
@@ -338,8 +310,7 @@ bool WildlifeScoringPlugin::ParseBuoys(sdf::ElementPtr _sdf)
     // The buoy's goal.
     if (!buoyElem->HasElement("goal"))
     {
-      gzerr << "Unable to find <buoys><buoy><goal> element in SDF."
-            << std::endl;
+      gzerr << "Unable to find <buoys><buoy><goal> element in SDF." << std::endl;
       return false;
     }
 
@@ -355,8 +326,8 @@ bool WildlifeScoringPlugin::ParseBuoys(sdf::ElementPtr _sdf)
 }
 
 //////////////////////////////////////////////////
-bool WildlifeScoringPlugin::AddBuoy(const std::string &_modelName,
-    const std::string &_linkName, const std::string &_goal)
+bool WildlifeScoringPlugin::AddBuoy(const std::string& _modelName, const std::string& _linkName,
+                                    const std::string& _goal)
 {
 #if GAZEBO_MAJOR_VERSION >= 8
   gazebo::physics::ModelPtr parentModel = this->world->ModelByName(_modelName);
@@ -409,12 +380,11 @@ void WildlifeScoringPlugin::Update()
     return;
 
   // Current score.
-  this->ScoringPlugin::SetScore(
-    std::min(this->GetRunningStateDuration(), this->ElapsedTime().Double()));
+  this->ScoringPlugin::SetScore(std::min(this->GetRunningStateDuration(), this->ElapsedTime().Double()));
 
   // Update the state of all buoys.
   bool taskCompleted = true;
-  for (auto &buoy : this->buoys)
+  for (auto& buoy : this->buoys)
   {
     // Update the vehicle model if needed.
     if (!buoy.vehicleModel)
@@ -429,8 +399,7 @@ void WildlifeScoringPlugin::Update()
 
     // We consider the task completed when all the circumnavigation goals have
     // been completed.
-    if ((buoy.goal == BuoyGoal::CIRCUMNAVIGATE_CLOCKWISE ||
-         buoy.goal == BuoyGoal::CIRCUMNAVIGATE_COUNTERCLOCKWISE) &&
+    if ((buoy.goal == BuoyGoal::CIRCUMNAVIGATE_CLOCKWISE || buoy.goal == BuoyGoal::CIRCUMNAVIGATE_COUNTERCLOCKWISE) &&
         buoy.state != BuoyState::CIRCUMNAVIGATED)
     {
       taskCompleted = false;
@@ -456,7 +425,7 @@ void WildlifeScoringPlugin::PublishAnimalLocations()
   geographic_msgs::GeoPath geoPathMsg;
   geoPathMsg.header.stamp = ros::Time::now();
 
-  for (auto const &buoy : this->buoys)
+  for (auto const& buoy : this->buoys)
   {
     // Conversion from Gazebo Cartesian coordinates to spherical.
 #if GAZEBO_MAJOR_VERSION >= 8
@@ -487,9 +456,9 @@ void WildlifeScoringPlugin::PublishAnimalLocations()
     else
       geoPoseMsg.header.frame_id = "unknown";
 
-    geoPoseMsg.pose.position.latitude  = latlon.X();
+    geoPoseMsg.pose.position.latitude = latlon.X();
     geoPoseMsg.pose.position.longitude = latlon.Y();
-    geoPoseMsg.pose.position.altitude  = latlon.Z();
+    geoPoseMsg.pose.position.altitude = latlon.Z();
     geoPoseMsg.pose.orientation.x = orientation.X();
     geoPoseMsg.pose.orientation.y = orientation.Y();
     geoPoseMsg.pose.orientation.z = orientation.Z();
@@ -513,20 +482,17 @@ double WildlifeScoringPlugin::TimeBonus() const
 {
   // Check time bonuses.
   double totalBonus = 0;
-  for (auto const &buoy : this->buoys)
+  for (auto const& buoy : this->buoys)
   {
-    if (buoy.goal == BuoyGoal::AVOID &&
-        buoy.state == BuoyState::NEVER_ENGAGED)
+    if (buoy.goal == BuoyGoal::AVOID && buoy.state == BuoyState::NEVER_ENGAGED)
     {
       totalBonus += this->timeBonus;
     }
-    else if (buoy.goal == BuoyGoal::CIRCUMNAVIGATE_CLOCKWISE &&
-             buoy.state == BuoyState::CIRCUMNAVIGATED)
+    else if (buoy.goal == BuoyGoal::CIRCUMNAVIGATE_CLOCKWISE && buoy.state == BuoyState::CIRCUMNAVIGATED)
     {
       totalBonus += this->timeBonus;
     }
-    else if (buoy.goal == BuoyGoal::CIRCUMNAVIGATE_COUNTERCLOCKWISE &&
-             buoy.state == BuoyState::CIRCUMNAVIGATED)
+    else if (buoy.goal == BuoyGoal::CIRCUMNAVIGATE_COUNTERCLOCKWISE && buoy.state == BuoyState::CIRCUMNAVIGATED)
     {
       totalBonus += this->timeBonus;
     }

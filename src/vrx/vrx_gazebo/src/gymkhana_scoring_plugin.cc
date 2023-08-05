@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <geometry_msgs/Vector3.h>
 #include <limits>
@@ -31,8 +31,7 @@ GymkhanaScoringPlugin::~GymkhanaScoringPlugin()
 }
 
 /////////////////////////////////////////////////
-void GymkhanaScoringPlugin::Load(gazebo::physics::WorldPtr _world,
-  sdf::ElementPtr _sdf)
+void GymkhanaScoringPlugin::Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf)
 {
   // Base class, also binds the update method for the base class
   ScoringPlugin::Load(_world, _sdf);
@@ -41,8 +40,8 @@ void GymkhanaScoringPlugin::Load(gazebo::physics::WorldPtr _world,
   if (_sdf->HasElement("obstacle_penalty"))
     this->obstaclePenalty = _sdf->Get<double>("obstacle_penalty");
 
-  this->updateConnection = gazebo::event::Events::ConnectWorldUpdateBegin(
-    std::bind(&GymkhanaScoringPlugin::Update, this));
+  this->updateConnection =
+      gazebo::event::Events::ConnectWorldUpdateBegin(std::bind(&GymkhanaScoringPlugin::Update, this));
 
   // Setup ROS node and publisher
   this->rosNode.reset(new ros::NodeHandle());
@@ -51,45 +50,39 @@ void GymkhanaScoringPlugin::Load(gazebo::physics::WorldPtr _world,
   std::string setPositionTopicName = "/pinger/set_pinger_position";
   if (_sdf->HasElement("set_position_topic_name"))
   {
-    setPositionTopicName =
-      _sdf->GetElement("set_position_topic_name")->Get<std::string>();
+    setPositionTopicName = _sdf->GetElement("set_position_topic_name")->Get<std::string>();
   }
 
   // Set the pinger position.
   if (_sdf->HasElement("pinger_position"))
   {
-    this->pingerPosition =
-      _sdf->Get<ignition::math::Vector3d>("pinger_position");
+    this->pingerPosition = _sdf->Get<ignition::math::Vector3d>("pinger_position");
   }
 
-  #if GAZEBO_MAJOR_VERSION >= 8
-    this->lastSetPingerPositionTime = this->world->SimTime();
-  #else
-    this->lastSetPingerPositionTime = this->world->GetSimTime();
-  #endif
+#if GAZEBO_MAJOR_VERSION >= 8
+  this->lastSetPingerPositionTime = this->world->SimTime();
+#else
+  this->lastSetPingerPositionTime = this->world->GetSimTime();
+#endif
 
-  this->setPingerPub =
-    this->rosNode->advertise<geometry_msgs::Vector3>(
-      setPositionTopicName, 1, true);
+  this->setPingerPub = this->rosNode->advertise<geometry_msgs::Vector3>(setPositionTopicName, 1, true);
 
-  this->channelSub = this->rosNode->subscribe(
-    "/vrx/gymkhana_channel/task/info", 5,
-    &GymkhanaScoringPlugin::ChannelCallback, this);
+  this->channelSub =
+      this->rosNode->subscribe("/vrx/gymkhana_channel/task/info", 5, &GymkhanaScoringPlugin::ChannelCallback, this);
 
-  this->blackboxSub = this->rosNode->subscribe(
-    "/vrx/gymkhana_blackbox/task/info", 5,
-    &GymkhanaScoringPlugin::BlackboxCallback, this);
+  this->blackboxSub =
+      this->rosNode->subscribe("/vrx/gymkhana_blackbox/task/info", 5, &GymkhanaScoringPlugin::BlackboxCallback, this);
 }
 
 /////////////////////////////////////////////////
 void GymkhanaScoringPlugin::Update()
 {
-  // Set the pinger position every 10 seconds.
-  #if GAZEBO_MAJOR_VERSION >= 8
-    gazebo::common::Time now = this->world->SimTime();
-  #else
-    gazebo::common::Time now = this->world->GetSimTime();
-  #endif
+// Set the pinger position every 10 seconds.
+#if GAZEBO_MAJOR_VERSION >= 8
+  gazebo::common::Time now = this->world->SimTime();
+#else
+  gazebo::common::Time now = this->world->GetSimTime();
+#endif
   gazebo::common::Time elapsedTime = now - this->lastSetPingerPositionTime;
 
   if (elapsedTime.Double() >= 10.0)
@@ -115,8 +108,7 @@ void GymkhanaScoringPlugin::Update()
 }
 
 /////////////////////////////////////////////////
-void GymkhanaScoringPlugin::ChannelCallback(
-  const vrx_gazebo::Task::ConstPtr& msg)
+void GymkhanaScoringPlugin::ChannelCallback(const vrx_gazebo::Task::ConstPtr& msg)
 {
   if (msg)
   {
@@ -135,8 +127,7 @@ void GymkhanaScoringPlugin::ChannelCallback(
 }
 
 /////////////////////////////////////////////////
-void GymkhanaScoringPlugin::BlackboxCallback(
-  const vrx_gazebo::Task::ConstPtr& msg)
+void GymkhanaScoringPlugin::BlackboxCallback(const vrx_gazebo::Task::ConstPtr& msg)
 {
   if (msg)
   {

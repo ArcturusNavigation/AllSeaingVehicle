@@ -36,11 +36,11 @@
 /**
  *  \author Dave Coleman
  *  \desc   Example ROS plugin for Gazebo
- *  \Original plugin from gazebo_plugins package 
- *  \(https://github.com/ros-simulation/gazebo_ros_pkgs), 
+ *  \Original plugin from gazebo_plugins package
+ *  \(https://github.com/ros-simulation/gazebo_ros_pkgs),
  *  \modified to implement a simulated pinger sensor for Maritime ASVs
  *  \Modifications by Jonathan Wheare.
- *  
+ *
  */
 
 #include <usv_msgs/RangeBearing.h>
@@ -75,9 +75,10 @@ void AcousticPinger::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Make sure the ROS node for Gazebo has already been initialised.
   if (!ros::isInitialized())
   {
-    ROS_FATAL_STREAM_NAMED("usv_gazebo_acoustic_pinger_plugin", "A ROS node for"
-      " Gazebo hasn't been initialised, unable to load plugin. Load the Gazebo "
-      "system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
+    ROS_FATAL_STREAM_NAMED("usv_gazebo_acoustic_pinger_plugin",
+                           "A ROS node for"
+                           " Gazebo hasn't been initialised, unable to load plugin. Load the Gazebo "
+                           "system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
     return;
   }
 
@@ -94,8 +95,7 @@ void AcousticPinger::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
     ns = _sdf->GetElement("robotNamespace")->Get<std::string>();
   else
   {
-    ROS_DEBUG_NAMED("usv_gazebo_acoustic_pinger_plugin",
-      "missing <robotNamespace>, defaulting to %s", ns.c_str());
+    ROS_DEBUG_NAMED("usv_gazebo_acoustic_pinger_plugin", "missing <robotNamespace>, defaulting to %s", ns.c_str());
   }
 
   // Set the frame_id. Defaults to "pinger".
@@ -109,21 +109,19 @@ void AcousticPinger::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
     topicName = _sdf->GetElement("topicName")->Get<std::string>();
   else
   {
-    ROS_INFO_NAMED("usv_gazebo_acoustic_pinger_plugin",
-      "missing <topicName>, defaulting to %s", topicName.c_str());
+    ROS_INFO_NAMED("usv_gazebo_acoustic_pinger_plugin", "missing <topicName>, defaulting to %s", topicName.c_str());
   }
 
   // Set the topic to be used to publish the sensor message.
   std::string setPositionTopicName = "/pinger/set_pinger_position";
   if (_sdf->HasElement("setPositionTopicName"))
   {
-    setPositionTopicName =
-      _sdf->GetElement("setPositionTopicName")->Get<std::string>();
+    setPositionTopicName = _sdf->GetElement("setPositionTopicName")->Get<std::string>();
   }
   else
   {
-    ROS_INFO_NAMED("usv_gazebo_acoustic_pinger_plugin",
-      "missing <setPositionTopicName>, defaulting to %s", topicName.c_str());
+    ROS_INFO_NAMED("usv_gazebo_acoustic_pinger_plugin", "missing <setPositionTopicName>, defaulting to %s",
+                   topicName.c_str());
   }
 
   // Initialise pinger position. Defaults to origin.
@@ -145,19 +143,20 @@ void AcousticPinger::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
     // element be "noise".
     if (rangeNoiseElem->HasElement("noise"))
     {
-      this->rangeNoise = sensors::NoiseFactory::NewNoiseModel(
-        rangeNoiseElem->GetElement("noise"));
+      this->rangeNoise = sensors::NoiseFactory::NewNoiseModel(rangeNoiseElem->GetElement("noise"));
     }
     else
     {
-      ROS_WARN("usv_gazebo_acoustic_pinger_plugin: "
-               "The rangeNoise SDF element must contain noise tag");
+      ROS_WARN(
+          "usv_gazebo_acoustic_pinger_plugin: "
+          "The rangeNoise SDF element must contain noise tag");
     }
   }
   else
   {
-    ROS_INFO("usv_gazebo_acoustic_pinger_plugin: "
-             "No rangeNoise tag found, no noise added to measurements");
+    ROS_INFO(
+        "usv_gazebo_acoustic_pinger_plugin: "
+        "No rangeNoise tag found, no noise added to measurements");
   }
 
   // Load the noise model from the SDF file.
@@ -168,19 +167,20 @@ void AcousticPinger::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
     // element be "noise".
     if (bearingNoiseElem->HasElement("noise"))
     {
-      this->bearingNoise = sensors::NoiseFactory::NewNoiseModel(
-        bearingNoiseElem->GetElement("noise"));
+      this->bearingNoise = sensors::NoiseFactory::NewNoiseModel(bearingNoiseElem->GetElement("noise"));
     }
     else
     {
-      ROS_WARN("usv_gazebo_acoustic_pinger_plugin: "
-               "The bearingNoise SDF element must contain noise tag");
+      ROS_WARN(
+          "usv_gazebo_acoustic_pinger_plugin: "
+          "The bearingNoise SDF element must contain noise tag");
     }
   }
   else
   {
-    ROS_INFO("usv_gazebo_acoustic_pinger_plugin: "
-             "No bearingNoise tag found, no noise added to measurements");
+    ROS_INFO(
+        "usv_gazebo_acoustic_pinger_plugin: "
+        "No bearingNoise tag found, no noise added to measurements");
   }
 
   if (_sdf->HasElement("elevationNoise"))
@@ -190,31 +190,30 @@ void AcousticPinger::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
     // element be "noise".
     if (elevationNoiseElem->HasElement("noise"))
     {
-      this->elevationNoise = sensors::NoiseFactory::NewNoiseModel(
-        elevationNoiseElem->GetElement("noise"));
+      this->elevationNoise = sensors::NoiseFactory::NewNoiseModel(elevationNoiseElem->GetElement("noise"));
     }
     else
     {
-      ROS_WARN("usv_gazebo_acoustic_pinger_plugin: "
-               "The elevationNoise SDF element must contain noise tag");
+      ROS_WARN(
+          "usv_gazebo_acoustic_pinger_plugin: "
+          "The elevationNoise SDF element must contain noise tag");
     }
   }
   else
   {
-    ROS_INFO("usv_gazebo_acoustic_pinger_plugin: "
-             "No elevationNoise tag found, no noise added to measurements");
+    ROS_INFO(
+        "usv_gazebo_acoustic_pinger_plugin: "
+        "No elevationNoise tag found, no noise added to measurements");
   }
 
   // initialise the ros handle.
   this->rosNodeHandle.reset(new ros::NodeHandle(ns));
 
   // setup the publisher.
-  this->rangeBearingPub =
-    this->rosNodeHandle->advertise<usv_msgs::RangeBearing>(
-      std::string(topicName), 1);
+  this->rangeBearingPub = this->rosNodeHandle->advertise<usv_msgs::RangeBearing>(std::string(topicName), 1);
 
-  this->setPositionSub = this->rosNodeHandle->subscribe(
-    setPositionTopicName, 1, &AcousticPinger::PingerPositionCallback, this);
+  this->setPositionSub =
+      this->rosNodeHandle->subscribe(setPositionTopicName, 1, &AcousticPinger::PingerPositionCallback, this);
 
   // Initialise the time with world time.
 #if GAZEBO_MAJOR_VERSION >= 8
@@ -224,8 +223,7 @@ void AcousticPinger::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 #endif
 
   // connect the update function to the world update event.
-  this->updateConnection = event::Events::ConnectWorldUpdateBegin(
-    std::bind(&AcousticPinger::Update, this));
+  this->updateConnection = event::Events::ConnectWorldUpdateBegin(std::bind(&AcousticPinger::Update, this));
 }
 
 //////////////////////////////////////////////////
@@ -233,11 +231,9 @@ void AcousticPinger::Update()
 {
   // Test to see if it's time to generate a sensor reading.
 #if GAZEBO_MAJOR_VERSION >= 8
-  if ((this->model->GetWorld()->SimTime() - this->lastUpdateTime) >
-      (1.0f / this->updateRate))
+  if ((this->model->GetWorld()->SimTime() - this->lastUpdateTime) > (1.0f / this->updateRate))
 #else
-  if ((this->model->GetWorld()->GetSimTime() - this->lastUpdateTime) >
-      (1.0f / this->updateRate))
+  if ((this->model->GetWorld()->GetSimTime() - this->lastUpdateTime) > (1.0f / this->updateRate))
 #endif
   {
     // lock the thread to protect this->position vector.
@@ -258,13 +254,11 @@ void AcousticPinger::Update()
 
     // Sensor reading is in the sensor frame. Rotate the direction vector into
     // the frame of reference of the sensor.
-    ignition::math::Vector3d directionSensorFrame =
-      modelPose.Rot().RotateVectorReverse(direction);
+    ignition::math::Vector3d directionSensorFrame = modelPose.Rot().RotateVectorReverse(direction);
 
     // Generate a 2d vector for elevation calculation.
     ignition::math::Vector3d directionSensorFrame2d =
-      ignition::math::Vector3d(
-        directionSensorFrame.X(), directionSensorFrame.Y(), 0);
+        ignition::math::Vector3d(directionSensorFrame.X(), directionSensorFrame.Y(), 0);
 
     // bearing is calculated by finding the world frame direction vector
     // and transforming into the pose of the sensor.  Bearing is calculated
@@ -273,8 +267,7 @@ void AcousticPinger::Update()
     // and the z component of the sensor frame vector.
     double bearing = atan2(directionSensorFrame.Y(), directionSensorFrame.X());
     double range = directionSensorFrame.Length();
-    double elevation =
-      atan2(directionSensorFrame.Z(), directionSensorFrame2d.Length());
+    double elevation = atan2(directionSensorFrame.Z(), directionSensorFrame2d.Length());
 
     // Apply noise to each measurement.
     // From Brian Binghams rangebearing_gazebo_plugin.
@@ -283,13 +276,12 @@ void AcousticPinger::Update()
     if (this->bearingNoise != nullptr)
       bearing = this->bearingNoise->Apply(bearing);
     if (this->elevationNoise != nullptr)
-      elevation  = this->elevationNoise->Apply(elevation);
+      elevation = this->elevationNoise->Apply(elevation);
 
     // Publish a ROS message.
     usv_msgs::RangeBearing msg;
     // generate ROS header. Sequence number is automatically populated.
-    msg.header.stamp = ros::Time(this->lastUpdateTime.sec,
-      this->lastUpdateTime.nsec);
+    msg.header.stamp = ros::Time(this->lastUpdateTime.sec, this->lastUpdateTime.nsec);
     // frame_id is neccesary for finding the tf transform.  The frame_id is
     // specified in the sdf file.
     msg.header.frame_id = this->frameId;
@@ -304,8 +296,7 @@ void AcousticPinger::Update()
 }
 
 //////////////////////////////////////////////////
-void AcousticPinger::PingerPositionCallback(
-  const geometry_msgs::Vector3ConstPtr &_pos)
+void AcousticPinger::PingerPositionCallback(const geometry_msgs::Vector3ConstPtr& _pos)
 {
   // Mutex added to prevent simulataneous reads and writes of mutex.
   std::lock_guard<std::mutex> lock(this->mutex);

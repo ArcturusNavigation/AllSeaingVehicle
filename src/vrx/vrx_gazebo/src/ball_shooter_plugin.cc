@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <string>
 #include <gazebo/physics/Link.hh>
@@ -27,17 +27,17 @@ using namespace gazebo;
 //////////////////////////////////////////////////
 void BallShooterPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-  gazebo::physics::WorldPtr world =
-    gazebo::physics::get_world();
+  gazebo::physics::WorldPtr world = gazebo::physics::get_world();
 
   GZ_ASSERT(_model != nullptr, "Received NULL model pointer");
 
   // Make sure the ROS node for Gazebo has already been initialised.
   if (!ros::isInitialized())
   {
-    ROS_FATAL_STREAM_NAMED("ball_shooter_plugin", "A ROS node for"
-      " Gazebo hasn't been initialised, unable to load plugin. Load the Gazebo "
-      "system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
+    ROS_FATAL_STREAM_NAMED("ball_shooter_plugin",
+                           "A ROS node for"
+                           " Gazebo hasn't been initialised, unable to load plugin. Load the Gazebo "
+                           "system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
     return;
   }
 
@@ -57,8 +57,7 @@ void BallShooterPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     return;
   }
 
-  std::string projectileName =
-    projectileElem->GetElement("model_name")->Get<std::string>();
+  std::string projectileName = projectileElem->GetElement("model_name")->Get<std::string>();
 #if GAZEBO_MAJOR_VERSION >= 8
   this->projectileModel = world->ModelByName(projectileName);
 #else
@@ -66,8 +65,7 @@ void BallShooterPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 #endif
   if (!this->projectileModel)
   {
-    gzerr << "BallShooterPlugin: The model '" << projectileName
-          << "' does not exist" << std::endl;
+    gzerr << "BallShooterPlugin: The model '" << projectileName << "' does not exist" << std::endl;
     return;
   }
 
@@ -78,14 +76,13 @@ void BallShooterPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     return;
   }
 
-  std::string projectileLinkName =
-    projectileElem->GetElement("link_name")->Get<std::string>();
+  std::string projectileLinkName = projectileElem->GetElement("link_name")->Get<std::string>();
 
   this->projectileLink = this->projectileModel->GetLink(projectileLinkName);
   if (!this->projectileLink)
   {
-    gzerr << "BallShooterPlugin: The link '" << projectileLinkName
-          << "' does not exist within '" << projectileName << "'" << std::endl;
+    gzerr << "BallShooterPlugin: The link '" << projectileLinkName << "' does not exist within '" << projectileName
+          << "'" << std::endl;
     return;
   }
 
@@ -104,8 +101,7 @@ void BallShooterPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
       gzerr << "The frame '" << frameName << "' does not exist" << std::endl;
       frameName = "";
     }
-    else if (!this->frame->HasType(physics::Base::LINK) &&
-             !this->frame->HasType(physics::Base::MODEL))
+    else if (!this->frame->HasType(physics::Base::LINK) && !this->frame->HasType(physics::Base::MODEL))
     {
       this->frame = nullptr;
       frameName = "";
@@ -133,24 +129,18 @@ void BallShooterPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
   // Initialise the ros handle.
   this->rosNodeHandle.reset(new ros::NodeHandle());
 
-  this->fireSub = this->rosNodeHandle->subscribe(
-    topic, 1, &BallShooterPlugin::OnFire, this);
+  this->fireSub = this->rosNodeHandle->subscribe(topic, 1, &BallShooterPlugin::OnFire, this);
 
   // Connect the update function to the world update event.
-  this->updateConnection = event::Events::ConnectWorldUpdateBegin(
-    std::bind(&BallShooterPlugin::Update, this));
+  this->updateConnection = event::Events::ConnectWorldUpdateBegin(std::bind(&BallShooterPlugin::Update, this));
 
   // Debug output.
-  ROS_INFO_NAMED("ball_shooter_plugin", "<projectile><model_name>: %s",
-    projectileName.c_str());
-  ROS_INFO_NAMED("ball_shooter_plugin", "<projectile><link_name>: %s",
-    projectileLinkName.c_str());
+  ROS_INFO_NAMED("ball_shooter_plugin", "<projectile><model_name>: %s", projectileName.c_str());
+  ROS_INFO_NAMED("ball_shooter_plugin", "<projectile><link_name>: %s", projectileLinkName.c_str());
   ROS_INFO_NAMED("ball_shooter_plugin", "<frame>: %s", frameName.c_str());
-  ROS_INFO_NAMED("ball_shooter_plugin",
-    "<num_shots>: %u", this->remainingShots);
-  ROS_INFO_NAMED("ball_shooter_plugin", "<pose>: {%f %f %f %f %f %f",
-    this->pose.Pos().X(), this->pose.Pos().Y(), this->pose.Pos().Z(),
-    this->pose.Rot().Roll(), this->pose.Rot().Pitch(), this->pose.Rot().Yaw());
+  ROS_INFO_NAMED("ball_shooter_plugin", "<num_shots>: %u", this->remainingShots);
+  ROS_INFO_NAMED("ball_shooter_plugin", "<pose>: {%f %f %f %f %f %f", this->pose.Pos().X(), this->pose.Pos().Y(),
+                 this->pose.Pos().Z(), this->pose.Rot().Roll(), this->pose.Rot().Pitch(), this->pose.Rot().Yaw());
   ROS_INFO_NAMED("ball_shooter_plugin", "<shot_force>: %f", this->shotForce);
   ROS_INFO_NAMED("ball_shooter_plugin", "<topic>: %s", topic.c_str());
 }
@@ -183,14 +173,14 @@ void BallShooterPlugin::Update()
   this->projectileModel->SetAngularVel(ignition::math::Vector3d::Zero);
 
   // Ignition!
-  this->projectileLink->AddLinkForce({this->shotForce, 0, 0});
+  this->projectileLink->AddLinkForce({ this->shotForce, 0, 0 });
 
   --this->remainingShots;
   shotReady = false;
 }
 
 //////////////////////////////////////////////////
-void BallShooterPlugin::OnFire(const std_msgs::Empty::ConstPtr &_msg)
+void BallShooterPlugin::OnFire(const std_msgs::Empty::ConstPtr& _msg)
 {
   std::lock_guard<std::mutex> lock(this->mutex);
 

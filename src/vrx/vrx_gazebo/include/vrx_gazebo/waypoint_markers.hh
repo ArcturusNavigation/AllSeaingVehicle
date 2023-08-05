@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #pragma once
 
@@ -23,8 +23,8 @@
 #include <ignition/math/Vector3.hh>
 
 #if GAZEBO_MAJOR_VERSION >= 8
-  #include <ignition/msgs.hh>
-  #include <ignition/transport.hh>
+#include <ignition/msgs.hh>
+#include <ignition/transport.hh>
 #endif
 
 /// \brief This class is used to display waypoint markers.
@@ -49,15 +49,18 @@ class WaypointMarkers
 {
   /// \brief Constructor
   /// \param[in] _namespace Marker namespace
-  public: explicit WaypointMarkers(std::string _namespace);
+public:
+  explicit WaypointMarkers(std::string _namespace);
 
   /// \brief Load marker parameters from SDF
   /// \param[in] _sdf SDF element pointer with marker parameters
-  public: void Load(sdf::ElementPtr _sdf);
+public:
+  void Load(sdf::ElementPtr _sdf);
 
   /// \brief Returns if markers are available for current system
   /// \return Returns true if Gazebo version >= 8
-  public: bool IsAvailable();
+public:
+  bool IsAvailable();
 
   /// \brief Draw waypoint marker in Gazebo
   /// \param[in] _marker_id Unique marker id for waypoint
@@ -66,8 +69,8 @@ class WaypointMarkers
   /// \param[in] _yaw orientation of waypoint marker in radians
   /// \param[in] _text (optional) Text above waypoint marker
   /// \return Returns true if marker is successfully sent to Gazebo
-  public: bool DrawMarker(int _marker_id, double _x, double _y,
-      double _yaw, std::string _text = "");
+public:
+  bool DrawMarker(int _marker_id, double _x, double _y, double _yaw, std::string _text = "");
 
   /// \brief Draw a new waypoint marker in Gazebo
   /// \param[in] _x X coordinate of waypoint marker
@@ -75,23 +78,28 @@ class WaypointMarkers
   /// \param[in] _yaw orientation of waypoint marker in radians
   /// \param[in] _text (optional) Text above waypoint marker
   /// \return Returns true if marker is successfully sent to Gazebo
-  public: bool DrawMarker(double _x, double _y, double _yaw,
-    std::string _text = "");
+public:
+  bool DrawMarker(double _x, double _y, double _yaw, std::string _text = "");
 
   /// \brief Namespace for Gazebo markers
-  private: std::string ns;
+private:
+  std::string ns;
 
   /// \brief Name of Gazebo material for marker
-  private: std::string material;
+private:
+  std::string material;
 
   /// \brief Scaling factor for cylinder marker
-  private: ignition::math::Vector3d scaling;
+private:
+  ignition::math::Vector3d scaling;
 
   /// \brief Height of marker above water
-  private: double height;
+private:
+  double height;
 
   /// \brief If an ID is not specified, the markers will start using this one.
-  private: int id = 0;
+private:
+  int id = 0;
 
 #if GAZEBO_MAJOR_VERSION >= 8
   /// \brief gazebo transport node

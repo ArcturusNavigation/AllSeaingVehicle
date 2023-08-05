@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <cmath>
 
@@ -22,17 +22,17 @@
 
 namespace asv
 {
-  /////////////////////////////////////////////////
-  double Physics::DeepWaterDispersionToOmega(double _wavenumber)
-  {
-    const double g = std::fabs(PhysicalConstants::Gravity());
-    return std::sqrt(g * _wavenumber);
-  }
-
-  /////////////////////////////////////////////////
-  double Physics::DeepWaterDispersionToWavenumber(double _omega)
-  {
-    const double g = std::fabs(PhysicalConstants::Gravity());
-    return _omega * _omega / g;
-  }
+/////////////////////////////////////////////////
+double Physics::DeepWaterDispersionToOmega(double _wavenumber)
+{
+  const double g = std::fabs(PhysicalConstants::Gravity());
+  return std::sqrt(g * _wavenumber);
 }
+
+/////////////////////////////////////////////////
+double Physics::DeepWaterDispersionToWavenumber(double _omega)
+{
+  const double g = std::fabs(PhysicalConstants::Gravity());
+  return _omega * _omega / g;
+}
+}  // namespace asv

@@ -3,6 +3,6 @@ package dock_placard_msgs.msgs;
 
 message DockPlacard
 {
-    required string   shape = 1;
-    required string   color = 2;
+  required string shape = 1;
+  required string color = 2;
 }

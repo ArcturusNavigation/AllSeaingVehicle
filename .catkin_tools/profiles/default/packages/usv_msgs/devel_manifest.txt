@@ -1,4 +1,4 @@
-simulation/usv_msgs
+vrx/usv_msgs
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_msgs/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_msgs/share/roseus/ros/usv_msgs/manifest.l /home/jacobdr/AllSeaingVehicle/devel/share/roseus/ros/usv_msgs/manifest.l
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_msgs/share/roseus/ros/usv_msgs/msg/RangeBearing.l /home/jacobdr/AllSeaingVehicle/devel/share/roseus/ros/usv_msgs/msg/RangeBearing.l

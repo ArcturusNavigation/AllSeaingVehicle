@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VRX_GAZEBO_WILDLIFE_SCORING_PLUGIN_HH_
 #define VRX_GAZEBO_WILDLIFE_SCORING_PLUGIN_HH_
@@ -93,7 +93,8 @@
 class WildlifeScoringPlugin : public ScoringPlugin
 {
   /// \brief All buoy goals.
-  private: enum class BuoyGoal
+private:
+  enum class BuoyGoal
   {
     /// \brief The goal is to stay out of the activation area.
     AVOID,
@@ -106,7 +107,8 @@ class WildlifeScoringPlugin : public ScoringPlugin
   };
 
   /// \brief All buoy states.
-  private: enum class BuoyState
+private:
+  enum class BuoyState
   {
     /// \brief Not "in" the gate and never engaged.
     NEVER_ENGAGED,
@@ -122,7 +124,8 @@ class WildlifeScoringPlugin : public ScoringPlugin
   };
 
   /// \brief All gate states.
-  private: enum class GateState
+private:
+  enum class GateState
   {
     /// \brief Not "in" the gate.
     VEHICLE_OUTSIDE,
@@ -138,150 +141,180 @@ class WildlifeScoringPlugin : public ScoringPlugin
   };
 
   /// \brief A virtual gate to help detecting circumnavigation.
-  private: class VirtualGate
+private:
+  class VirtualGate
   {
     /// \brief Constructor.
     /// \param[in] _leftMakerLink The link of the buoy.
     /// \param[in] _offset The offset from the buoy that delimitates the gate.
     /// \param[in] _width The width of the gate.
-    public: VirtualGate(const gazebo::physics::LinkPtr _leftMakerLink,
-                        const ignition::math::Vector3d &_offset,
-                        double _width);
+  public:
+    VirtualGate(const gazebo::physics::LinkPtr _leftMakerLink, const ignition::math::Vector3d& _offset, double _width);
 
     /// \brief Where is the given robot pose with respect to the gate?
     /// \param _robotWorldPose Pose of the robot, in the world frame.
     /// \return The gate state given the current robot pose.
-    public: GateState IsPoseInGate(
-      const ignition::math::Pose3d &_robotWorldPose) const;
+  public:
+    GateState IsPoseInGate(const ignition::math::Pose3d& _robotWorldPose) const;
 
     /// \brief Recalculate the pose of the gate.
-    public: void Update();
+  public:
+    void Update();
 
     /// \brief The left marker (buoy).
-    public: const gazebo::physics::LinkPtr leftMarkerLink;
+  public:
+    const gazebo::physics::LinkPtr leftMarkerLink;
 
     /// \brief The offset of the right marker with respect to the left marker
     /// in world coordinates.
-    public: const ignition::math::Vector3d offset;
+  public:
+    const ignition::math::Vector3d offset;
 
     /// \brief The width of the gate in meters.
-    public: const double width;
+  public:
+    const double width;
 
     /// \brief The center of the gate in the world frame. Note that the roll and
     /// pitch are ignored. Only yaw is relevant and it points into the direction
     /// in which the gate should be crossed.
-    public: ignition::math::Pose3d pose;
+  public:
+    ignition::math::Pose3d pose;
 
     /// \brief The state of this gate.
-    public: GateState state = GateState::VEHICLE_OUTSIDE;
+  public:
+    GateState state = GateState::VEHICLE_OUTSIDE;
   };
 
   /// \brief A buoy that is part of the wildlife task.
-  private: class Buoy
+private:
+  class Buoy
   {
     /// \brief Constructor.
     /// \param[in] _buoyLink The buoy's main link.
     /// \param[in] _buoyGoal The buoy's goal.
     /// \param[in] _engagementDistance The vehicle engages with the buoy when
     ///            the distance between them is lower or equal than this value.
-    public: Buoy(const gazebo::physics::LinkPtr _buoyLink,
-                 const BuoyGoal _buoyGoal,
-                 double _engagementDistance);
+  public:
+    Buoy(const gazebo::physics::LinkPtr _buoyLink, const BuoyGoal _buoyGoal, double _engagementDistance);
 
     /// \brief Update the status of this buoy.
-    public: void Update();
+  public:
+    void Update();
 
     /// \brief Set the vehicle model.
     /// \param[in] _vehicleModel The vehicle model pointer.
-    public: void SetVehicleModel(gazebo::physics::ModelPtr _vehicleModel);
+  public:
+    void SetVehicleModel(gazebo::physics::ModelPtr _vehicleModel);
 
     /// \brief The number of virtual gates;
-    private: const unsigned int kNumVirtualGates = 8u;
+  private:
+    const unsigned int kNumVirtualGates = 8u;
 
     /// \brief The buoy's main link.
-    public: const gazebo::physics::LinkPtr link;
+  public:
+    const gazebo::physics::LinkPtr link;
 
     /// \brief The goal.
-    public: const BuoyGoal goal;
+  public:
+    const BuoyGoal goal;
 
     /// \brief The vehicle engages with the buoy when the distance between them
     /// is lower or equal than this value.
-    public: const double engagementDistance;
+  public:
+    const double engagementDistance;
 
     /// \brief The state of this buoy.
-    public: BuoyState state = BuoyState::NEVER_ENGAGED;
+  public:
+    BuoyState state = BuoyState::NEVER_ENGAGED;
 
     /// \brief Pointer to the vehicle that interacts with the buoy.
-    public: gazebo::physics::ModelPtr vehicleModel;
+  public:
+    gazebo::physics::ModelPtr vehicleModel;
 
     /// \brief A collection of virtual gates around the buoy.
-    public: std::vector<VirtualGate> virtualGates;
+  public:
+    std::vector<VirtualGate> virtualGates;
 
     /// \brief The number of virtual gates currently crossed.
-    public: unsigned int numVirtualGatesCrossed = 0u;
+  public:
+    unsigned int numVirtualGatesCrossed = 0u;
   };
 
   // Constructor.
-  public: WildlifeScoringPlugin();
+public:
+  WildlifeScoringPlugin();
 
   // Documentation inherited.
-  public: void Load(gazebo::physics::WorldPtr _world,
-                    sdf::ElementPtr _sdf);
+public:
+  void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf);
 
   /// \brief Parse the buoys from SDF.
   /// \param[in] _sdf The current SDF element.
   /// \return True when the buoys were successfully parsed or false otherwise.
-  private: bool ParseBuoys(sdf::ElementPtr _sdf);
+private:
+  bool ParseBuoys(sdf::ElementPtr _sdf);
 
   /// \brief Register a new buoy.
   /// \param[in] _modelName The name of the buoy's model.
   /// \param[in] _linkName The name of the main buoy's link.
   /// \param[in] _goal The goal associated to this buoy.
   /// \return True when the buoy has been registered or false otherwise.
-  private: bool AddBuoy(const std::string &_modelName,
-                        const std::string &_linkName,
-                        const std::string &_goal);
+private:
+  bool AddBuoy(const std::string& _modelName, const std::string& _linkName, const std::string& _goal);
 
   /// \brief Callback executed at every world update.
-  private: void Update();
+private:
+  void Update();
 
   /// \brief Publish a new ROS message with the animal locations.
-  private: void PublishAnimalLocations();
+private:
+  void PublishAnimalLocations();
 
   /// \brief Compute the total bonus achieved.
   /// \return The time bonus in seconds.
-  private: double TimeBonus() const;
+private:
+  double TimeBonus() const;
 
   // Documentation inherited.
-  private: void OnCollision() override;
+private:
+  void OnCollision() override;
 
   // Documentation inherited.
-  private: virtual void OnFinished() override;
+private:
+  virtual void OnFinished() override;
 
   /// \brief All the buoys.
-  private: std::vector<Buoy> buoys;
+private:
+  std::vector<Buoy> buoys;
 
   /// \brief Pointer to the update event connection.
-  private: gazebo::event::ConnectionPtr updateConnection;
+private:
+  gazebo::event::ConnectionPtr updateConnection;
 
   /// \brief The name of the topic where the animal locations are published.
-  private: std::string animalsTopic = "/vrx/wildlife_animals";
+private:
+  std::string animalsTopic = "/vrx/wildlife_animals";
 
   /// \brief Time bonus granted for each succcesfuly goal achieved.
-  private: double timeBonus = 30.0;
+private:
+  double timeBonus = 30.0;
 
   /// \brief When the vehicle is between the buoy and this distance, the vehicle
   /// engages with the buoy.
-  private: double engagementDistance = 10.0;
+private:
+  double engagementDistance = 10.0;
 
   /// \brief ROS node handle.
-  private: std::unique_ptr<ros::NodeHandle> rosNode;
+private:
+  std::unique_ptr<ros::NodeHandle> rosNode;
 
   /// \brief Publisher for the animal locations.
-  private: ros::Publisher animalsPub;
+private:
+  ros::Publisher animalsPub;
 
   /// \brief True when a vehicle collision is detected.
-  private: std::atomic<bool> collisionDetected{false};
+private:
+  std::atomic<bool> collisionDetected{ false };
 };
 
 #endif

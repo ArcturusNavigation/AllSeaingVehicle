@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VRX_GAZEBO_FOLLOW_PLUGIN_HH_
 #define VRX_GAZEBO_FOLLOW_PLUGIN_HH_
@@ -97,53 +97,67 @@ namespace gazebo
 class FollowPlugin : public ModelPlugin
 {
   // \brief Constructor.
-  public: FollowPlugin();
+public:
+  FollowPlugin();
 
   // Documentation inherited.
-  public: void Load(physics::ModelPtr _model,
-                    sdf::ElementPtr _sdf);
+public:
+  void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
 
   // Documentation inherited.
-  private: virtual void Update();
+private:
+  virtual void Update();
 
   /// \brief Pointer to the model.
-  private: physics::ModelPtr model;
+private:
+  physics::ModelPtr model;
 
   /// \brief Pointer to the model link.
-  private: physics::LinkPtr link;
+private:
+  physics::LinkPtr link;
 
   /// \brief The initial pose of the model relative to the world frame.
-  private: ignition::math::Pose3d modelPose;
+private:
+  ignition::math::Pose3d modelPose;
 
   /// \brief True if the model should continue looping though the waypoints.
-  private: bool loopForever = false;
+private:
+  bool loopForever = false;
 
   /// \brief Linear force to apply to the model in its X direction.
-  private: double forceToApply = 10;
+private:
+  double forceToApply = 10;
 
   /// \brief Torque to apply to the model to align it with the next goal.
-  private: double torqueToApply = 1;
+private:
+  double torqueToApply = 1;
 
   /// \brief When the model is at this distance or closer we won't try to move.
   /// Units are in meters.
-  private: double rangeGoal = 0.5;
+private:
+  double rangeGoal = 0.5;
 
   /// \brief When the model is at this angle or closer we won't try to rotate.
   /// Units are in degrees.
-  private: double bearingGoal = 2.0;
+private:
+  double bearingGoal = 2.0;
 
   /// \brief The next position to reach.
-  private: ignition::math::Vector3d nextGoal;
+private:
+  ignition::math::Vector3d nextGoal;
 
   /// \brief Vector containing waypoints as 3D vectors of doubles representing
   /// X Y, where X and Y are local (Gazebo) coordinates.
-  private: std::vector<ignition::math::Vector2d> localWaypoints;
+private:
+  std::vector<ignition::math::Vector2d> localWaypoints;
 
   /// \brief Waypoint visualization markers.
-  private: WaypointMarkers waypointMarkers;
+private:
+  WaypointMarkers waypointMarkers;
 
   /// \brief Pointer used to connect gazebo callback to plugins update function.
-  private: event::ConnectionPtr updateConnection;
+private:
+  event::ConnectionPtr updateConnection;
 };
-}
+}  // namespace gazebo
 #endif

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VRX_GAZEBO_PLACARD_PLUGIN_HH_
 #define VRX_GAZEBO_PLACARD_PLUGIN_HH_
@@ -33,9 +33,7 @@
 
 namespace gazebo
 {
-  typedef const boost::shared_ptr<
-    const dock_placard_msgs::msgs::DockPlacard>
-      ConstDockPlacardPtr;
+typedef const boost::shared_ptr<const dock_placard_msgs::msgs::DockPlacard> ConstDockPlacardPtr;
 }
 
 /// \brief Controls the shape and color of a symbol.
@@ -74,11 +72,12 @@ namespace gazebo
 class PlacardPlugin : public gazebo::VisualPlugin
 {
   // Documentation inherited.
-  public: PlacardPlugin();
+public:
+  PlacardPlugin();
 
   // Documentation inherited.
-  public: void Load(gazebo::rendering::VisualPtr _parent,
-                    sdf::ElementPtr _sdf);
+public:
+  void Load(gazebo::rendering::VisualPtr _parent, sdf::ElementPtr _sdf);
 
   /// \brief Creates a std_msgs::ColorRGBA message from 4 doubles.
   /// \param[in] _r Red.
@@ -86,90 +85,113 @@ class PlacardPlugin : public gazebo::VisualPlugin
   /// \param[in] _b Blue.
   /// \param[in] _a Alpha.
   /// \return The ColorRGBA message.
-  private: static std_msgs::ColorRGBA CreateColor(const double _r,
-                                                  const double _g,
-                                                  const double _b,
-                                                  const double _a);
+private:
+  static std_msgs::ColorRGBA CreateColor(const double _r, const double _g, const double _b, const double _a);
 
   /// \brief Initialize all color/symbol sequences.
-  private: void InitializeAllPatterns();
+private:
+  void InitializeAllPatterns();
 
   /// \brief Parse all SDF parameters.
   /// \param[in] _sdf SDF elements.
-  private: bool ParseSDF(sdf::ElementPtr _sdf);
+private:
+  bool ParseSDF(sdf::ElementPtr _sdf);
 
   /// \brief Display the symbol in the placard
-  private: void Update();
+private:
+  void Update();
 
   /// \brief ROS callback for changing a symbol and its color.
   /// \param[in] _msg Not used.
-  private: void ChangeSymbol(const std_msgs::Empty::ConstPtr &_msg);
+private:
+  void ChangeSymbol(const std_msgs::Empty::ConstPtr& _msg);
 
   /// \brief Gazebo callback for changing light to a specific color pattern.
   /// \param[in] _msg New symbol.
-  private: void ChangeSymbolTo(gazebo::ConstDockPlacardPtr &_msg);
+private:
+  void ChangeSymbolTo(gazebo::ConstDockPlacardPtr& _msg);
 
   /// \brief List of the color options (red, green, blue, and no color)
   /// with their string name for logging.
-  private: static std::map<std::string, std_msgs::ColorRGBA> kColors;
+private:
+  static std::map<std::string, std_msgs::ColorRGBA> kColors;
 
   /// \brief List of the shape options (circle, cross, triangle)
   /// with their string name for logging.
-  private: static std::vector<std::string> kShapes;
+private:
+  static std::vector<std::string> kShapes;
 
   /// \brief The current color.
-  private: std::string color;
+private:
+  std::string color;
 
   /// \brief The current shape.
-  private: std::string shape;
+private:
+  std::string shape;
 
   /// \brief All color/symbol sequences.
-  private: std::vector<std::array<std::string, 2u>> allPatterns;
+private:
+  std::vector<std::array<std::string, 2u>> allPatterns;
 
   /// \brief The index pointing to one of the potential color/symbol sequence.
-  private: size_t allPatternsIdx = 0u;
+private:
+  size_t allPatternsIdx = 0u;
 
   /// \brief Collection of visual names.
-  private: std::vector<std::string> visualNames;
+private:
+  std::vector<std::string> visualNames;
 
   /// \brief Pointer to the visual elements to modify.
-  private: std::vector<gazebo::rendering::VisualPtr> visuals;
+private:
+  std::vector<gazebo::rendering::VisualPtr> visuals;
 
   /// \brief Whether shuffle is enabled via a ROS topic or not.
-  private: bool shuffleEnabled = true;
+private:
+  bool shuffleEnabled = true;
 
   /// \brief Service to generate and display a new symbol.
-  private: ros::Subscriber changeSymbolSub;
+private:
+  ros::Subscriber changeSymbolSub;
 
   /// \brief ROS Node handle.
-  private: ros::NodeHandle nh;
+private:
+  ros::NodeHandle nh;
 
   /// \brief ROS namespace.
-  private: std::string ns;
+private:
+  std::string ns;
 
   /// \brief ROS topic.
-  private: std::string rosShuffleTopic;
+private:
+  std::string rosShuffleTopic;
 
   /// \brief gazebo Node
-  private: gazebo::transport::NodePtr gzNode;
+private:
+  gazebo::transport::NodePtr gzNode;
 
   /// \brief gazebo symbol sub topic
-  private: std::string symbolSubTopic;
+private:
+  std::string symbolSubTopic;
 
   /// \breif symbol subscriber
-  private: gazebo::transport::SubscriberPtr symbolSub;
+private:
+  gazebo::transport::SubscriberPtr symbolSub;
 
   /// Pointer to the scene node.
-  private: gazebo::rendering::ScenePtr scene;
+private:
+  gazebo::rendering::ScenePtr scene;
 
   /// \brief Connects to rendering update event.
-  private: gazebo::event::ConnectionPtr updateConnection;
+private:
+  gazebo::event::ConnectionPtr updateConnection;
 
   /// \brief Next time where the plugin should be updated.
-  private: gazebo::common::Time nextUpdateTime;
+private:
+  gazebo::common::Time nextUpdateTime;
 
   /// \brief Locks state and pattern member variables.
-  private: std::mutex mutex;
+private:
+  std::mutex mutex;
 };
 
 #endif

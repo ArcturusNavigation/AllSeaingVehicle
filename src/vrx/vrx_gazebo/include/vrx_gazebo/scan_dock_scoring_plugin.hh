@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VRX_GAZEBO_SCAN_DOCK_SCORING_PLUGIN_HH_
 #define VRX_GAZEBO_SCAN_DOCK_SCORING_PLUGIN_HH_
@@ -27,7 +27,7 @@
 #include <vector>
 #include <gazebo/gazebo.hh>
 #if GAZEBO_MAJOR_VERSION >= 8
-  #include <ignition/transport/Node.hh>
+#include <ignition/transport/Node.hh>
 #endif
 #include <sdf/sdf.hh>
 #include "vrx_gazebo/ColorSequence.h"
@@ -42,52 +42,63 @@ class ColorSequenceChecker
   /// \param[in] _rosNameSpace ROS namespace.
   /// \param[in] _rosColorSequenceService The ROS service used to receive
   /// the color submisison.
-  public: ColorSequenceChecker(const std::vector<std::string> &_expectedColors,
-                               const std::string &_rosNameSpace,
-                               const std::string &_rosColorSequenceService);
+public:
+  ColorSequenceChecker(const std::vector<std::string>& _expectedColors, const std::string& _rosNameSpace,
+                       const std::string& _rosColorSequenceService);
   /// \brief Enable the ROS submission service.
-  public: void Enable();
+public:
+  void Enable();
 
   /// \brief Disable the ROS submission service.
-  public: void Disable();
+public:
+  void Disable();
 
   /// \brief Whether a team submitted the color sequence or not.
   /// \return True when the submission was received or false otherwise.
-  public: bool SubmissionReceived() const;
+public:
+  bool SubmissionReceived() const;
 
   /// \brief Wheter a team submitted the color sequence and is correct or not.
   /// \return True when the team submitted the color sequence and it is correct
   /// or false otherwise.
-  public: bool Correct() const;
+public:
+  bool Correct() const;
 
   /// \brief Callback executed when a new color submission is received.
   /// \param[in] _request Contains the submission.
   /// \param[out] _res The Response. Note that this will be true even if the
   /// reported sequence is incorrect.
-  private: bool OnColorSequence(
-    ros::ServiceEvent<vrx_gazebo::ColorSequence::Request,
-      vrx_gazebo::ColorSequence::Response> &_event);
+private:
+  bool
+  OnColorSequence(ros::ServiceEvent<vrx_gazebo::ColorSequence::Request, vrx_gazebo::ColorSequence::Response>& _event);
 
   /// \brief The expected color sequence.
-  private: std::vector<std::string> expectedSequence;
+private:
+  std::vector<std::string> expectedSequence;
 
   /// \brief ROS namespace.
-  private: std::string ns;
+private:
+  std::string ns;
 
   /// \brief ROS topic where the color sequence should be sent.
-  private: std::string colorSequenceService;
+private:
+  std::string colorSequenceService;
 
   /// \brief ROS Node handle.
-  private: ros::NodeHandle nh;
+private:
+  ros::NodeHandle nh;
 
   /// \brief Service to generate and display a new color sequence.
-  private: ros::ServiceServer colorSequenceServer;
+private:
+  ros::ServiceServer colorSequenceServer;
 
   /// \brief Whether the color sequence has been received or not.
-  private: bool colorSequenceReceived = false;
+private:
+  bool colorSequenceReceived = false;
 
   /// \brief Whether the color sequence received is correct or not.
-  private: bool correctSequence = false;
+private:
+  bool correctSequence = false;
 };
 
 /// \brief A class to monitor if the vehicle docked in a given bay.
@@ -105,109 +116,132 @@ class DockChecker
   /// \param[in] _dockAllowed Whether is allowed to dock in this bay or not.
   /// \param[in] _worldName Gazebo world name.
   /// \param[in] _announceSymbol Optional symbol to announce via ROS.
-  public: DockChecker(const std::string &_name,
-                      const std::string &_internalActivationTopic,
-                      const std::string &_exteriorActivationTopic,
-                      const double _minDockTime,
-                      const bool _dockAllowed,
-                      const std::string &_worldName,
-                      const std::string &_rosNameSpace,
-                      const std::string &_announceSymbol,
-                      const std::string &_gzSymbolTopic);
+public:
+  DockChecker(const std::string& _name, const std::string& _internalActivationTopic,
+              const std::string& _exteriorActivationTopic, const double _minDockTime, const bool _dockAllowed,
+              const std::string& _worldName, const std::string& _rosNameSpace, const std::string& _announceSymbol,
+              const std::string& _gzSymbolTopic);
 
   /// \brief The name of this checker.
-  public: std::string name;
+public:
+  std::string name;
 
   /// \brief Whether the robot has been successfully docked in this bay or not.
   /// \return True when the robot has been docked or false otherwise.
-  public: bool AnytimeDocked() const;
+public:
+  bool AnytimeDocked() const;
 
   /// \brief Whether the robot is currently at the entrance of the bay.
   /// \return True when the robot is at the entrance or false othwerwise.
-  public: bool AtEntrance() const;
+public:
+  bool AtEntrance() const;
 
   /// \brief Whether it is allowed to dock in this bay or not.
-  public: bool Allowed() const;
+public:
+  bool Allowed() const;
 
   /// \brief Announce the symbol of the bay via ROS.
-  public: void AnnounceSymbol();
+public:
+  void AnnounceSymbol();
 
   /// \brief Update function that needs to be executed periodically.
-  public: void Update();
+public:
+  void Update();
 
   /// \brief Callback triggered when the vehicle enters or exits the activation
   /// zone.
   /// \param[in] _msg The current state (0: exiting, 1: entering).
 #if GAZEBO_MAJOR_VERSION >= 8
-  private: void OnInternalActivationEvent(const ignition::msgs::Boolean &_msg);
+private:
+  void OnInternalActivationEvent(const ignition::msgs::Boolean& _msg);
 #else
-  private: void OnInternalActivationEvent(ConstIntPtr &_msg);
+private:
+  void OnInternalActivationEvent(ConstIntPtr& _msg);
 #endif
 
   /// \brief Callback triggered when the vehicle enters or exits the activation
   /// zone.
   /// \param[in] _msg The current state (0: exiting, 1: entering).
 #if GAZEBO_MAJOR_VERSION >= 8
-  private: void OnExternalActivationEvent(const ignition::msgs::Boolean &_msg);
+private:
+  void OnExternalActivationEvent(const ignition::msgs::Boolean& _msg);
 #else
-  private: void OnExternalActivationEvent(ConstIntPtr &_msg);
+private:
+  void OnExternalActivationEvent(ConstIntPtr& _msg);
 #endif
 
   /// \brief The gazebo topic used to receive notifications
   /// from the internal activation zone.
-  private: std::string internalActivationTopic;
+private:
+  std::string internalActivationTopic;
 
   /// \brief The gazebo topic used to receive notifications
   /// from the external activation zone.
-  private: std::string externalActivationTopic;
+private:
+  std::string externalActivationTopic;
 
   /// \brief The gazebo topic used to publish symbols to the placards
-  private: std::string gzSymbolTopic;
+private:
+  std::string gzSymbolTopic;
 
   /// \brief Minimum amount of seconds to stay docked to be
   /// considered a fully successfull dock.
-  private: double minDockTime;
+private:
+  double minDockTime;
 
   /// \brief Whether is allowed to dock in this bay or not.
-  private: bool dockAllowed;
+private:
+  bool dockAllowed;
 
   /// \brief Timer used to calculate the elapsed time docked in the bay.
-  private: gazebo::common::Timer timer;
+private:
+  gazebo::common::Timer timer;
 
 #if GAZEBO_MAJOR_VERSION >= 8
   /// \brief Ignition Transport node used for communication.
-  private: ignition::transport::Node ignNode;
+private:
+  ignition::transport::Node ignNode;
 #endif
 
   /// \brief Create a node for communication.
-  private: gazebo::transport::NodePtr node;
+private:
+  gazebo::transport::NodePtr node;
 
   /// \brief Subscriber to receive notifications from the contain plugin.
-  private: gazebo::transport::SubscriberPtr containSub;
+private:
+  gazebo::transport::SubscriberPtr containSub;
 
   /// \brief Whether the vehicle has successfully docked or not.
-  private: bool anytimeDocked = false;
+private:
+  bool anytimeDocked = false;
 
   /// \brief Whether the vehicle is at the entrance of the bay or not.
-  private: bool atEntrance = false;
+private:
+  bool atEntrance = false;
 
   /// \brief Color and shape of symbol to announce. E.g.: red_cross, blue_circle
-  private: std_msgs::String announceSymbol;
+private:
+  std_msgs::String announceSymbol;
 
   /// \brief ROS namespace.
-  private: std::string ns;
+private:
+  std::string ns;
 
   /// \brief ROS Node handle.
-  private: std::unique_ptr<ros::NodeHandle> nh;
+private:
+  std::unique_ptr<ros::NodeHandle> nh;
 
   /// \brief Publisher for the symbol.
-  private: ros::Publisher symbolPub;
+private:
+  ros::Publisher symbolPub;
 
   /// \brief ROS topic where the target symbol will be published.
-  private: std::string symbolTopic = "/vrx/scan_dock/placard_symbol";
+private:
+  std::string symbolTopic = "/vrx/scan_dock/placard_symbol";
 
   /// \brief Publish the placard symbols
-  private: gazebo::transport::PublisherPtr dockPlacardPub;
+private:
+  gazebo::transport::PublisherPtr dockPlacardPub;
 };
 
 /// \brief A plugin for computing the score of the scan and dock task.
@@ -355,73 +389,93 @@ class DockChecker
 class ScanDockScoringPlugin : public ScoringPlugin
 {
   // Documentation inherited.
-  public: ScanDockScoringPlugin();
+public:
+  ScanDockScoringPlugin();
 
   // Documentation inherited.
-  private: void Load(gazebo::physics::WorldPtr _world,
-                     sdf::ElementPtr _sdf);
+private:
+  void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf);
 
   /// \brief Parse all SDF parameters.
   /// \param[in] _sdf SDF elements.
-  private: bool ParseSDF(sdf::ElementPtr _sdf);
+private:
+  bool ParseSDF(sdf::ElementPtr _sdf);
 
   /// \brief Callback executed at every world update.
-  private: void Update();
+private:
+  void Update();
 
   // Documentation inherited.
-  private: void OnReady() override;
+private:
+  void OnReady() override;
 
   // Documentation inherited.
-  private: void OnRunning() override;
+private:
+  void OnRunning() override;
 
   /// \brief gazebo Node
-  private: gazebo::transport::NodePtr node;
+private:
+  gazebo::transport::NodePtr node;
 
   /// \brief Publish the color sequence
-  private: gazebo::transport::PublisherPtr lightBuoySequencePub;
+private:
+  gazebo::transport::PublisherPtr lightBuoySequencePub;
 
   /// \brief Pointer to the update event connection.
-  private: gazebo::event::ConnectionPtr updateConnection;
+private:
+  gazebo::event::ConnectionPtr updateConnection;
 
   /// \brief In charge of receiving the team submission and compare it with
   /// the color sequence from the light buoy.
-  private: std::unique_ptr<ColorSequenceChecker> colorChecker;
+private:
+  std::unique_ptr<ColorSequenceChecker> colorChecker;
 
   /// \brief Monitor all the available bays to decide when the vehicle docks.
-  private: std::vector<std::unique_ptr<DockChecker>> dockCheckers;
+private:
+  std::vector<std::unique_ptr<DockChecker>> dockCheckers;
 
   /// \brief To check colors or not
-  private: bool enableColorChecker = true;
+private:
+  bool enableColorChecker = true;
 
   /// \brief Whether we have processed the color sequence submission or not.
-  private: bool colorSubmissionProcessed = false;
+private:
+  bool colorSubmissionProcessed = false;
 
   /// \brief Points granted when the color sequence is correct.
-  private: double colorBonusPoints = 10.0;
+private:
+  double colorBonusPoints = 10.0;
 
   /// \brief Points granted when the vehicle successfully
   /// dock-and-undock in any bay
-  private: double dockBonusPoints = 10.0;
+private:
+  double dockBonusPoints = 10.0;
 
   /// \brief Points granted when the vehicle successfully
   /// dock-and-undock in the specified bay.
-  private: double correctDockBonusPoints = 10.0;
+private:
+  double correctDockBonusPoints = 10.0;
 
   /// \brief Name of colorTopic for the light buoy
-  private: std::string colorTopic;
+private:
+  std::string colorTopic;
 
   /// \brief Expected color sequence.
-  private: std::vector<std::string> expectedSequence;
+private:
+  std::vector<std::string> expectedSequence;
 
   /// \brief A mutex.
-  private: std::mutex mutex;
+private:
+  std::mutex mutex;
 
   /// \brief The shooting bonus.
-  private: double shootingBonus = 0.0;
+private:
+  double shootingBonus = 0.0;
 
 #if GAZEBO_MAJOR_VERSION >= 8
   /// \brief Ignition Transport node used for communication.
-  private: ignition::transport::Node ignNode;
+private:
+  ignition::transport::Node ignNode;
 #endif
 };
 

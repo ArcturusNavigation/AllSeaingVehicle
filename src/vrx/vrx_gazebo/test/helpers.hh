@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef ROBOTX_GAZEBO_TEST_HELPERS_HH_
 #define ROBOTX_GAZEBO_TEST_HELPERS_HH_
@@ -26,17 +26,16 @@
 /// \param[in] _name The model name.
 /// \param[in] _timeout Maximum timeout to wait for a model.
 /// \return True when the model was found or false otherwise.
-bool ModelExists(const std::string &_name,
-                 const ros::WallDuration _timeout = ros::WallDuration(5, 0))
+bool ModelExists(const std::string& _name, const ros::WallDuration _timeout = ros::WallDuration(5, 0))
 {
   ros::WallTime timeout = ros::WallTime::now() + _timeout;
   while (ros::WallTime::now() < timeout)
   {
     gazebo_msgs::ModelStatesConstPtr modelStates =
-      ros::topic::waitForMessage<gazebo_msgs::ModelStates>(
-        std::string("/gazebo/model_states"), ros::Duration(0.1));
+        ros::topic::waitForMessage<gazebo_msgs::ModelStates>(std::string("/gazebo/model_states"), ros::Duration(0.1));
 
-    if (!modelStates) continue;
+    if (!modelStates)
+      continue;
     for (auto model : modelStates->name)
     {
       if (model == _name)

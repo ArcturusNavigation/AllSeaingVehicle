@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 /// \file Physics.hh
 /// \brief This file contains definitions for the physics models.
@@ -25,21 +25,23 @@ namespace asv
 {
 ///////////////////////////////////////////////////////////////////////////////
 // Physics
-  /// \brief A collection of static methods for various physics calculations.
-  class Physics
-  {
-    /// \brief Compute the deep water dispersion.
-    ///
-    /// \param[in] _wavenumber  The wavenumber: k = 2 PI / wavelength.
-    /// \return                 The angular frequency omega.
-    public: static double DeepWaterDispersionToOmega(double _wavenumber);
+/// \brief A collection of static methods for various physics calculations.
+class Physics
+{
+  /// \brief Compute the deep water dispersion.
+  ///
+  /// \param[in] _wavenumber  The wavenumber: k = 2 PI / wavelength.
+  /// \return                 The angular frequency omega.
+public:
+  static double DeepWaterDispersionToOmega(double _wavenumber);
 
-    /// \brief Compute the deep water dispersion.
-    ///
-    /// \param[in] _omega       The angular frequency: omega = 2 PI / T.
-    /// \return                 The wavenumber k.
-    public: static double DeepWaterDispersionToWavenumber(double _omega);
-  };
-}
+  /// \brief Compute the deep water dispersion.
+  ///
+  /// \param[in] _omega       The angular frequency: omega = 2 PI / T.
+  /// \return                 The wavenumber k.
+public:
+  static double DeepWaterDispersionToWavenumber(double _omega);
+};
+}  // namespace asv
 
 #endif

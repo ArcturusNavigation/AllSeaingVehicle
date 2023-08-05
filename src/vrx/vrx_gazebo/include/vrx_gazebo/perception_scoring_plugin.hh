@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
-
-/* Note - this code was originally derived from the ARIAC 
+/* Note - this code was originally derived from the ARIAC
  * PopulationPlugin https://bitbucket.org/osrf/ariac/src/master/osrf_gear/include/osrf_gear/PopulationPlugin.hh
-*/
+ */
 
 #ifndef VRX_GAZEBO_PERCEPTION_SCORING_PLUGIN_HH_
 #define VRX_GAZEBO_PERCEPTION_SCORING_PLUGIN_HH_
@@ -34,60 +33,68 @@
 #include <sdf/sdf.hh>
 #include "vrx_gazebo/scoring_plugin.hh"
 
-
 /// \brief Class to store information about each object to be populated.
 class PerceptionObject
 {
   /// \brief Simulation time in which the object should be spawned.
-  public: double time;
+public:
+  double time;
 
   /// \brief amount of time in which the object should be spawned.
-  public: double duration;
+public:
+  double duration;
 
   /// \brief PerceptionObject type.
-  public: std::string type;
+public:
+  std::string type;
 
   /// \brief PerceptionObject type.
-  public: std::string name;
+public:
+  std::string name;
 
   /// \brief Pose in which the object should be placed in wam-v's frame.
-  public: ignition::math::Pose3d trialPose;
+public:
+  ignition::math::Pose3d trialPose;
 
   /// \brief Pose in which the object should be placed in global frame.
-  private: ignition::math::Pose3d origPose;
+private:
+  ignition::math::Pose3d origPose;
 
   /// \brief ModelPtr to the model that this object is representing
-  public: gazebo::physics::EntityPtr modelPtr;
+public:
+  gazebo::physics::EntityPtr modelPtr;
 
   /// \brief bool to tell weather or not the object is open for attempts
-  public: bool active = false;
+public:
+  bool active = false;
 
   /// \brief error associated with the guess of a moel
-  public: double error = -1.0;
+public:
+  double error = -1.0;
 
   /// \brief constructor of perception object
-  public: PerceptionObject(const double& _time,
-                 const double& _duration,
-                 const std::string& _type,
-                 const std::string& _name,
-                 const ignition::math::Pose3d& _trialPose,
-                 const gazebo::physics::WorldPtr _world);
+public:
+  PerceptionObject(const double& _time, const double& _duration, const std::string& _type, const std::string& _name,
+                   const ignition::math::Pose3d& _trialPose, const gazebo::physics::WorldPtr _world);
 
   /// \brief set the error of this boject if this object is active
   ///   and this is the lowest seen error
-  public: void SetError(const double& _error);
+public:
+  void SetError(const double& _error);
 
   /// \brief move the object to where it is supposed to be relative to the frame
   /// \brief of the robot and make it active
-  public: void StartTrial(const gazebo::physics::EntityPtr& _frame);
+public:
+  void StartTrial(const gazebo::physics::EntityPtr& _frame);
 
   /// \brief move the object back to its original location and make inactive
-  public: void EndTrial();
+public:
+  void EndTrial();
 
   /// \return a string summarizing this object
-  public: std::string Str();
+public:
+  std::string Str();
 };
-
 
 /// \brief A plugin that allows models to be spawned at a given location in
 /// a specific simulation time and then takes care of scoring correct
@@ -145,71 +152,91 @@ class PerceptionObject
 class PerceptionScoringPlugin : public ScoringPlugin
 {
   /// \brief Constructor.
-  public: PerceptionScoringPlugin();
+public:
+  PerceptionScoringPlugin();
 
   /// \brief Destructor.
-  public: virtual ~PerceptionScoringPlugin();
+public:
+  virtual ~PerceptionScoringPlugin();
 
   // Documentation inherited.
-  public: virtual void Load(gazebo::physics::WorldPtr _world,
-                            sdf::ElementPtr _sdf);
+public:
+  virtual void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf);
 
   /// \brief Update the plugin.
-  protected: void OnUpdate();
+protected:
+  void OnUpdate();
 
-  private: void OnAttempt(
-    const geographic_msgs::GeoPoseStamped::ConstPtr &_msg);
+private:
+  void OnAttempt(const geographic_msgs::GeoPoseStamped::ConstPtr& _msg);
 
   /// \brief Restart the object population list
-  private: void Restart();
+private:
+  void Restart();
 
   // Documentation inherited.
-  private: void OnRunning() override;
+private:
+  void OnRunning() override;
 
   // Documentation inherited.
-  private: void ReleaseVehicle() override;
+private:
+  void ReleaseVehicle() override;
 
-  private: int attemptBal = 0;
+private:
+  int attemptBal = 0;
 
   /// \brief ROS namespace.
-  private: std::string ns;
+private:
+  std::string ns;
 
   /// \brief ROS topic where the object id/pose is received.
-  private: std::string objectTopic;
+private:
+  std::string objectTopic;
 
   /// \brief ROS Node handle.
-  private: ros::NodeHandle nh;
+private:
+  ros::NodeHandle nh;
 
   /// \brief ROS subscriber
-  private: ros::Subscriber objectSub;
+private:
+  ros::Subscriber objectSub;
 
   /// \brief World pointer.
-  public: gazebo::physics::WorldPtr world;
+public:
+  gazebo::physics::WorldPtr world;
 
   /// \brief SDF pointer.
-  public: sdf::ElementPtr sdf;
+public:
+  sdf::ElementPtr sdf;
 
   /// \brief Collection of objects to be spawned.
-  public: std::vector<PerceptionObject> objects;
+public:
+  std::vector<PerceptionObject> objects;
 
   /// \brief Connection event.
-  public: gazebo::event::ConnectionPtr connection;
+public:
+  gazebo::event::ConnectionPtr connection;
 
   /// \brief The time specified in the object is relative to this time.
-  public: gazebo::common::Time startTime;
+public:
+  gazebo::common::Time startTime;
 
   /// \brief Link/model name for the object poses use as their frame of
   /// reference
-  public: std::string frameName = std::string();
+public:
+  std::string frameName = std::string();
 
   /// \brief Link/model that the object poses use as their frame of reference.
-  public: gazebo::physics::EntityPtr frame;
+public:
+  gazebo::physics::EntityPtr frame;
 
   /// \brief Last time (sim time) that the plugin was updated.
-  public: gazebo::common::Time lastUpdateTime;
+public:
+  gazebo::common::Time lastUpdateTime;
 
   /// \ brief count of how many objects have been despawned
-  private: int objectsDespawned =0;
+private:
+  int objectsDespawned = 0;
 };
 
 #endif

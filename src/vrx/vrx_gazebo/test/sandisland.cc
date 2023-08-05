@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <gtest/gtest.h>
 #include "helpers.hh"
@@ -23,7 +23,8 @@
 class SandislandTest : public ::testing::Test
 {
   /// \brief Initialize any members needed for the test cases.
-  protected: static void SetUpTestCase();
+protected:
+  static void SetUpTestCase();
 };
 
 void SandislandTest::SetUpTestCase()
@@ -52,7 +53,7 @@ TEST_F(SandislandTest, OceanExists)
 }
 
 /////////////////////////////////////////////////
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "sandisland_test");

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VRX_GAZEBO_STATIONKEEPING_SCORING_PLUGIN_HH_
 #define VRX_GAZEBO_STATIONKEEPING_SCORING_PLUGIN_HH_
@@ -54,83 +54,108 @@
 class StationkeepingScoringPlugin : public ScoringPlugin
 {
   /// \brief Constructor.
-  public: StationkeepingScoringPlugin();
+public:
+  StationkeepingScoringPlugin();
 
   // Documentation inherited.
-  public: void Load(gazebo::physics::WorldPtr _world,
-                    sdf::ElementPtr _sdf);
+public:
+  void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf);
 
   /// \brief Callback executed at every world update.
-  private: void Update();
+private:
+  void Update();
 
   // Documentation inherited.
-  private: void OnReady() override;
+private:
+  void OnReady() override;
 
   // Documentation inherited.
-  private: void OnRunning() override;
+private:
+  void OnRunning() override;
 
   /// \brief Publish the goal pose.
-  private: void PublishGoal();
+private:
+  void PublishGoal();
 
   /// \brief Pointer to the update event connection.
-  private: gazebo::event::ConnectionPtr updateConnection;
+private:
+  gazebo::event::ConnectionPtr updateConnection;
 
   /// \brief Topic where the task stats are published.
-  private: std::string goalTopic = "/vrx/station_keeping/goal";
+private:
+  std::string goalTopic = "/vrx/station_keeping/goal";
 
   /// \brief Topic where 2D pose error is published
-  private: std::string poseErrorTopic = "/vrx/station_keeping/pose_error";
+private:
+  std::string poseErrorTopic = "/vrx/station_keeping/pose_error";
 
   /// \brief Topic where mean pose error is published.
-  private: std::string meanErrorTopic = "/vrx/station_keeping/mean_pose_error";
+private:
+  std::string meanErrorTopic = "/vrx/station_keeping/mean_pose_error";
 
   /// \brief ROS node handle.
-  private: std::unique_ptr<ros::NodeHandle> rosNode;
+private:
+  std::unique_ptr<ros::NodeHandle> rosNode;
 
   /// \brief Publisher for the goal.
-  private: ros::Publisher goalPub;
+private:
+  ros::Publisher goalPub;
 
   /// \brief Publisher for the combined 2D pose error.
-  private: ros::Publisher poseErrorPub;
+private:
+  ros::Publisher poseErrorPub;
 
   /// \brief Publisher for the current mean error.
-  private: ros::Publisher meanErrorPub;
+private:
+  ros::Publisher meanErrorPub;
 
   /// \brief Goal pose in local (Gazebo) coordinates.
-  private: double goalX;
+private:
+  double goalX;
 
   /// \brief Goal pose in local (Gazebo) coordinates.
-  private: double goalY;
+private:
+  double goalY;
 
   /// \brief Goal pose in local (Gazebo) coordinates.
-  private: double goalYaw;
+private:
+  double goalYaw;
 
   /// \brief Goal pose in spherical (WGS84) coordinates.
-  private: double goalLat;
+private:
+  double goalLat;
 
   /// \brief Goal pose in spherical (WGS84) coordinates.
-  private: double goalLon;
+private:
+  double goalLon;
 
   /// \brief Combined 2D pose error (distance and yaw).
-  private: double poseError;
+private:
+  double poseError;
 
   /// \brief Number of instant pose error scores calculated so far .
-  private: unsigned int sampleCount = 0;
+private:
+  unsigned int sampleCount = 0;
 
   /// \brief Sum of all pose error scores calculated so far.
-  private: double totalPoseError = 0;
+private:
+  double totalPoseError = 0;
 
   /// \brief Cumulative 2D RMS error in meters.
-  private: double meanError;
+private:
+  double meanError;
 
   /// \brief True to consider heading error or false otherwise.
-  private: bool headErrorOn = true;
+private:
+  bool headErrorOn = true;
 
   /// \brief Timer used to calculate the elapsed time docked in the bay.
-  private: gazebo::common::Timer timer;
+private:
+  gazebo::common::Timer timer;
 
   /// \brief Waypoint visualization markers
-  private: WaypointMarkers waypointMarkers;
+private:
+  WaypointMarkers waypointMarkers;
 };
 
 #endif

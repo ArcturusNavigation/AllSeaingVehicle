@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <functional>
 #include <string>
@@ -30,8 +30,7 @@ using namespace asv;
 using namespace gazebo;
 
 /////////////////////////////////////////////////
-WaveguagePlugin::WaveguagePlugin()
-  : fluidLevel(0.0)
+WaveguagePlugin::WaveguagePlugin() : fluidLevel(0.0)
 {
 }
 
@@ -57,8 +56,7 @@ void WaveguagePlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 /////////////////////////////////////////////////
 void WaveguagePlugin::Init()
 {
-  this->updateConnection = event::Events::ConnectWorldUpdateBegin(
-      std::bind(&WaveguagePlugin::OnUpdate, this));
+  this->updateConnection = event::Events::ConnectWorldUpdateBegin(std::bind(&WaveguagePlugin::OnUpdate, this));
 }
 
 /////////////////////////////////////////////////
@@ -66,31 +64,28 @@ void WaveguagePlugin::OnUpdate()
 {
   // Retrieve the wave model...
 
-  std::shared_ptr<const WaveParameters> waveParams \
-    = WavefieldModelPlugin::GetWaveParams(
-      this->model->GetWorld(), this->waveModelName);
+  std::shared_ptr<const WaveParameters> waveParams =
+      WavefieldModelPlugin::GetWaveParams(this->model->GetWorld(), this->waveModelName);
 
   // No ocean waves...
   if (waveParams == nullptr)
   {
     return;
   }
-  #if GAZEBO_MAJOR_VERSION >= 8
-    ignition::math::Pose3d modelPose = this->model->WorldPose();
-  #else
-    ignition::math::Pose3d modelPose = this->model->GetWorldPose().Ign();
-  #endif
+#if GAZEBO_MAJOR_VERSION >= 8
+  ignition::math::Pose3d modelPose = this->model->WorldPose();
+#else
+  ignition::math::Pose3d modelPose = this->model->GetWorldPose().Ign();
+#endif
 
-  // Compute the wave displacement at the model location
-  #if GAZEBO_MAJOR_VERSION >= 8
-    double waveHeightS = WavefieldSampler::ComputeDepthSimply(
-      *waveParams, modelPose.Pos(),
-      this->model->GetWorld()->SimTime().Double());
-  #else
-    double waveHeightS = WavefieldSampler::ComputeDepthSimply(
-      *waveParams, modelPose.Pos(),
-      this->model->GetWorld()->GetSimTime().Double());
-  #endif
+// Compute the wave displacement at the model location
+#if GAZEBO_MAJOR_VERSION >= 8
+  double waveHeightS =
+      WavefieldSampler::ComputeDepthSimply(*waveParams, modelPose.Pos(), this->model->GetWorld()->SimTime().Double());
+#else
+  double waveHeightS = WavefieldSampler::ComputeDepthSimply(*waveParams, modelPose.Pos(),
+                                                            this->model->GetWorld()->GetSimTime().Double());
+#endif
 
   // Add the mean water level
   waveHeightS += this->fluidLevel;

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <cmath>
 #include <gazebo/common/Assert.hh>
@@ -22,11 +22,9 @@
 #include "vrx_gazebo/navigation_scoring_plugin.hh"
 
 /////////////////////////////////////////////////
-NavigationScoringPlugin::Gate::Gate(
-    const gazebo::physics::LinkPtr _leftMarkerModel,
-    const gazebo::physics::LinkPtr _rightMarkerModel)
-  : leftMarkerModel(_leftMarkerModel),
-    rightMarkerModel(_rightMarkerModel)
+NavigationScoringPlugin::Gate::Gate(const gazebo::physics::LinkPtr _leftMarkerModel,
+                                    const gazebo::physics::LinkPtr _rightMarkerModel)
+  : leftMarkerModel(_leftMarkerModel), rightMarkerModel(_rightMarkerModel)
 {
   this->Update();
 }
@@ -37,7 +35,7 @@ void NavigationScoringPlugin::Gate::Update()
   if (!this->leftMarkerModel || !this->rightMarkerModel)
     return;
 
-  // The pose of the markers delimiting the gate.
+    // The pose of the markers delimiting the gate.
 #if GAZEBO_MAJOR_VERSION >= 8
   const auto leftMarkerPose = this->leftMarkerModel->WorldPose();
   const auto rightMarkerPose = this->rightMarkerModel->WorldPose();
@@ -67,13 +65,12 @@ void NavigationScoringPlugin::Gate::Update()
 }
 
 /////////////////////////////////////////////////
-NavigationScoringPlugin::GateState NavigationScoringPlugin::Gate::IsPoseInGate(
-    const ignition::math::Pose3d &_robotWorldPose) const
+NavigationScoringPlugin::GateState
+NavigationScoringPlugin::Gate::IsPoseInGate(const ignition::math::Pose3d& _robotWorldPose) const
 {
   // Transform to gate frame.
   const ignition::math::Vector3d robotLocalPosition =
-    this->pose.Rot().Inverse().RotateVector(_robotWorldPose.Pos() -
-    this->pose.Pos());
+      this->pose.Rot().Inverse().RotateVector(_robotWorldPose.Pos() - this->pose.Pos());
 
   // Are we within the width?
   if (fabs(robotLocalPosition.Y()) <= this->width / 2.0)
@@ -94,8 +91,7 @@ NavigationScoringPlugin::NavigationScoringPlugin()
 }
 
 /////////////////////////////////////////////////
-void NavigationScoringPlugin::Load(gazebo::physics::WorldPtr _world,
-    sdf::ElementPtr _sdf)
+void NavigationScoringPlugin::Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf)
 {
   ScoringPlugin::Load(_world, _sdf);
 
@@ -106,16 +102,13 @@ void NavigationScoringPlugin::Load(gazebo::physics::WorldPtr _world,
     return;
   }
 #if GAZEBO_MAJOR_VERSION >= 8
-  this->course =
-    this->world->ModelByName(_sdf->Get<std::string>("course_name"));
+  this->course = this->world->ModelByName(_sdf->Get<std::string>("course_name"));
 #else
-  this->course =
-    this->world->GetModel(_sdf->Get<std::string>("course_name"));
+  this->course = this->world->GetModel(_sdf->Get<std::string>("course_name"));
 #endif
   if (!this->course)
   {
-    gzerr << "could not find " <<
-      _sdf->Get<std::string>("course_name") << std::endl;
+    gzerr << "could not find " << _sdf->Get<std::string>("course_name") << std::endl;
   }
 
   // Optional.
@@ -130,7 +123,7 @@ void NavigationScoringPlugin::Load(gazebo::physics::WorldPtr _world,
   }
 
   // Parse all the gates.
-  auto const &gatesElem = _sdf->GetElement("gates");
+  auto const& gatesElem = _sdf->GetElement("gates");
   if (!this->ParseGates(gatesElem))
   {
     gzerr << "Score has been disabled" << std::endl;
@@ -147,8 +140,8 @@ void NavigationScoringPlugin::Load(gazebo::physics::WorldPtr _world,
 
   gzmsg << "Task [" << this->TaskName() << "]" << std::endl;
 
-  this->updateConnection = gazebo::event::Events::ConnectWorldUpdateBegin(
-    std::bind(&NavigationScoringPlugin::Update, this));
+  this->updateConnection =
+      gazebo::event::Events::ConnectWorldUpdateBegin(std::bind(&NavigationScoringPlugin::Update, this));
 }
 
 //////////////////////////////////////////////////
@@ -175,8 +168,7 @@ bool NavigationScoringPlugin::ParseGates(sdf::ElementPtr _sdf)
       return false;
     }
 
-    const std::string leftMarkerName =
-      gateElem->Get<std::string>("left_marker");
+    const std::string leftMarkerName = gateElem->Get<std::string>("left_marker");
 
     // The right marker's name.
     if (!gateElem->HasElement("right_marker"))
@@ -185,8 +177,7 @@ bool NavigationScoringPlugin::ParseGates(sdf::ElementPtr _sdf)
       return false;
     }
 
-    const std::string rightMarkerName =
-      gateElem->Get<std::string>("right_marker");
+    const std::string rightMarkerName = gateElem->Get<std::string>("right_marker");
 
     if (!this->AddGate(leftMarkerName, rightMarkerName))
       return false;
@@ -199,12 +190,10 @@ bool NavigationScoringPlugin::ParseGates(sdf::ElementPtr _sdf)
 }
 
 //////////////////////////////////////////////////
-bool NavigationScoringPlugin::AddGate(const std::string &_leftMarkerName,
-    const std::string &_rightMarkerName)
+bool NavigationScoringPlugin::AddGate(const std::string& _leftMarkerName, const std::string& _rightMarkerName)
 {
   gazebo::physics::LinkPtr leftMarkerModel =
-    this->course->GetLink(this->course->GetName() + "::" +
-      _leftMarkerName + "::link");
+      this->course->GetLink(this->course->GetName() + "::" + _leftMarkerName + "::link");
 
   // Sanity check: Make sure that the model exists.
   if (!leftMarkerModel)
@@ -214,8 +203,7 @@ bool NavigationScoringPlugin::AddGate(const std::string &_leftMarkerName,
   }
 
   gazebo::physics::LinkPtr rightMarkerModel =
-    this->course->GetLink(this->course->GetName() + "::" +
-      _rightMarkerName + "::link");
+      this->course->GetLink(this->course->GetName() + "::" + _rightMarkerName + "::link");
 
   // Sanity check: Make sure that the model exists.
   if (!rightMarkerModel)
@@ -250,9 +238,10 @@ void NavigationScoringPlugin::Update()
     return;
 
   // Current score
-  this->ScoringPlugin::SetScore(std::min(this->GetRunningStateDuration(),
-    this->ElapsedTime().Double() +
-    this->GetNumCollisions() * this->obstaclePenalty) / this->numGates);
+  this->ScoringPlugin::SetScore(
+      std::min(this->GetRunningStateDuration(),
+               this->ElapsedTime().Double() + this->GetNumCollisions() * this->obstaclePenalty) /
+      this->numGates);
 
 #if GAZEBO_MAJOR_VERSION >= 8
   const auto robotPose = this->vehicleModel->WorldPose();
@@ -264,15 +253,14 @@ void NavigationScoringPlugin::Update()
   auto iter = std::begin(this->gates);
   while (iter != std::end(this->gates))
   {
-    Gate &gate = *iter;
+    Gate& gate = *iter;
 
     // Update this gate (in case it moved).
     gate.Update();
 
     // Check if we have crossed this gate.
     auto currentState = gate.IsPoseInGate(robotPose);
-    if (currentState == GateState::VEHICLE_AFTER &&
-        gate.state   == GateState::VEHICLE_BEFORE)
+    if (currentState == GateState::VEHICLE_AFTER && gate.state == GateState::VEHICLE_BEFORE)
     {
       currentState = GateState::CROSSED;
       gzmsg << "New gate crossed!" << std::endl;
@@ -288,12 +276,10 @@ void NavigationScoringPlugin::Update()
       iter = this->gates.erase(iter);
     }
     // Just checking: did we go backward through the gate?
-    else if (currentState == GateState::VEHICLE_BEFORE &&
-             gate.state   == GateState::VEHICLE_AFTER)
+    else if (currentState == GateState::VEHICLE_BEFORE && gate.state == GateState::VEHICLE_AFTER)
     {
       gate.state = GateState::INVALID;
-      gzmsg << "Transited the gate in the wrong direction. Gate invalidated!"
-            << std::endl;
+      gzmsg << "Transited the gate in the wrong direction. Gate invalidated!" << std::endl;
       this->Fail();
       return;
     }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VRX_GAZEBO_NAVIGATION_SCORING_PLUGIN_HH_
 #define VRX_GAZEBO_NAVIGATION_SCORING_PLUGIN_HH_
@@ -87,7 +87,8 @@
 class NavigationScoringPlugin : public ScoringPlugin
 {
   /// \brief All gate states.
-  private: enum class GateState
+private:
+  enum class GateState
   {
     /// \brief Not "in" the gate.
     VEHICLE_OUTSIDE,
@@ -106,80 +107,96 @@ class NavigationScoringPlugin : public ScoringPlugin
   };
 
   /// \brief A gate that is part of the navigation challenge.
-  private: class Gate
+private:
+  class Gate
   {
     /// \brief Constructor.
     /// \param[in] _leftMarkerName The left marker's model.
     /// \param[in] _rightMarkerName The right marker's model.
-    public: Gate(const gazebo::physics::LinkPtr _leftMarkerModel,
-                 const gazebo::physics::LinkPtr _rightMarkerModel);
+  public:
+    Gate(const gazebo::physics::LinkPtr _leftMarkerModel, const gazebo::physics::LinkPtr _rightMarkerModel);
 
     /// \brief Where is the given robot pose with respect to the gate?
     /// \param _robotWorldPose Pose of the robot, in the world frame.
     /// \return The gate state given the current robot pose.
-    public: GateState IsPoseInGate(
-      const ignition::math::Pose3d &_robotWorldPose) const;
+  public:
+    GateState IsPoseInGate(const ignition::math::Pose3d& _robotWorldPose) const;
 
     /// \brief Recalculate the pose and width of the gate.
-    public: void Update();
+  public:
+    void Update();
 
     /// \brief The left marker model.
-    public: gazebo::physics::LinkPtr leftMarkerModel;
+  public:
+    gazebo::physics::LinkPtr leftMarkerModel;
 
     /// \brief The right marker model.
-    public: gazebo::physics::LinkPtr rightMarkerModel;
+  public:
+    gazebo::physics::LinkPtr rightMarkerModel;
 
     /// \brief The center of the gate in the world frame. Note that the roll and
     /// pitch are ignored. Only yaw is relevant and it points into the direction
     /// in which the gate should be crossed.
-    public: ignition::math::Pose3d pose;
+  public:
+    ignition::math::Pose3d pose;
 
     /// \brief The width of the gate in meters.
-    public: double width;
+  public:
+    double width;
 
     /// \brief The state of this gate.
-    public: GateState state = GateState::VEHICLE_OUTSIDE;
+  public:
+    GateState state = GateState::VEHICLE_OUTSIDE;
   };
 
   // Constructor.
-  public: NavigationScoringPlugin();
+public:
+  NavigationScoringPlugin();
 
   // Documentation inherited.
-  public: void Load(gazebo::physics::WorldPtr _world,
-                    sdf::ElementPtr _sdf);
+public:
+  void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf);
 
   /// \brief Parse the gates from SDF.
   /// \param[in] _sdf The current SDF element.
   /// \return True when the gates were successfully parsed or false othwerwise.
-  private: bool ParseGates(sdf::ElementPtr _sdf);
+private:
+  bool ParseGates(sdf::ElementPtr _sdf);
 
   /// \brief Register a new gate.
   /// \param[in] _leftMarkerName The name of the left marker.
   /// \param[in] _rightMarkerName The name of the right marker.
   /// \return True when the gate has been registered or false otherwise.
-  private: bool AddGate(const std::string &_leftMarkerName,
-                        const std::string &_rightMarkerName);
+private:
+  bool AddGate(const std::string& _leftMarkerName, const std::string& _rightMarkerName);
 
   /// \brief Callback executed at every world update.
-  private: void Update();
+private:
+  void Update();
 
   /// \brief Set the score to 0 and change to state to "finish".
-  private: void Fail();
+private:
+  void Fail();
 
   // Name of Course
-  private: gazebo::physics::ModelPtr course;
+private:
+  gazebo::physics::ModelPtr course;
 
   /// \brief All the gates.
-  private: std::vector<Gate> gates;
+private:
+  std::vector<Gate> gates;
 
   /// \brief Number of gates
-  private: int numGates;
+private:
+  int numGates;
 
   /// \brief Pointer to the update event connection.
-  private: gazebo::event::ConnectionPtr updateConnection;
+private:
+  gazebo::event::ConnectionPtr updateConnection;
 
   /// \brief Number of points deducted per collision.
-  private: double obstaclePenalty = 10.0;
+private:
+  double obstaclePenalty = 10.0;
 };
 
 #endif

@@ -48,17 +48,25 @@ message suitable for use with rviz.
 class PingerVisualisation:
     """Class used to store the parameters and variables for the script.
     """
+
     def __init__(self):
         """Initialise and run the class."""
         rospy.init_node("pinger_visualisation")
 
         # Startup a publisher of the marker messages
-        self.markerPub = rospy.Publisher("/wamv/sensors/pingers/pinger/marker/signal", Marker,
-                                         queue_size=10, latch=True)
+        self.markerPub = rospy.Publisher(
+            "/wamv/sensors/pingers/pinger/marker/signal",
+            Marker,
+            queue_size=10,
+            latch=True,
+        )
 
         # Start subscriber
-        self.pingerSub = rospy.Subscriber("/wamv/sensors/pingers/pinger/range_bearing",
-                                          RangeBearing, self.pingerCallback)
+        self.pingerSub = rospy.Subscriber(
+            "/wamv/sensors/pingers/pinger/range_bearing",
+            RangeBearing,
+            self.pingerCallback,
+        )
 
         # Spin until closed
         rospy.spin()
@@ -112,14 +120,14 @@ class PingerVisualisation:
 
         # Finish at the estimated pinger position.
         endPoint = Point()
-        endPoint.x = msg.range*math.cos(msg.elevation)*math.cos(msg.bearing)
-        endPoint.y = msg.range*math.cos(msg.elevation)*math.sin(msg.bearing)
-        endPoint.z = msg.range*math.sin(msg.elevation)
+        endPoint.x = msg.range * math.cos(msg.elevation) * math.cos(msg.bearing)
+        endPoint.y = msg.range * math.cos(msg.elevation) * math.sin(msg.bearing)
+        endPoint.z = msg.range * math.sin(msg.elevation)
         visMsg.points.append(endPoint)
 
         # Publish the message.
         self.markerPub.publish(visMsg)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pinger = PingerVisualisation()

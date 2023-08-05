@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VRX_GAZEBO_BALL_SHOOTER_PLUGIN_HH_
 #define VRX_GAZEBO_BALL_SHOOTER_PLUGIN_HH_
@@ -65,51 +65,65 @@ namespace gazebo
 class BallShooterPlugin : public ModelPlugin
 {
   // \brief Constructor.
-  public: BallShooterPlugin() = default;
+public:
+  BallShooterPlugin() = default;
 
   // Documentation inherited.
-  public: void Load(physics::ModelPtr _model,
-                    sdf::ElementPtr _sdf);
+public:
+  void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
 
   // Documentation inherited.
-  private: virtual void Update();
+private:
+  virtual void Update();
 
   /// \brief Callback function called when receiving a new fire message.
   /// \param[in] _msg Unused.
-  private: void OnFire(const std_msgs::Empty::ConstPtr &_msg);
+private:
+  void OnFire(const std_msgs::Empty::ConstPtr& _msg);
 
   /// \brief Protect some member variables used in the callback.
-  private: std::mutex mutex;
+private:
+  std::mutex mutex;
 
   /// \brief Nodehandle used to integrate with the ROS system.
-  private: std::unique_ptr<ros::NodeHandle> rosNodeHandle;
+private:
+  std::unique_ptr<ros::NodeHandle> rosNodeHandle;
 
   /// \brief Number of shots allowed.
-  private: unsigned int remainingShots = UINT_MAX;
+private:
+  unsigned int remainingShots = UINT_MAX;
 
   /// \brief The force (N) to be applied to the projectile.
-  private: double shotForce = 250;
+private:
+  double shotForce = 250;
 
   /// \brief Subscribes to the topic that shoots a new projectile.
-  private: ros::Subscriber fireSub;
+private:
+  ros::Subscriber fireSub;
 
   /// \brief Pointer to the projectile model.
-  private: physics::ModelPtr projectileModel;
+private:
+  physics::ModelPtr projectileModel;
 
   /// \brief Pointer to the projectile link.
-  private: physics::LinkPtr projectileLink;
+private:
+  physics::LinkPtr projectileLink;
 
   /// \brief Link/model that the projectile pose uses as its frame of reference.
-  public: physics::EntityPtr frame;
+public:
+  physics::EntityPtr frame;
 
   /// \brief Pose in which the projectile should be placed before launching it.
-  public: ignition::math::Pose3d pose = ignition::math::Pose3d::Zero;
+public:
+  ignition::math::Pose3d pose = ignition::math::Pose3d::Zero;
 
   /// \brief Pointer used to connect gazebo callback to plugins update function.
-  private: event::ConnectionPtr updateConnection;
+private:
+  event::ConnectionPtr updateConnection;
 
   /// \brief Ready to shoot a ball when true.
-  private: bool shotReady = false;
+private:
+  bool shotReady = false;
 };
-}
+}  // namespace gazebo
 #endif

@@ -35,6 +35,7 @@ are available, the node will default to the origin.
 class PingerPosition:
     """Class used to store the parameters and variables for the script.
     """
+
     def __init__(self):
         """Initialise and run the class."""
         rospy.init_node("set_pinger_position")
@@ -42,17 +43,25 @@ class PingerPosition:
         # Load the positions of the pingers.
         self.pingerPositions = list()
         i = 1
-        while rospy.has_param('~position_' + str(i)):
-            self.pingerPositions.append(rospy.get_param('~position_' + str(i)))
+        while rospy.has_param("~position_" + str(i)):
+            self.pingerPositions.append(rospy.get_param("~position_" + str(i)))
             i = i + 1
 
         # If there are no matching positions, initialise to the origin.
         if i == 1:
             self.pingerPositions.append([0, 0, 0])
-        self.pingerPub = rospy.Publisher("/wamv/sensors/pingers/pinger/set_pinger_position",
-                                         Vector3, queue_size=10, latch=True)
-        self.markerPub = rospy.Publisher("/wamv/sensors/pingers/pinger/marker/ground_truth", Marker,
-                                         queue_size=10, latch=True)
+        self.pingerPub = rospy.Publisher(
+            "/wamv/sensors/pingers/pinger/set_pinger_position",
+            Vector3,
+            queue_size=10,
+            latch=True,
+        )
+        self.markerPub = rospy.Publisher(
+            "/wamv/sensors/pingers/pinger/marker/ground_truth",
+            Marker,
+            queue_size=10,
+            latch=True,
+        )
 
         while not rospy.is_shutdown():
 
@@ -94,8 +103,8 @@ class PingerPosition:
             self.markerPub.publish(msg)
 
             # Change position every 10 seconds.
-            rospy.sleep(10.)
+            rospy.sleep(10.0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pinger = PingerPosition()

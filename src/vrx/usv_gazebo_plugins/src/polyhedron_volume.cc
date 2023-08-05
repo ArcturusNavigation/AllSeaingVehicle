@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include "usv_gazebo_plugins/polyhedron_volume.hh"
 
@@ -21,25 +21,22 @@ using namespace buoyancy;
 using Face = Polyhedron::Face;
 
 //////////////////////////////////////////////////////
-Plane::Plane()
-  : normal(0., 0., 1.), offset(0.)
+Plane::Plane() : normal(0., 0., 1.), offset(0.)
 {
 }
 
 //////////////////////////////////////////////////////
-Polyhedron::Face::Face(int _i1, int _i2, int _i3)
-  : i1(_i1), i2(_i2), i3(_i3)
+Polyhedron::Face::Face(int _i1, int _i2, int _i3) : i1(_i1), i2(_i2), i3(_i3)
 {
 }
 
 //////////////////////////////////////////////////////
-Volume::Volume()
-  : volume(0.0), centroid(ignition::math::Vector3d({0, 0, 0}))
+Volume::Volume() : volume(0.0), centroid(ignition::math::Vector3d({ 0, 0, 0 }))
 {
 }
 
 //////////////////////////////////////////////////////
-Volume& Volume::operator+=(const Volume &rhs)
+Volume& Volume::operator+=(const Volume& rhs)
 {
   this->volume += rhs.volume;
   this->centroid += rhs.centroid;
@@ -57,9 +54,7 @@ Polyhedron Polyhedron::makeCube(double x, double y, double z)
     {
       for (int k = 0; k < 2; ++k)
       {
-        cube.vertices.emplace_back(
-            ignition::math::Vector3d(i * x - x / 2.0,
-                j * y - y / 2.0, k * z - z / 2.0));
+        cube.vertices.emplace_back(ignition::math::Vector3d(i * x - x / 2.0, j * y - y / 2.0, k * z - z / 2.0));
       }
     }
   }
@@ -90,32 +85,32 @@ Polyhedron Polyhedron::makeCylinder(double r, double l, int n)
   // generate all vertices
   double angle_step = 2.0 * M_PI / n;
   double l_2 = l / 2.0;
-  cylinder.vertices.resize(2*n+2);
-  cylinder.vertices[0] = ignition::math::Vector3d{0, 0, -l_2};
+  cylinder.vertices.resize(2 * n + 2);
+  cylinder.vertices[0] = ignition::math::Vector3d{ 0, 0, -l_2 };
   for (int i = 1; i <= n; ++i)
   {
-    double x = r * ::sin(angle_step * (i-1));
-    double y = r * ::cos(angle_step * (i-1));
+    double x = r * ::sin(angle_step * (i - 1));
+    double y = r * ::cos(angle_step * (i - 1));
     // bottom plate
-    cylinder.vertices[i] = ignition::math::Vector3d{x, y, -l_2};
+    cylinder.vertices[i] = ignition::math::Vector3d{ x, y, -l_2 };
     // top plate
-    cylinder.vertices[i+n] = ignition::math::Vector3d{x, y, l_2};
+    cylinder.vertices[i + n] = ignition::math::Vector3d{ x, y, l_2 };
   }
-  cylinder.vertices[2*n+1] = ignition::math::Vector3d{0, 0, l_2};
+  cylinder.vertices[2 * n + 1] = ignition::math::Vector3d{ 0, 0, l_2 };
 
   // generate all faces
   for (int i = 1; i <= n; ++i)
-  { // bottom plate
-    cylinder.faces.emplace_back(Face(0, i, (i%n)+1));
+  {  // bottom plate
+    cylinder.faces.emplace_back(Face(0, i, (i % n) + 1));
   }
   for (int i = 1; i <= n; ++i)
-  { // walls
-    cylinder.faces.emplace_back(Face(i+1, i, n+i));
-    cylinder.faces.emplace_back(Face((i%n)+n, (i%n)+n+1, (i%n)+1));
+  {  // walls
+    cylinder.faces.emplace_back(Face(i + 1, i, n + i));
+    cylinder.faces.emplace_back(Face((i % n) + n, (i % n) + n + 1, (i % n) + 1));
   }
   for (int i = 1; i <= n; ++i)
-  { // top plate
-    cylinder.faces.emplace_back(Face(i+n, 2*n+1, (i%n)+n+1));
+  {  // top plate
+    cylinder.faces.emplace_back(Face(i + n, 2 * n + 1, (i % n) + n + 1));
   }
 
   assert(cylinder.vertices.size() == 2 * n + 2);
@@ -125,16 +120,15 @@ Polyhedron Polyhedron::makeCylinder(double r, double l, int n)
 }
 
 //////////////////////////////////////////////////////
-Volume Polyhedron::tetrahedronVolume(const ignition::math::Vector3d &v1,
-    const ignition::math::Vector3d &v2, const ignition::math::Vector3d &v3,
-    const ignition::math::Vector3d &p)
+Volume Polyhedron::tetrahedronVolume(const ignition::math::Vector3d& v1, const ignition::math::Vector3d& v2,
+                                     const ignition::math::Vector3d& v3, const ignition::math::Vector3d& p)
 {
   ignition::math::Vector3d a = v2 - v1;
   ignition::math::Vector3d b = v3 - v1;
   ignition::math::Vector3d r = p - v1;
 
   Volume output;
-  output.volume = (1/6.) * (b.Cross(a)).Dot(r);
+  output.volume = (1 / 6.) * (b.Cross(a)).Dot(r);
   output.centroid = 0.25 * output.volume * (v1 + v2 + v3 + p);
   return output;
 }
@@ -155,16 +149,15 @@ Volume Polyhedron::ComputeFullVolume()
 }
 
 //////////////////////////////////////////////////////
-Volume Polyhedron::clipTriangle(const ignition::math::Vector3d &v1,
-    const ignition::math::Vector3d &v2,
-    const ignition::math::Vector3d &v3, double d1, double d2, double d3,
-    const ignition::math::Vector3d &p)
+Volume Polyhedron::clipTriangle(const ignition::math::Vector3d& v1, const ignition::math::Vector3d& v2,
+                                const ignition::math::Vector3d& v3, double d1, double d2, double d3,
+                                const ignition::math::Vector3d& p)
 {
   assert(d1 * d2 < 0);
   Volume output;
 
   // calculate the intersection point from a to b
-  ignition::math::Vector3d ab = v1 + (d1/(d1 - d2))*(v2 - v1);
+  ignition::math::Vector3d ab = v1 + (d1 / (d1 - d2)) * (v2 - v1);
   if (d1 < 0)
   {
     // b to c crosses the clipping plane
@@ -172,14 +165,14 @@ Volume Polyhedron::clipTriangle(const ignition::math::Vector3d &v1,
     {
       // Case B - a quadrilateral or two triangles
       // Calculate intersection point from b to c.
-      ignition::math::Vector3d bc = v2 + (d2/(d2 - d3))*(v3 - v2);
+      ignition::math::Vector3d bc = v2 + (d2 / (d2 - d3)) * (v3 - v2);
       output += tetrahedronVolume(ab, bc, v1, p);
       output += tetrahedronVolume(bc, v3, v1, p);
     }
     else
     {
       // Case A - a single triangle.
-      ignition::math::Vector3d ac = v1 + (d1/(d1 - d3))*(v3 - v1);
+      ignition::math::Vector3d ac = v1 + (d1 / (d1 - d3)) * (v3 - v1);
       output += tetrahedronVolume(ab, ac, v1, p);
     }
   }
@@ -188,14 +181,14 @@ Volume Polyhedron::clipTriangle(const ignition::math::Vector3d &v1,
     if (d3 < 0)
     {
       // Case B
-      ignition::math::Vector3d ac = v1 + (d1/(d1 - d3))*(v3 - v1);
+      ignition::math::Vector3d ac = v1 + (d1 / (d1 - d3)) * (v3 - v1);
       output += tetrahedronVolume(ab, v2, v3, p);
       output += tetrahedronVolume(ab, v3, ac, p);
     }
     else
     {
       // Case A
-      ignition::math::Vector3d bc = v2 + (d2/(d2 - d3))*(v3 - v2);
+      ignition::math::Vector3d bc = v2 + (d2 / (d2 - d3)) * (v3 - v2);
       output += tetrahedronVolume(ab, v2, bc, p);
     }
   }
@@ -203,8 +196,8 @@ Volume Polyhedron::clipTriangle(const ignition::math::Vector3d &v1,
 }
 
 //////////////////////////////////////////////////////
-Volume Polyhedron::SubmergedVolume(const ignition::math::Vector3d &x,
-    const ignition::math::Quaterniond &q, Plane &plane)
+Volume Polyhedron::SubmergedVolume(const ignition::math::Vector3d& x, const ignition::math::Quaterniond& q,
+                                   Plane& plane)
 {
   // transform the plane into the polyhedron frame
   auto qt = q.Inverse();
@@ -250,19 +243,19 @@ Volume Polyhedron::SubmergedVolume(const ignition::math::Vector3d &x,
     double d3 = ds[face.i3];
 
     if (d1 * d2 < 0)
-    { // v1-v2 crosses the plane
+    {  // v1-v2 crosses the plane
       output += clipTriangle(v1, v2, v3, d1, d2, d3, p);
     }
     else if (d1 * d3 < 0)
-    { // v1-v3 crosses the plane
+    {  // v1-v3 crosses the plane
       output += clipTriangle(v3, v1, v2, d3, d1, d2, p);
     }
     else if (d2 * d3 < 0)
-    { // v2-v3 crosses the plane
+    {  // v2-v3 crosses the plane
       output += clipTriangle(v2, v3, v1, d2, d3, d1, p);
     }
     else if (d1 < 0 || d2 < 0 || d3 < 0)
-    { // fully submerged
+    {  // fully submerged
       output += tetrahedronVolume(v1, v2, v3, p);
     }
   }
@@ -279,11 +272,8 @@ Volume Polyhedron::SubmergedVolume(const ignition::math::Vector3d &x,
   // transform the centroid into world coordinates
   output.centroid = x + q.RotateVector(output.centroid);
   // if centroid is very small make it zero
-  output.centroid.X() = ::fabs(output.centroid[0]) < EPSILON ?
-      0 : output.centroid.X();
-  output.centroid.Y() = ::fabs(output.centroid[1]) < EPSILON ?
-      0 : output.centroid.Y();
-  output.centroid.Z() = ::fabs(output.centroid[2]) < EPSILON ?
-      0 : output.centroid.Z();
+  output.centroid.X() = ::fabs(output.centroid[0]) < EPSILON ? 0 : output.centroid.X();
+  output.centroid.Y() = ::fabs(output.centroid[1]) < EPSILON ? 0 : output.centroid.Y();
+  output.centroid.Z() = ::fabs(output.centroid[2]) < EPSILON ? 0 : output.centroid.Z();
   return output;
 }

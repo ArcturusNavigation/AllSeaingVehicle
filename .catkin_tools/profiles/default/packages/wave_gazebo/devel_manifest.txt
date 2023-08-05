@@ -1,4 +1,4 @@
-simulation/wave_gazebo
+vrx/wave_gazebo
 /home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
 /home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/share/wave_gazebo/cmake/wave_gazeboConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wave_gazebo/cmake/wave_gazeboConfig-version.cmake
 /home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/share/wave_gazebo/cmake/wave_gazeboConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wave_gazebo/cmake/wave_gazeboConfig.cmake

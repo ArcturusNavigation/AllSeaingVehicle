@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <cmath>
 #include <string>
@@ -26,8 +26,7 @@
 using namespace gazebo;
 
 /////////////////////////////////////////////////
-FollowPlugin::FollowPlugin()
-  : waypointMarkers("waypoint_marker")
+FollowPlugin::FollowPlugin() : waypointMarkers("waypoint_marker")
 {
 }
 
@@ -36,11 +35,11 @@ void FollowPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
   GZ_ASSERT(_model != nullptr, "Received NULL model pointer");
   this->model = _model;
-  #if GAZEBO_MAJOR_VERSION >= 8
-    this->modelPose = model->WorldPose();
-  #else
-    this->modelPose = model->GetWorldPose().Ign();
-  #endif
+#if GAZEBO_MAJOR_VERSION >= 8
+  this->modelPose = model->WorldPose();
+#else
+  this->modelPose = model->GetWorldPose().Ign();
+#endif
 
   // Parse the optional <waypoints> element.
   if (_sdf->HasElement("waypoints"))
@@ -57,15 +56,13 @@ void FollowPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     auto waypointElem = waypointsElem->GetElement("waypoint");
     while (waypointElem)
     {
-      ignition::math::Vector2d position =
-        waypointElem->Get<ignition::math::Vector2d>();
+      ignition::math::Vector2d position = waypointElem->Get<ignition::math::Vector2d>();
 
       // Save the position.
       this->localWaypoints.push_back(position);
 
       // Print some debugging messages
-      gzmsg << "Waypoint, Local: X = " << position.X()
-            << " Y = " << position.Y() << std::endl;
+      gzmsg << "Waypoint, Local: X = " << position.X() << " Y = " << position.Y() << std::endl;
 
       waypointElem = waypointElem->GetNextElement("waypoint");
     }
@@ -86,8 +83,7 @@ void FollowPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     // Get the current model position in global coordinates.  Create
     // local vectors that represent a path along a rough circle.
-    ignition::math::Vector2d position(this->modelPose.Pos().X(),
-                                      this->modelPose.Pos().Y());
+    ignition::math::Vector2d position(this->modelPose.Pos().X(), this->modelPose.Pos().Y());
     double angle = 0;
     ignition::math::Vector2d vec(radius, 0);
     for (int i = 0; i < 8; i++)
@@ -125,13 +121,10 @@ void FollowPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 
     // Create a vector in the direction of "direction" and of
     // length "length".  Convert it to the model's reference frame.
-    ignition::math::Vector3d lineVec(
-      length * cos(direction.Radian()),
-      length * sin(direction.Radian()), 0);
-    ignition::math::Vector2d position(this->modelPose.Pos().X(),
-                                      this->modelPose.Pos().Y());
+    ignition::math::Vector3d lineVec(length * cos(direction.Radian()), length * sin(direction.Radian()), 0);
+    ignition::math::Vector2d position(this->modelPose.Pos().X(), this->modelPose.Pos().Y());
     ignition::math::Vector3d p = this->modelPose.CoordPositionAdd(lineVec);
-    ignition::math::Vector2d p2D = {p.X(), p.Y()};
+    ignition::math::Vector2d p2D = { p.X(), p.Y() };
 
     // Add the initial model position and calculated endpoint as waypoints.
     this->localWaypoints.push_back(position);
@@ -149,8 +142,7 @@ void FollowPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
   this->link = this->model->GetLink(linkName);
   if (!this->link)
   {
-    gzerr << "FollowPlugin: The link '" << linkName
-          << "' does not exist within the model'" << std::endl;
+    gzerr << "FollowPlugin: The link '" << linkName << "' does not exist within the model'" << std::endl;
     return;
   }
 
@@ -167,8 +159,7 @@ void FollowPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
       int markerId = 0;
       for (const auto waypoint : this->localWaypoints)
       {
-        if (!this->waypointMarkers.DrawMarker(waypoint.X(),
-            waypoint.Y(), 0, std::to_string(markerId)))
+        if (!this->waypointMarkers.DrawMarker(waypoint.X(), waypoint.Y(), 0, std::to_string(markerId)))
         {
           gzerr << "Error creating visual marker" << std::endl;
         }
@@ -177,21 +168,18 @@ void FollowPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     }
     else
     {
-      gzwarn << "Cannot display gazebo markers (Gazebo version < 8)"
-             << std::endl;
+      gzwarn << "Cannot display gazebo markers (Gazebo version < 8)" << std::endl;
     }
   }
 
   // If we have waypoints to visit, read the first one.
   if (!this->localWaypoints.empty())
   {
-    this->nextGoal =
-      {this->localWaypoints.front().X(), this->localWaypoints.front().Y(), 0};
+    this->nextGoal = { this->localWaypoints.front().X(), this->localWaypoints.front().Y(), 0 };
   }
 
   // Connect the update function to the world update event.
-  this->updateConnection = event::Events::ConnectWorldUpdateBegin(
-    std::bind(&FollowPlugin::Update, this));
+  this->updateConnection = event::Events::ConnectWorldUpdateBegin(std::bind(&FollowPlugin::Update, this));
 }
 
 //////////////////////////////////////////////////
@@ -204,22 +192,21 @@ void FollowPlugin::Update()
   // Direction vector to the goal from the model.
   ignition::math::Vector3d direction =
 #if GAZEBO_MAJOR_VERSION >= 8
-    this->nextGoal - this->model->WorldPose().Pos();
+      this->nextGoal - this->model->WorldPose().Pos();
 #else
-    this->nextGoal - this->model->GetWorldPose().Ign().Pos();
+      this->nextGoal - this->model->GetWorldPose().Ign().Pos();
 #endif
 
   // Direction vector in the local frame of the model.
   ignition::math::Vector3d directionLocalFrame =
 #if GAZEBO_MAJOR_VERSION >= 8
-    this->model->WorldPose().Rot().RotateVectorReverse(direction);
+      this->model->WorldPose().Rot().RotateVectorReverse(direction);
 #else
-    this->model->GetWorldPose().Ign().Rot().RotateVectorReverse(direction);
+      this->model->GetWorldPose().Ign().Rot().RotateVectorReverse(direction);
 #endif
 
   double range = directionLocalFrame.Length();
-  ignition::math::Angle bearing(
-    atan2(directionLocalFrame.Y(), directionLocalFrame.X()));
+  ignition::math::Angle bearing(atan2(directionLocalFrame.Y(), directionLocalFrame.X()));
   bearing.Normalize();
 
   // Waypoint reached!
@@ -233,9 +220,7 @@ void FollowPlugin::Update()
     if (this->loopForever)
     {
       // Rotate to the left.
-      std::rotate(this->localWaypoints.begin(),
-                  this->localWaypoints.begin() + 1,
-                  localWaypoints.end());
+      std::rotate(this->localWaypoints.begin(), this->localWaypoints.begin() + 1, localWaypoints.end());
     }
     else
     {
@@ -243,20 +228,19 @@ void FollowPlugin::Update()
       this->localWaypoints.erase(this->localWaypoints.begin());
     }
 
-    this->nextGoal =
-      {this->localWaypoints.front().X(), this->localWaypoints.front().Y(), 0};
+    this->nextGoal = { this->localWaypoints.front().X(), this->localWaypoints.front().Y(), 0 };
 
     return;
   }
 
   // Move commands. The vehicle always move forward (X direction).
-  this->link->AddLinkForce({this->forceToApply, 0, 0});
+  this->link->AddLinkForce({ this->forceToApply, 0, 0 });
 
   if (bearing.Degree() > this->bearingGoal)
-    this->link->AddRelativeTorque({0, 0, this->torqueToApply});
+    this->link->AddRelativeTorque({ 0, 0, this->torqueToApply });
 
   if (bearing.Degree() < -this->bearingGoal)
-    this->link->AddRelativeTorque({0, 0, -this->torqueToApply});
+    this->link->AddRelativeTorque({ 0, 0, -this->torqueToApply });
 }
 
 GZ_REGISTER_MODEL_PLUGIN(FollowPlugin);

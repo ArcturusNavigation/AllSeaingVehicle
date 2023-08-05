@@ -2,14 +2,15 @@ import os
 import yaml
 
 
-def create_xacro_file(xacro_target,
-                      yaml_file=None,
-                      requested_macros=None,
-                      boiler_plate_top='',
-                      boiler_plate_bot='',
-                      num_test=lambda name, num: True,
-                      param_test=lambda name, params={}: True,
-                      ):
+def create_xacro_file(
+    xacro_target,
+    yaml_file=None,
+    requested_macros=None,
+    boiler_plate_top="",
+    boiler_plate_bot="",
+    num_test=lambda name, num: True,
+    param_test=lambda name, params={}: True,
+):
     """
     Purpose: Create a .xacro file to create a custom WAM-V .urdf
 
@@ -29,12 +30,12 @@ def create_xacro_file(xacro_target,
     """
     test_fail = False
     # Initialize xacro file
-    xacro_file = open(xacro_target, 'w')
+    xacro_file = open(xacro_target, "w")
     xacro_file.write(boiler_plate_top)
 
     # If requested_macros not given, then open yaml_file
     if requested_macros is None:
-        s = open(yaml_file, 'r')
+        s = open(yaml_file, "r")
         requested_macros = yaml.safe_load(s)
 
         # Handle case with empty yaml file
@@ -49,7 +50,7 @@ def create_xacro_file(xacro_target,
         test_fail = num_test(key, len(objects))
 
         # Create block for each object
-        xacro_file.write('    <!-- === %s === -->\n' % key)
+        xacro_file.write("    <!-- === %s === -->\n" % key)
         for i in objects:
             # Check for valid parameters
             test_fail = param_test(key, i)
@@ -57,20 +58,21 @@ def create_xacro_file(xacro_target,
             # Write macro
             # Strip all astrisks from key value to allow us to call
             # the same macro multiple times.
-            xacro_file.write('    ' + macro_call_gen(key.strip('*'), i))
-        xacro_file.write('\n')
+            xacro_file.write("    " + macro_call_gen(key.strip("*"), i))
+        xacro_file.write("\n")
 
     xacro_file.write(boiler_plate_bot)
     xacro_file.close()
     return test_fail
 
 
-def add_gazebo_thruster_config(xacro_target,
-                               yaml_file=None,
-                               requested_macros=None,
-                               boiler_plate_top='',
-                               boiler_plate_bot='',
-                               ):
+def add_gazebo_thruster_config(
+    xacro_target,
+    yaml_file=None,
+    requested_macros=None,
+    boiler_plate_top="",
+    boiler_plate_bot="",
+):
     """
     Purpose: Append gazebo thruster config tags to a .xacro file to
              create a custom WAM-V .urdf
@@ -89,12 +91,12 @@ def add_gazebo_thruster_config(xacro_target,
     Appends gazebo thruster config tags to 'xacro_target'
     """
     # Initialize xacro file for appending
-    xacro_file = open(xacro_target, 'a')
+    xacro_file = open(xacro_target, "a")
     xacro_file.write(boiler_plate_top)
 
     # If requested_macros not given, then open yaml_file
     if requested_macros is None:
-        s = open(yaml_file, 'r')
+        s = open(yaml_file, "r")
         requested_macros = yaml.safe_load(s)
 
         # Handle case with empty yaml file
@@ -106,21 +108,22 @@ def add_gazebo_thruster_config(xacro_target,
     # WAM-V Gazebo thrust plugin setup
     for key, objects in requested_macros.items():
         for obj in objects:
-            xacro_file.write('      ' +
-                             macro_call_gen('wamv_gazebo_thruster_config',
-                                            {'name': obj['prefix']}))
+            xacro_file.write(
+                "      "
+                + macro_call_gen("wamv_gazebo_thruster_config", {"name": obj["prefix"]})
+            )
 
     xacro_file.write(boiler_plate_bot)
     xacro_file.close()
 
 
 def macro_call_gen(name, params={}):
-    macro_call = '  <xacro:%s ' % name
-    endline = '/>\n'
+    macro_call = "  <xacro:%s " % name
+    endline = "/>\n"
     insert = []
     for i in params:
-        if i[:3] == '/**':
-            endline = '>\n'
+        if i[:3] == "/**":
+            endline = ">\n"
             insert.append(i[3:])
         else:
             macro_call += '%s="%s" ' % (i, str(params[i]))
@@ -128,10 +131,10 @@ def macro_call_gen(name, params={}):
     if insert == []:
         return macro_call
     for i in insert:
-        macro_call += '    <%s>\n' % i
-        macro_call += str(params['/**' + i])
-        macro_call += '    </%s>\n' % i
-    macro_call += '  </xacro:' + name + '>\n'
+        macro_call += "    <%s>\n" % i
+        macro_call += str(params["/**" + i])
+        macro_call += "    </%s>\n" % i
+    macro_call += "  </xacro:" + name + ">\n"
     return macro_call
 
 
@@ -147,9 +150,11 @@ def get_macros(directory):
 
 
 def get_macro_files(directory):
-    xacro_files = [directory+'/'+f for f in os.listdir(directory)
-                   if os.path.isfile(os.path.join(directory, f)) and
-                   (f[-6:] == '.xacro')]
+    xacro_files = [
+        directory + "/" + f
+        for f in os.listdir(directory)
+        if os.path.isfile(os.path.join(directory, f)) and (f[-6:] == ".xacro")
+    ]
     child_directories = [d[0] for d in os.walk(directory)]
     child_directories = child_directories[1:]
     for i in child_directories:
@@ -159,44 +164,44 @@ def get_macro_files(directory):
 
 
 def parse_xacro_file(xacro_file_name):
-    xacro_file = open(xacro_file_name, 'r')
+    xacro_file = open(xacro_file_name, "r")
     contents = xacro_file.read()
     # remove comment blocks
-    while '<!--' in contents:
-        start = contents.find('<!--')
-        end = contents.find('-->')
-        contents = contents.replace(contents[start:end+3], '')
+    while "<!--" in contents:
+        start = contents.find("<!--")
+        end = contents.find("-->")
+        contents = contents.replace(contents[start : end + 3], "")
     # get macro declaration
-    start = contents.find('<xacro:macro')
-    end = contents.find('>', start)
+    start = contents.find("<xacro:macro")
+    end = contents.find(">", start)
     declaration = contents[start:end]
 
-    contents = contents.replace(contents[start:end+1], '')
+    contents = contents.replace(contents[start : end + 1], "")
     # remove the declaration from the string so we know we processed it
-    name_pose = declaration.find('name')
+    name_pose = declaration.find("name")
     start = declaration.find('"', name_pose)
-    end = declaration.find('"', start+1)
-    name = declaration[start+1:end]
+    end = declaration.find('"', start + 1)
+    name = declaration[start + 1 : end]
 
-    params_pose = declaration.find('params')
+    params_pose = declaration.find("params")
     start = declaration.find('"', params_pose)
-    end = declaration.find('"', start+1)
-    params_str = declaration[start+1:end].split(' ')
+    end = declaration.find('"', start + 1)
+    params_str = declaration[start + 1 : end].split(" ")
     params = {}
     for i in params_str:
-        i = i.replace('\n', '')
-        if i != '':
+        i = i.replace("\n", "")
+        if i != "":
             key = i
-            if ':' in i:
-                key = i[:i.find(':')]
-            if '=' in i:
-                value = i[i.find('=')+1:]
+            if ":" in i:
+                key = i[: i.find(":")]
+            if "=" in i:
+                value = i[i.find("=") + 1 :]
             else:
-                value = ''
-            value = value.replace('\n', '')
+                value = ""
+            value = value.replace("\n", "")
             params[key] = value
 
-    if contents.find('<xacro:macro') != -1:
-        raise Exception('multiple macros defined in %s' % xacro_file_name)
+    if contents.find("<xacro:macro") != -1:
+        raise Exception("multiple macros defined in %s" % xacro_file_name)
 
     return name, params

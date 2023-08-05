@@ -26,28 +26,29 @@ import sys
 import re
 import xml.sax.saxutils
 
+
 def cpplint_score_to_cppcheck_severity(score):
     # I'm making this up
     if score == 1:
-        return 'style'
+        return "style"
     elif score == 2:
-        return 'style'
+        return "style"
     elif score == 3:
-        return 'warning'
+        return "warning"
     elif score == 4:
-        return 'warning'
+        return "warning"
     elif score == 5:
-        return 'error'
+        return "error"
 
 
 def parse():
     # TODO: do this properly, using the xml module.
     # Write header
-    sys.stderr.write('''<?xml version="1.0" encoding="UTF-8"?>\n''')
-    sys.stderr.write('''<results>\n''')
+    sys.stderr.write("""<?xml version="1.0" encoding="UTF-8"?>\n""")
+    sys.stderr.write("""<results>\n""")
 
     # Do line-by-line conversion
-    r = re.compile('([^:]*):([0-9]*):  ([^\[]*)\[([^\]]*)\] \[([0-9]*)\].*')
+    r = re.compile("([^:]*):([0-9]*):  ([^\[]*)\[([^\]]*)\] \[([0-9]*)\].*")
 
     for l in sys.stdin.readlines():
         m = r.match(l.strip())
@@ -60,11 +61,14 @@ def parse():
         # Protect Jenkins from bad XML, which makes it barf
         msg = xml.sax.saxutils.escape(rawmsg)
         severity = cpplint_score_to_cppcheck_severity(int(score))
-        sys.stderr.write('''<error file="%s" line="%s" id="%s" severity="%s" msg="%s"/>\n'''%(fname, lineno, label, severity, msg))
+        sys.stderr.write(
+            """<error file="%s" line="%s" id="%s" severity="%s" msg="%s"/>\n"""
+            % (fname, lineno, label, severity, msg)
+        )
 
     # Write footer
-    sys.stderr.write('''</results>\n''')
+    sys.stderr.write("""</results>\n""")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parse()

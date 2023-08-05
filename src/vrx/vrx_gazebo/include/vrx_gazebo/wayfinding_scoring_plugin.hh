@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VRX_GAZEBO_WAYFINDING_SCORING_PLUGIN_HH_
 #define VRX_GAZEBO_WAYFINDING_SCORING_PLUGIN_HH_
@@ -58,73 +58,93 @@
 class WayfindingScoringPlugin : public ScoringPlugin
 {
   /// \brief Constructor.
-  public: WayfindingScoringPlugin();
+public:
+  WayfindingScoringPlugin();
 
   // Documentation inherited.
-  public: void Load(gazebo::physics::WorldPtr _world,
-                    sdf::ElementPtr _sdf);
+public:
+  void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf);
 
   /// \brief Callback executed at every world update.
-  private: void Update();
+private:
+  void Update();
 
   // Documentation inherited.
-  private: void OnReady() override;
+private:
+  void OnReady() override;
 
   // Documentation inherited.
-  private: void OnRunning() override;
+private:
+  void OnRunning() override;
 
   /// \brief Publish the waypoints through which the vehicle must navigate.
-  private: void PublishWaypoints();
+private:
+  void PublishWaypoints();
 
   /// \brief Pointer to the update event connection.
-  private: gazebo::event::ConnectionPtr updateConnection;
+private:
+  gazebo::event::ConnectionPtr updateConnection;
 
   /// \brief Pointer to the sdf plugin element.
-  private: sdf::ElementPtr sdf;
+private:
+  sdf::ElementPtr sdf;
 
   /// \brief Topic where the list of waypoints is published.
-  private: std::string waypointsTopic = "/vrx/wayfinding/waypoints";
+private:
+  std::string waypointsTopic = "/vrx/wayfinding/waypoints";
 
   /// \brief Topic where the current minimum pose error distance for each
   /// waypoint is published.
-  private: std::string minErrorsTopic = "/vrx/wayfinding/min_errors";
+private:
+  std::string minErrorsTopic = "/vrx/wayfinding/min_errors";
 
   /// \brief Topic where the current average minimum error is published.
-  private: std::string meanErrorTopic = "/vrx/wayfinding/mean_error";
+private:
+  std::string meanErrorTopic = "/vrx/wayfinding/mean_error";
 
   /// \brief ROS node handle.
-  private: std::unique_ptr<ros::NodeHandle> rosNode;
+private:
+  std::unique_ptr<ros::NodeHandle> rosNode;
 
   /// \brief Publisher for the goal.
-  private: ros::Publisher waypointsPub;
+private:
+  ros::Publisher waypointsPub;
 
   /// \brief Publisher for the combined 2D pose error.
-  private: ros::Publisher minErrorsPub;
+private:
+  ros::Publisher minErrorsPub;
 
   /// \brief Publisher for the current rms error.
-  private: ros::Publisher meanErrorPub;
+private:
+  ros::Publisher meanErrorPub;
 
   /// \brief Vector containing waypoints as 3D vectors of doubles representing
   /// X Y yaw, where X and Y are local (Gazebo) coordinates.
-  private: std::vector<ignition::math::Vector3d> localWaypoints;
+private:
+  std::vector<ignition::math::Vector3d> localWaypoints;
 
   /// \brief Vector containing waypoints as 3D vectors of doubles representing
   /// Lattitude Longitude yaw, where lattitude and longitude are given in
   /// spherical (WGS84) coordinates.
-  private: std::vector<ignition::math::Vector3d> sphericalWaypoints;
+private:
+  std::vector<ignition::math::Vector3d> sphericalWaypoints;
 
   /// \brief Vector containing current minimum 2D pose error achieved for each
   /// waypoint so far.
-  private: std::vector<double> minErrors;
+private:
+  std::vector<double> minErrors;
 
   /// \brief Current average minimum error for all waypoints.
-  private: double meanError;
+private:
+  double meanError;
 
   /// \brief Timer used to calculate the elapsed time docked in the bay.
-  private: gazebo::common::Timer timer;
+private:
+  gazebo::common::Timer timer;
 
   /// \brief Waypoint visualization markers.
-  private: WaypointMarkers waypointMarkers;
+private:
+  WaypointMarkers waypointMarkers;
 };
 
 #endif

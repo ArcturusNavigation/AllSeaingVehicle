@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VORC_GAZEBO_GYMKHANA_SCORING_PLUGIN_HH_
 #define VORC_GAZEBO_GYMKHANA_SCORING_PLUGIN_HH_
@@ -29,59 +29,76 @@
 class GymkhanaScoringPlugin : public ScoringPlugin
 {
   /// \brief Constructor.
-  public: GymkhanaScoringPlugin();
+public:
+  GymkhanaScoringPlugin();
 
   /// \brief Destructor.
-  public: virtual ~GymkhanaScoringPlugin();
+public:
+  virtual ~GymkhanaScoringPlugin();
 
   // Documentation inherited.
-  public: virtual void Load(gazebo::physics::WorldPtr _world,
-                            sdf::ElementPtr _sdf);
+public:
+  virtual void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf);
 
   /// \brief Callback executed at every world update.
-  private: void Update();
+private:
+  void Update();
 
   /// \brief Callback for channel navigation portion's scoring plugin
-  protected: void ChannelCallback(const vrx_gazebo::Task::ConstPtr& msg);
+protected:
+  void ChannelCallback(const vrx_gazebo::Task::ConstPtr& msg);
 
   /// \brief Callback for black box station-keeping portion's scoring plugin
-  protected: void BlackboxCallback(const vrx_gazebo::Task::ConstPtr& msg);
+protected:
+  void BlackboxCallback(const vrx_gazebo::Task::ConstPtr& msg);
 
   /// \brief Set the pinger location.
-  private: void SetPingerPosition() const;
+private:
+  void SetPingerPosition() const;
 
   // Documentation inherited.
-  private: void OnFinished() override;
+private:
+  void OnFinished() override;
 
   /// \brief Pointer to the update event connection.
-  private: gazebo::event::ConnectionPtr updateConnection;
+private:
+  gazebo::event::ConnectionPtr updateConnection;
 
   /// \brief ROS node handle.
-  private: std::unique_ptr<ros::NodeHandle> rosNode;
+private:
+  std::unique_ptr<ros::NodeHandle> rosNode;
 
   /// \brief ROS publisher to set the pinger position.
-  private: ros::Publisher setPingerPub;
+private:
+  ros::Publisher setPingerPub;
 
   /// \brief ROS subscriber to channel navigation portion scoring plugin
-  private: ros::Subscriber channelSub;
+private:
+  ros::Subscriber channelSub;
 
   /// \brief ROS subscriber to black box acoustic pinger portion scoring plugin
-  private: ros::Subscriber blackboxSub;
+private:
+  ros::Subscriber blackboxSub;
 
   /// \brief Whether buoy channel portion has been completed
-  private: bool channelCrossed = false;
+private:
+  bool channelCrossed = false;
 
   /// \brief Cumulative error from black box station keeping portion
-  private: double blackboxScore = 0.0;
+private:
+  double blackboxScore = 0.0;
 
   /// \brief Penalty added per collision.
-  private: double obstaclePenalty = 0.1;
+private:
+  double obstaclePenalty = 0.1;
 
   /// \brief Position of the pinger.
-  private: ignition::math::Vector3d pingerPosition = {0, 0, 0};
+private:
+  ignition::math::Vector3d pingerPosition = { 0, 0, 0 };
 
   /// \brief Last time we published a pinger position.
-  private: gazebo::common::Time lastSetPingerPositionTime;
+private:
+  gazebo::common::Time lastSetPingerPositionTime;
 };
 
 #endif

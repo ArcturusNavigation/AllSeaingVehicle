@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <geographic_msgs/GeoPoseStamped.h>
 #include <geographic_msgs/GeoPath.h>
@@ -30,8 +30,7 @@
 #include "vrx_gazebo/wayfinding_scoring_plugin.hh"
 
 /////////////////////////////////////////////////
-WayfindingScoringPlugin::WayfindingScoringPlugin()
-  : waypointMarkers("waypoint_marker")
+WayfindingScoringPlugin::WayfindingScoringPlugin() : waypointMarkers("waypoint_marker")
 {
   gzmsg << "Wayfinding scoring plugin loaded" << std::endl;
   this->timer.Stop();
@@ -39,8 +38,7 @@ WayfindingScoringPlugin::WayfindingScoringPlugin()
 }
 
 /////////////////////////////////////////////////
-void WayfindingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
-    sdf::ElementPtr _sdf)
+void WayfindingScoringPlugin::Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf)
 {
   ScoringPlugin::Load(_world, _sdf);
   this->sdf = _sdf;
@@ -64,15 +62,13 @@ void WayfindingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
 
   while (waypointElem)
   {
-    ignition::math::Vector3d latlonyaw =
-      waypointElem->Get<ignition::math::Vector3d>("pose");
+    ignition::math::Vector3d latlonyaw = waypointElem->Get<ignition::math::Vector3d>("pose");
 
     // Convert lat/lon to local
     //  snippet from UUV Simulator SphericalCoordinatesROSInterfacePlugin.cc
     ignition::math::Vector3d scVec(latlonyaw.X(), latlonyaw.Y(), 0.0);
 
-    ignition::math::Vector3d cartVec =
-      this->sc.LocalFromSphericalPosition(scVec);
+    ignition::math::Vector3d cartVec = this->sc.LocalFromSphericalPosition(scVec);
 
     cartVec.Z() = latlonyaw.Z();
 
@@ -81,10 +77,8 @@ void WayfindingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
     this->localWaypoints.push_back(cartVec);
 
     // Print some debugging messages
-    gzmsg << "Waypoint, Spherical: Lat = " << latlonyaw.X()
-          << " Lon = " << latlonyaw.Y() << std::endl;
-    gzmsg << "Waypoint, Local: X = " << cartVec.X()
-          << " Y = " << cartVec.Y() << " Yaw = " << cartVec.Z() << std::endl;
+    gzmsg << "Waypoint, Spherical: Lat = " << latlonyaw.X() << " Lon = " << latlonyaw.Y() << std::endl;
+    gzmsg << "Waypoint, Local: X = " << cartVec.X() << " Y = " << cartVec.Y() << " Yaw = " << cartVec.Z() << std::endl;
 
     waypointElem = waypointElem->GetNextElement("waypoint");
   }
@@ -95,28 +89,22 @@ void WayfindingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
   {
     this->waypointsTopic = _sdf->Get<std::string>("waypoints_topic");
   }
-  this->waypointsPub =
-    this->rosNode->advertise<geographic_msgs::GeoPath>(
-      this->waypointsTopic, 10, true);
+  this->waypointsPub = this->rosNode->advertise<geographic_msgs::GeoPath>(this->waypointsTopic, 10, true);
 
   if (_sdf->HasElement("min_errors_topic"))
   {
     this->minErrorsTopic = _sdf->Get<std::string>("min_errors_topic");
   }
-  this->minErrorsPub =
-    this->rosNode->advertise<std_msgs::Float64MultiArray>(
-      this->minErrorsTopic, 100);
+  this->minErrorsPub = this->rosNode->advertise<std_msgs::Float64MultiArray>(this->minErrorsTopic, 100);
 
   if (_sdf->HasElement("mean_error_topic"))
   {
     this->meanErrorTopic = _sdf->Get<std::string>("mean_error_topic");
   }
-  this->meanErrorPub =
-    this->rosNode->advertise<std_msgs::Float64>(
-      this->meanErrorTopic, 100);
+  this->meanErrorPub = this->rosNode->advertise<std_msgs::Float64>(this->meanErrorTopic, 100);
 
-  this->updateConnection = gazebo::event::Events::ConnectWorldUpdateBegin(
-    std::bind(&WayfindingScoringPlugin::Update, this));
+  this->updateConnection =
+      gazebo::event::Events::ConnectWorldUpdateBegin(std::bind(&WayfindingScoringPlugin::Update, this));
 
   // Publish waypoint markers
   if (_sdf->HasElement("markers"))
@@ -127,8 +115,8 @@ void WayfindingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
       int markerId = 0;
       for (const auto waypoint : this->localWaypoints)
       {
-        if (!this->waypointMarkers.DrawMarker(markerId, waypoint.X(),
-            waypoint.Y(), waypoint.Z(), std::to_string(markerId)))
+        if (!this->waypointMarkers.DrawMarker(markerId, waypoint.X(), waypoint.Y(), waypoint.Z(),
+                                              std::to_string(markerId)))
         {
           gzerr << "Error creating visual marker" << std::endl;
         }
@@ -137,8 +125,7 @@ void WayfindingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
     }
     else
     {
-      gzwarn << "Cannot display gazebo markers (Gazebo version < 8)"
-             << std::endl;
+      gzwarn << "Cannot display gazebo markers (Gazebo version < 8)" << std::endl;
     }
   }
 }
@@ -149,11 +136,11 @@ void WayfindingScoringPlugin::Update()
   // The vehicle might not be ready yet, let's try to get it.
   if (!this->vehicleModel)
   {
-    #if GAZEBO_MAJOR_VERSION >= 8
-      this->vehicleModel = this->world->ModelByName(this->vehicleName);
-    #else
-      this->vehicleModel = this->world->GetModel(this->vehicleName);
-    #endif
+#if GAZEBO_MAJOR_VERSION >= 8
+    this->vehicleModel = this->world->ModelByName(this->vehicleName);
+#else
+    this->vehicleModel = this->world->GetModel(this->vehicleName);
+#endif
     if (!this->vehicleModel)
       return;
   }
@@ -165,11 +152,11 @@ void WayfindingScoringPlugin::Update()
   std_msgs::Float64MultiArray minErrorsMsg;
   std_msgs::Float64 meanErrorMsg;
 
-  #if GAZEBO_MAJOR_VERSION >= 8
-    const auto robotPose = this->vehicleModel->WorldPose();
-  #else
-    const auto robotPose = this->vehicleModel->GetWorldPose().Ign();
-  #endif
+#if GAZEBO_MAJOR_VERSION >= 8
+  const auto robotPose = this->vehicleModel->WorldPose();
+#else
+  const auto robotPose = this->vehicleModel->GetWorldPose().Ign();
+#endif
   double currentHeading = robotPose.Rot().Euler().Z();
 
   double currentTotalError = 0;
@@ -177,14 +164,14 @@ void WayfindingScoringPlugin::Update()
   for (unsigned i = 0; i < this->localWaypoints.size(); ++i)
   {
     const ignition::math::Vector3d wp = this->localWaypoints[i];
-    double dx   =  wp.X() - robotPose.Pos().X();
-    double dy   =  wp.Y() - robotPose.Pos().Y();
+    double dx = wp.X() - robotPose.Pos().X();
+    double dy = wp.Y() - robotPose.Pos().Y();
     double dist = sqrt(pow(dx, 2) + pow(dy, 2));
-    double k    = 0.75;
+    double k = 0.75;
     double dhdg = abs(wp.Z() - currentHeading);
     double headError = M_PI - abs(dhdg - M_PI);
 
-    double poseError =  dist + (pow(k, dist) * headError);
+    double poseError = dist + (pow(k, dist) * headError);
 
     // If this is the first time through, minError == poseError
     if (i == this->minErrors.size())
@@ -236,9 +223,9 @@ void WayfindingScoringPlugin::PublishWaypoints()
 
   for (auto wp : this->sphericalWaypoints)
   {
-    wp_msg.pose.position.latitude  = wp.X();
+    wp_msg.pose.position.latitude = wp.X();
     wp_msg.pose.position.longitude = wp.Y();
-    wp_msg.pose.position.altitude  = 0.0;
+    wp_msg.pose.position.altitude = 0.0;
 
     const ignition::math::Quaternion<double> orientation(0.0, 0.0, wp.Z());
 
@@ -259,7 +246,6 @@ void WayfindingScoringPlugin::OnReady()
   gzmsg << "WayfindingScoringPlugin::OnReady" << std::endl;
   this->PublishWaypoints();
 }
-
 
 //////////////////////////////////////////////////
 void WayfindingScoringPlugin::OnRunning()

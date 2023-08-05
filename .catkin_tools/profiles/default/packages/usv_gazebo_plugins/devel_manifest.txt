@@ -1,10 +1,11 @@
-simulation/usv_gazebo_plugins
+vrx/usv_gazebo_plugins
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/share/usv_gazebo_plugins/cmake/usv_gazebo_pluginsConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/usv_gazebo_plugins/cmake/usv_gazebo_pluginsConfig.cmake
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/share/usv_gazebo_plugins/cmake/usv_gazebo_pluginsConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/usv_gazebo_plugins/cmake/usv_gazebo_pluginsConfig-version.cmake
+/home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/share/usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world /home/jacobdr/AllSeaingVehicle/devel/share/usv_gazebo_plugins/worlds/buoyancy_plugin_demo.world
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/lib/libusv_gazebo_dynamics_plugin.so /home/jacobdr/AllSeaingVehicle/devel/lib/libusv_gazebo_dynamics_plugin.so
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/lib/libusv_gazebo_wind_plugin.so /home/jacobdr/AllSeaingVehicle/devel/lib/libusv_gazebo_wind_plugin.so
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/lib/libusv_gazebo_thrust_plugin.so /home/jacobdr/AllSeaingVehicle/devel/lib/libusv_gazebo_thrust_plugin.so
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/lib/libbuoyancy_gazebo_plugin.so /home/jacobdr/AllSeaingVehicle/devel/lib/libbuoyancy_gazebo_plugin.so
-/home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/lib/libusv_gazebo_direct_control_plugin.so /home/jacobdr/AllSeaingVehicle/devel/lib/libusv_gazebo_direct_control_plugin.so
+/home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/lib/libusv_gazebo_acoustic_pinger_plugin.so /home/jacobdr/AllSeaingVehicle/devel/lib/libusv_gazebo_acoustic_pinger_plugin.so
 /home/jacobdr/AllSeaingVehicle/devel/.private/usv_gazebo_plugins/lib/pkgconfig/usv_gazebo_plugins.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/usv_gazebo_plugins.pc

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <std_msgs/Float64.h>
 #include <cmath>
@@ -26,8 +26,7 @@
 #include "vrx_gazebo/stationkeeping_scoring_plugin.hh"
 
 /////////////////////////////////////////////////
-StationkeepingScoringPlugin::StationkeepingScoringPlugin()
-  : waypointMarkers("station_keeping_marker")
+StationkeepingScoringPlugin::StationkeepingScoringPlugin() : waypointMarkers("station_keeping_marker")
 {
   gzmsg << "Stationkeeping scoring plugin loaded" << std::endl;
 
@@ -36,8 +35,7 @@ StationkeepingScoringPlugin::StationkeepingScoringPlugin()
 }
 
 /////////////////////////////////////////////////
-void StationkeepingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
-    sdf::ElementPtr _sdf)
+void StationkeepingScoringPlugin::Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf)
 {
   ScoringPlugin::Load(_world, _sdf);
   gzmsg << "Task [" << this->TaskName() << "]" << std::endl;
@@ -56,8 +54,7 @@ void StationkeepingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
       ROS_ERROR("Ignoring goal_pose_cart.");
     }
 
-    ignition::math::Vector3d latlonyaw =
-        _sdf->Get<ignition::math::Vector3d>("goal_pose");
+    ignition::math::Vector3d latlonyaw = _sdf->Get<ignition::math::Vector3d>("goal_pose");
 
     // Store spherical 2D location
     this->goalLat = latlonyaw.X();
@@ -66,8 +63,7 @@ void StationkeepingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
     // Convert lat/lon to local
     // Snippet from UUV Simulator SphericalCoordinatesROSInterfacePlugin.cc
     ignition::math::Vector3d scVec(this->goalLat, this->goalLon, 0.0);
-    ignition::math::Vector3d cartVec =
-      this->sc.LocalFromSphericalPosition(scVec);
+    ignition::math::Vector3d cartVec = this->sc.LocalFromSphericalPosition(scVec);
 
     // Store local 2D location and yaw
     this->goalX = cartVec.X();
@@ -76,8 +72,7 @@ void StationkeepingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
   }
   else
   {
-    ignition::math::Vector3d xyz =
-      _sdf->Get<ignition::math::Vector3d>("goal_pose_cart");
+    ignition::math::Vector3d xyz = _sdf->Get<ignition::math::Vector3d>("goal_pose_cart");
 
     // Store local 2D location
     this->goalX = xyz.X();
@@ -100,10 +95,9 @@ void StationkeepingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
   }
 
   // Print some debugging messages
-  gzmsg << "StationKeeping Goal, Spherical: Lat = " << this->goalLat
-        << " Lon = " << this->goalLon << std::endl;
-  gzmsg << "StationKeeping Goal, Local: X = " << this->goalX
-        << " Y = " << this->goalY << " Yaw = " << this->goalYaw << std::endl;
+  gzmsg << "StationKeeping Goal, Spherical: Lat = " << this->goalLat << " Lon = " << this->goalLon << std::endl;
+  gzmsg << "StationKeeping Goal, Local: X = " << this->goalX << " Y = " << this->goalY << " Yaw = " << this->goalYaw
+        << std::endl;
 
   // Setup ROS node and publisher
   this->rosNode.reset(new ros::NodeHandle());
@@ -111,44 +105,39 @@ void StationkeepingScoringPlugin::Load(gazebo::physics::WorldPtr _world,
   {
     this->goalTopic = _sdf->Get<std::string>("goal_topic");
   }
-  this->goalPub = this->rosNode->advertise<geographic_msgs::GeoPoseStamped>(
-    this->goalTopic, 10, true);
+  this->goalPub = this->rosNode->advertise<geographic_msgs::GeoPoseStamped>(this->goalTopic, 10, true);
 
   if (_sdf->HasElement("pose_error_topic"))
   {
     this->poseErrorTopic = _sdf->Get<std::string>("pose_error_topic");
   }
-  this->poseErrorPub = this->rosNode->advertise<std_msgs::Float64>(
-    this->poseErrorTopic, 100);
+  this->poseErrorPub = this->rosNode->advertise<std_msgs::Float64>(this->poseErrorTopic, 100);
 
   if (_sdf->HasElement("mean_error_topic"))
   {
     this->meanErrorTopic = _sdf->Get<std::string>("mean_error_topic");
   }
-  this->meanErrorPub  = this->rosNode->advertise<std_msgs::Float64>(
-    this->meanErrorTopic, 100);
+  this->meanErrorPub = this->rosNode->advertise<std_msgs::Float64>(this->meanErrorTopic, 100);
 
   if (_sdf->HasElement("head_error_on"))
     this->headErrorOn = _sdf->Get<bool>("head_error_on");
 
-  this->updateConnection = gazebo::event::Events::ConnectWorldUpdateBegin(
-    std::bind(&StationkeepingScoringPlugin::Update, this));
+  this->updateConnection =
+      gazebo::event::Events::ConnectWorldUpdateBegin(std::bind(&StationkeepingScoringPlugin::Update, this));
 
   if (_sdf->HasElement("markers"))
   {
     this->waypointMarkers.Load(_sdf->GetElement("markers"));
     if (this->waypointMarkers.IsAvailable())
     {
-      if (!this->waypointMarkers.DrawMarker(0, this->goalX, this->goalY,
-            this->goalYaw))
+      if (!this->waypointMarkers.DrawMarker(0, this->goalX, this->goalY, this->goalYaw))
       {
         gzerr << "Error creating visual marker" << std::endl;
       }
     }
     else
     {
-      gzwarn << "Cannot display gazebo markers (Gazebo version < 8)"
-        << std::endl;
+      gzwarn << "Cannot display gazebo markers (Gazebo version < 8)" << std::endl;
     }
   }
 }
@@ -159,11 +148,11 @@ void StationkeepingScoringPlugin::Update()
   // The vehicle might not be ready yet, let's try to get it.
   if (!this->vehicleModel)
   {
-    #if GAZEBO_MAJOR_VERSION >= 8
-      this->vehicleModel = this->world->ModelByName(this->vehicleName);
-    #else
-      this->vehicleModel = this->world->GetModel(this->vehicleName);
-    #endif
+#if GAZEBO_MAJOR_VERSION >= 8
+    this->vehicleModel = this->world->ModelByName(this->vehicleName);
+#else
+    this->vehicleModel = this->world->GetModel(this->vehicleName);
+#endif
     if (!this->vehicleModel)
       return;
   }
@@ -175,22 +164,22 @@ void StationkeepingScoringPlugin::Update()
   std_msgs::Float64 poseErrorMsg;
   std_msgs::Float64 meanErrorMsg;
 
-  #if GAZEBO_MAJOR_VERSION >= 8
-    const auto robotPose = this->vehicleModel->WorldPose();
-  #else
-    const auto robotPose = this->vehicleModel->GetWorldPose().Ign();
-  #endif
+#if GAZEBO_MAJOR_VERSION >= 8
+  const auto robotPose = this->vehicleModel->WorldPose();
+#else
+  const auto robotPose = this->vehicleModel->GetWorldPose().Ign();
+#endif
 
   double currentHeading = robotPose.Rot().Euler().Z();
-  double dx   = this->goalX - robotPose.Pos().X();
-  double dy   = this->goalY - robotPose.Pos().Y();
+  double dx = this->goalX - robotPose.Pos().X();
+  double dy = this->goalY - robotPose.Pos().Y();
   double dist = sqrt(pow(dx, 2) + pow(dy, 2));
   double dhdg = abs(this->goalYaw - currentHeading);
   double headError = M_PI - abs(dhdg - M_PI);
 
   if (this->headErrorOn)
   {
-    double k    = 0.75;
+    double k = 0.75;
     this->poseError = dist + (pow(k, dist) * headError);
   }
   else
@@ -218,14 +207,13 @@ void StationkeepingScoringPlugin::Update()
 //////////////////////////////////////////////////
 void StationkeepingScoringPlugin::PublishGoal()
 {
-  gzmsg << "<StationkeepingScoringPlugin> Publishing Goal coordinates"
-        << std::endl;
+  gzmsg << "<StationkeepingScoringPlugin> Publishing Goal coordinates" << std::endl;
   geographic_msgs::GeoPoseStamped goal;
 
   // populating GeoPoseStamped... must be a better way?
-  goal.pose.position.latitude  = this->goalLat;
+  goal.pose.position.latitude = this->goalLat;
   goal.pose.position.longitude = this->goalLon;
-  goal.pose.position.altitude  = 0.0;
+  goal.pose.position.altitude = 0.0;
 
   const ignition::math::Quaternion<double> orientation(0.0, 0.0, this->goalYaw);
 

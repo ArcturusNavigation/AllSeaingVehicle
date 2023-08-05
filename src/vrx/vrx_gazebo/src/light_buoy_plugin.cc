@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <algorithm>
 #include <gazebo/rendering/Scene.hh>
 #include "vrx_gazebo/light_buoy_plugin.hh"
 
-const std::array<LightBuoyPlugin::Colors_t, 5> LightBuoyPlugin::kColors
-  = {LightBuoyPlugin::Colors_t(CreateColor(1.0, 0.0, 0.0, 1.0), "red"),
-     LightBuoyPlugin::Colors_t(CreateColor(0.0, 1.0, 0.0, 1.0), "green"),
-     LightBuoyPlugin::Colors_t(CreateColor(0.0, 0.0, 1.0, 1.0), "blue"),
-     LightBuoyPlugin::Colors_t(CreateColor(1.0, 1.0, 0.0, 1.0), "yellow"),
-     LightBuoyPlugin::Colors_t(CreateColor(0.0, 0.0, 0.0, 1.0), "off")};
+const std::array<LightBuoyPlugin::Colors_t, 5> LightBuoyPlugin::kColors = {
+  LightBuoyPlugin::Colors_t(CreateColor(1.0, 0.0, 0.0, 1.0), "red"),
+  LightBuoyPlugin::Colors_t(CreateColor(0.0, 1.0, 0.0, 1.0), "green"),
+  LightBuoyPlugin::Colors_t(CreateColor(0.0, 0.0, 1.0, 1.0), "blue"),
+  LightBuoyPlugin::Colors_t(CreateColor(1.0, 1.0, 0.0, 1.0), "yellow"),
+  LightBuoyPlugin::Colors_t(CreateColor(0.0, 0.0, 0.0, 1.0), "off")
+};
 
 //////////////////////////////////////////////////
-std_msgs::ColorRGBA LightBuoyPlugin::CreateColor(const double _r,
-  const double _g, const double _b, const double _a)
+std_msgs::ColorRGBA LightBuoyPlugin::CreateColor(const double _r, const double _g, const double _b, const double _a)
 {
   static std_msgs::ColorRGBA color;
   color.r = _r;
@@ -39,7 +39,7 @@ std_msgs::ColorRGBA LightBuoyPlugin::CreateColor(const double _r,
 }
 
 //////////////////////////////////////////////////
-uint8_t LightBuoyPlugin::IndexFromColor(const std::string &_color)
+uint8_t LightBuoyPlugin::IndexFromColor(const std::string& _color)
 {
   uint8_t index = 0u;
   for (auto color : kColors)
@@ -69,22 +69,19 @@ void LightBuoyPlugin::InitializeAllPatterns()
           continue;
 
         // The last two colors are always OFF.
-        this->allPatterns.push_back({i, j, k,
-          this->IndexFromColor("off"), this->IndexFromColor("off")});
+        this->allPatterns.push_back({ i, j, k, this->IndexFromColor("off"), this->IndexFromColor("off") });
       }
     }
   }
 }
 
 //////////////////////////////////////////////////
-LightBuoyPlugin::LightBuoyPlugin()
-  : gzNode(new gazebo::transport::Node())
+LightBuoyPlugin::LightBuoyPlugin() : gzNode(new gazebo::transport::Node())
 {
 }
 
 //////////////////////////////////////////////////
-void LightBuoyPlugin::ChangePatternTo(
-  const gazebo::ConstLightBuoyColorsPtr &_msg)
+void LightBuoyPlugin::ChangePatternTo(const gazebo::ConstLightBuoyColorsPtr& _msg)
 {
   pattern[0] = IndexFromColor(_msg->color_1());
   pattern[1] = IndexFromColor(_msg->color_2());
@@ -101,8 +98,7 @@ void LightBuoyPlugin::ChangePatternTo(
 }
 
 //////////////////////////////////////////////////
-void LightBuoyPlugin::Load(gazebo::rendering::VisualPtr _parent,
-  sdf::ElementPtr _sdf)
+void LightBuoyPlugin::Load(gazebo::rendering::VisualPtr _parent, sdf::ElementPtr _sdf)
 {
   GZ_ASSERT(_parent != nullptr, "Received NULL model pointer");
 
@@ -125,18 +121,15 @@ void LightBuoyPlugin::Load(gazebo::rendering::VisualPtr _parent,
   if (this->shuffleEnabled)
   {
     this->nh = ros::NodeHandle(this->ns);
-    this->changePatternSub = this->nh.subscribe(
-      this->rosShuffleTopic, 1, &LightBuoyPlugin::ChangePattern, this);
+    this->changePatternSub = this->nh.subscribe(this->rosShuffleTopic, 1, &LightBuoyPlugin::ChangePattern, this);
   }
 
   this->nextUpdateTime = this->scene->SimTime();
 
-  this->updateConnection = gazebo::event::Events::ConnectPreRender(
-    std::bind(&LightBuoyPlugin::Update, this));
+  this->updateConnection = gazebo::event::Events::ConnectPreRender(std::bind(&LightBuoyPlugin::Update, this));
 
   gzNode->Init();
-  this->colorSub = this->gzNode->Subscribe
-    (this->gzColorsTopic, &LightBuoyPlugin::ChangePatternTo, this, true);
+  this->colorSub = this->gzNode->Subscribe(this->gzColorsTopic, &LightBuoyPlugin::ChangePatternTo, this, true);
 }
 
 //////////////////////////////////////////////////
@@ -144,7 +137,7 @@ bool LightBuoyPlugin::ParseSDF(sdf::ElementPtr _sdf)
 {
   // Required: Sequence of colors.
   uint8_t i = 0u;
-  for (auto colorIndex : {"color_1", "color_2", "color_3"})
+  for (auto colorIndex : { "color_1", "color_2", "color_3" })
   {
     if (!_sdf->HasElement(colorIndex))
     {
@@ -156,8 +149,7 @@ bool LightBuoyPlugin::ParseSDF(sdf::ElementPtr _sdf)
     std::transform(color.begin(), color.end(), color.begin(), ::tolower);
 
     // Sanity check: color should be red, green, blue, yellow or off.
-    if (color != "red"  && color != "green" &&
-        color != "blue" && color != "yellow" && color != "off")
+    if (color != "red" && color != "green" && color != "blue" && color != "yellow" && color != "off")
     {
       ROS_ERROR("Invalid color [%s]", color.c_str());
       return false;
@@ -202,8 +194,7 @@ bool LightBuoyPlugin::ParseSDF(sdf::ElementPtr _sdf)
     {
       ROS_ERROR("<ros_shuffle_topic> missing");
     }
-    this->rosShuffleTopic = _sdf->GetElement
-      ("ros_shuffle_topic")->Get<std::string>();
+    this->rosShuffleTopic = _sdf->GetElement("ros_shuffle_topic")->Get<std::string>();
   }
 
   // optional gzColorsTopic
@@ -213,8 +204,7 @@ bool LightBuoyPlugin::ParseSDF(sdf::ElementPtr _sdf)
   }
   else
   {
-    this->gzColorsTopic = _sdf->GetElement
-      ("gz_colors_topic")->Get<std::string>();
+    this->gzColorsTopic = _sdf->GetElement("gz_colors_topic")->Get<std::string>();
   }
   // Optional: ROS namespace.
   if (_sdf->HasElement("robot_namespace"))
@@ -251,11 +241,11 @@ void LightBuoyPlugin::Update()
     this->state = 0;
 
   auto color = this->kColors[this->pattern[this->state]].first;
-  #if GAZEBO_MAJOR_VERSION >= 8
-    ignition::math::Color gazeboColor(color.r, color.g, color.b, color.a);
-  #else
-    gazebo::common::Color gazeboColor(color.r, color.g, color.b, color.a);
-  #endif
+#if GAZEBO_MAJOR_VERSION >= 8
+  ignition::math::Color gazeboColor(color.r, color.g, color.b, color.a);
+#else
+  gazebo::common::Color gazeboColor(color.r, color.g, color.b, color.a);
+#endif
   // Update the visuals.
   for (auto visual : this->visuals)
   {
@@ -268,7 +258,7 @@ void LightBuoyPlugin::Update()
 }
 
 //////////////////////////////////////////////////
-void LightBuoyPlugin::ChangePattern(const std_msgs::Empty::ConstPtr &_msg)
+void LightBuoyPlugin::ChangePattern(const std_msgs::Empty::ConstPtr& _msg)
 {
   this->pattern = this->allPatterns[this->allPatternsIdx];
   this->allPatternsIdx = (this->allPatternsIdx + 1) % this->allPatterns.size();

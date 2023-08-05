@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #ifndef VRX_GAZEBO_SCORING_PLUGIN_HH_
 #define VRX_GAZEBO_SCORING_PLUGIN_HH_
@@ -123,221 +123,288 @@
 class ScoringPlugin : public gazebo::WorldPlugin
 {
   /// \brief Class constructor.
-  public: ScoringPlugin();
+public:
+  ScoringPlugin();
 
   /// \brief Shutdown Gazebo and ROS.
-  public: void Exit();
+public:
+  void Exit();
 
   // Documentation inherited.
-  protected: void Load(gazebo::physics::WorldPtr _world,
-                       sdf::ElementPtr _sdf);
+protected:
+  void Load(gazebo::physics::WorldPtr _world, sdf::ElementPtr _sdf);
 
   /// \brief Get the current score.
   /// \return The current score.
-  protected: double Score() const;
+protected:
+  double Score() const;
 
   /// \brief Set the score.
   /// \param[in] _newScore The new score.
-  protected: void SetScore(double _newScore);
+protected:
+  void SetScore(double _newScore);
 
   /// \brief Get the task name.
   /// \return Task name.
-  protected: std::string TaskName() const;
+protected:
+  std::string TaskName() const;
 
   /// \brief Get the task state.
   /// \return Task state.
-  protected: std::string TaskState() const;
+protected:
+  std::string TaskState() const;
 
   /// \brief Elapsed time in the running state.
   /// \return The elapsed time in the running state.
-  protected: gazebo::common::Time ElapsedTime() const;
+protected:
+  gazebo::common::Time ElapsedTime() const;
 
   /// \brief Remaining time in the running state.
   /// \return The remaining time in the running state.
-  protected: gazebo::common::Time RemainingTime() const;
+protected:
+  gazebo::common::Time RemainingTime() const;
 
   /// \brief Finish the current task.
   /// This will set the "finished" flag in the task message to true.
-  protected: void Finish();
+protected:
+  void Finish();
 
   /// \brief Tries to release the vehicle in case is locked.
-  protected: virtual void ReleaseVehicle();
+protected:
+  virtual void ReleaseVehicle();
 
   /// \brief Set the score in case of timeout
-  protected: void SetTimeoutScore(double _timeoutScore);
+protected:
+  void SetTimeoutScore(double _timeoutScore);
 
   /// \brief Get the timeoutScore
-  protected: double GetTimeoutScore() const;
+protected:
+  double GetTimeoutScore() const;
 
   /// \brief Get running duration
-  protected: double GetRunningStateDuration() const;
+protected:
+  double GetRunningStateDuration() const;
 
   /// \brief Get the number of WAM-V collisions.
-  protected: unsigned int GetNumCollisions() const;
+protected:
+  unsigned int GetNumCollisions() const;
 
   /// \brief Callback executed at every world update.
-  private: void Update();
+private:
+  void Update();
 
   /// \brief Update all time-related variables.
-  private: void UpdateTime();
+private:
+  void UpdateTime();
 
   /// \brief Update the state of the current task.
-  private: void UpdateTaskState();
+private:
+  void UpdateTaskState();
 
   /// \brief Update the task stats message.
-  private: void UpdateTaskMessage();
+private:
+  void UpdateTaskMessage();
 
   /// \brief Publish the task stats over a ROS topic.
-  private: void PublishStats();
+private:
+  void PublishStats();
 
   /// \brief Callback executed when the task state transition into "ready".
-  private: virtual void OnReady();
+private:
+  virtual void OnReady();
 
   /// \brief Callback executed when the task state transition into "running".
-  private: virtual void OnRunning();
+private:
+  virtual void OnRunning();
 
   /// \brief Callback executed when the task state transition into "finished".
-  protected: virtual void OnFinished();
+protected:
+  virtual void OnFinished();
 
   /// \brief Callback executed when a collision is detected for the WAMV.
-  private: virtual void OnCollision();
+private:
+  virtual void OnCollision();
 
   /// \brief Callback function when collision occurs in the world.
   /// \param[in] _contacts List of all collisions from last simulation iteration
-  private: void OnCollisionMsg(ConstContactsPtr &_contacts);
+private:
+  void OnCollisionMsg(ConstContactsPtr& _contacts);
 
   /// \brief Parse all SDF parameters.
   /// \return True when all parameters were successfully parsed or false
   /// otherwise.
-  private: bool ParseSDFParameters();
+private:
+  bool ParseSDFParameters();
 
   /// \brief Parse the joints section of the SDF block.
   /// \return True when all parameters were successfully parsed or false
   /// otherwise.
-  private: bool ParseJoints();
+private:
+  bool ParseJoints();
 
   /// \brief A world pointer.
-  protected: gazebo::physics::WorldPtr world;
+protected:
+  gazebo::physics::WorldPtr world;
 
   /// \brief The name of the task.
-  protected: std::string taskName = "undefined";
+protected:
+  std::string taskName = "undefined";
 
   /// \brief The name of the vehicle to score.
-  protected: std::string vehicleName;
+protected:
+  std::string vehicleName;
 
   /// \brief Pointer to the vehicle to score.
-  protected: gazebo::physics::ModelPtr vehicleModel;
+protected:
+  gazebo::physics::ModelPtr vehicleModel;
 
   /// \brief Last collision time.
-  protected: gazebo::common::Time lastCollisionTime;
+protected:
+  gazebo::common::Time lastCollisionTime;
 
   /// \brief Silent mode enabled?
-  protected: bool silent = false;
+protected:
+  bool silent = false;
 
   /// \brief Spherical coordinates conversions.
-  protected: ignition::math::SphericalCoordinates sc;
+protected:
+  ignition::math::SphericalCoordinates sc;
 
   /// \brief gazebo node pointer
-  private: gazebo::transport::NodePtr gzNode;
+private:
+  gazebo::transport::NodePtr gzNode;
 
   /// \brief Collision detection node subscriber
-  private: gazebo::transport::SubscriberPtr collisionSub;
+private:
+  gazebo::transport::SubscriberPtr collisionSub;
 
   /// \brief gazebo server control publisher
-  private: gazebo::transport::PublisherPtr serverControlPub;
+private:
+  gazebo::transport::PublisherPtr serverControlPub;
 
   /// \brief Pointer to the update event connection.
-  private: gazebo::event::ConnectionPtr updateConnection;
+private:
+  gazebo::event::ConnectionPtr updateConnection;
 
   /// \brief Topic where the task stats are published.
-  private: std::string taskInfoTopic = "/vrx/task/info";
+private:
+  std::string taskInfoTopic = "/vrx/task/info";
 
   /// \brief Bool flag for debug.
-  private: bool debug = true;
+private:
+  bool debug = true;
 
   /// \brief Topic where debug collision is published.
-  private: std::string contactDebugTopic = "/vrx/debug/contact";
+private:
+  std::string contactDebugTopic = "/vrx/debug/contact";
 
   /// \brief The score.
-  private: double score = 0.0;
+private:
+  double score = 0.0;
 
   /// \brief Pointer to the SDF plugin element.
-  private: sdf::ElementPtr sdf;
+private:
+  sdf::ElementPtr sdf;
 
   /// \brief Duration (seconds) of the initial state.
-  private: double initialStateDuration = 30.0;
+private:
+  double initialStateDuration = 30.0;
 
   /// \brief Duration (seconds) of the ready state.
-  private: double readyStateDuration = 60.0;
+private:
+  double readyStateDuration = 60.0;
 
   /// \brief Duration (seconds) of the running state (max task time).
-  protected: double runningStateDuration = 300.0;
+protected:
+  double runningStateDuration = 300.0;
 
   /// \brief Absolute time specifying the start of the ready state.
-  private: gazebo::common::Time readyTime;
+private:
+  gazebo::common::Time readyTime;
 
   /// \brief Absolute time specifying the start of the running state.
-  private: gazebo::common::Time runningTime;
+private:
+  gazebo::common::Time runningTime;
 
   /// \brief Absolute time specifying the start of the finish state.
-  private: gazebo::common::Time finishTime;
+private:
+  gazebo::common::Time finishTime;
 
   /// \brief Current time (simulation).
-  private: gazebo::common::Time currentTime;
+private:
+  gazebo::common::Time currentTime;
 
   // \brief Elapsed time since the start of the task (running state).
-  private: gazebo::common::Time elapsedTime;
+private:
+  gazebo::common::Time elapsedTime;
 
   /// \brief Remaining time since the start of the task (running state).
-  private: gazebo::common::Time remainingTime;
+private:
+  gazebo::common::Time remainingTime;
 
   /// \brief Collision buffer.
-  private: float collisionBuffer = 3.0;
+private:
+  float collisionBuffer = 3.0;
 
   /// \brief Collisions counter.
-  private: int collisionCounter = 0;
+private:
+  int collisionCounter = 0;
 
   /// \brief Collision list.
-  private: std::vector<std::string> collisionList;
+private:
+  std::vector<std::string> collisionList;
 
   /// \brief Collisions timestamps.
-  private: std::vector<gazebo::common::Time> collisionTimestamps;
+private:
+  std::vector<gazebo::common::Time> collisionTimestamps;
 
   /// \brief Whether the current task has timed out or not.
-  private: bool timedOut = false;
+private:
+  bool timedOut = false;
 
   /// \brief Time at which the last message was sent.
-  private: gazebo::common::Time lastStatsSent = gazebo::common::Time::Zero;
+private:
+  gazebo::common::Time lastStatsSent = gazebo::common::Time::Zero;
 
   /// \brief The task state.
-  private: std::string taskState = "initial";
+private:
+  std::string taskState = "initial";
 
   /// \brief The next task message to be published.
-  protected: vrx_gazebo::Task taskMsg;
+protected:
+  vrx_gazebo::Task taskMsg;
 
   /// \brief ROS Contact Msg.
-  private: vrx_gazebo::Contact contactMsg;
+private:
+  vrx_gazebo::Contact contactMsg;
 
   /// \brief The name of the joints to be dettached during ReleaseVehicle().
-  private: std::vector<std::string> lockJointNames;
+private:
+  std::vector<std::string> lockJointNames;
 
   /// \brief ROS node handle.
-  private: std::unique_ptr<ros::NodeHandle> rosNode;
+private:
+  std::unique_ptr<ros::NodeHandle> rosNode;
 
   /// \brief Publisher for the task state.
-  protected: ros::Publisher taskPub;
+protected:
+  ros::Publisher taskPub;
 
   /// \brief Publisher for the collision.
-  private: ros::Publisher contactPub;
+private:
+  ros::Publisher contactPub;
 
   /// \brief Score in case of timeout - added for Navigation task
-  private: double timeoutScore = -1;
+private:
+  double timeoutScore = -1;
 
   /// \brief Whether to shut down after last gate is crossed.
-  private: bool perPluginExitOnCompletion = true;
+private:
+  bool perPluginExitOnCompletion = true;
 
   /// \brief Number of WAM-V collisions.
-  private: unsigned int numCollisions = 0u;
+private:
+  unsigned int numCollisions = 0u;
 };
 
 #endif

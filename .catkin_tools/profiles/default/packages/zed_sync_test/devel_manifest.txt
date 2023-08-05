@@ -1,6 +1,0 @@
-perception/zed-ros-examples/tests/zed_sync_test
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_sync_test/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_sync_test/share/zed_sync_test/cmake/zed_sync_testConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/zed_sync_test/cmake/zed_sync_testConfig.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_sync_test/share/zed_sync_test/cmake/zed_sync_testConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/zed_sync_test/cmake/zed_sync_testConfig-version.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_sync_test/lib/libZEDSyncTest.so /home/jacobdr/AllSeaingVehicle/devel/lib/libZEDSyncTest.so
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_sync_test/lib/pkgconfig/zed_sync_test.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/zed_sync_test.pc
