@@ -1,5 +1,8 @@
+IMG_HEIGHT = 360
+IMG_WIDTH = 640
+
 BUOY_CLASSES = {
-    "RED": -1,
+    "RED": 4,
     "YELLOW": 6,
     "GREEN": 2
 }

@@ -1,4 +1,7 @@
 <launch>
-    <node pkg="perception_suite" type="segmentation" name="segmentation_node" output="screen"/>
-    <node pkg="perception_suite" type="cluster" name="cluster_node" output="screen"/>
+
+    <node pkg="perception_suite" type="yolov5_detector.py" name="yolov5_detector" output="screen"/>
+    <node pkg="perception_suite" type="buoy_detector.py" name="buoy_detector" output="screen"/>
+    <node pkg="perception_suite" type="bbox_filter.py" name="bbox_filter" output="screen"/>
+
 </launch>

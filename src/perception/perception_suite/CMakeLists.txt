@@ -52,6 +52,7 @@ catkin_install_python(PROGRAMS
 	scripts/yolov5_detector.py
 	scripts/yolov5_image.py
 	scripts/buoy_detector.py
+	scripts/bbox_filter.py
 	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
