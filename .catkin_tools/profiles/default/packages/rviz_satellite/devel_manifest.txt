@@ -1,0 +1,6 @@
+navigation/rviz_satellite
+/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_satellite/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
+/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_satellite/share/rviz_satellite/cmake/rviz_satelliteConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/rviz_satellite/cmake/rviz_satelliteConfig-version.cmake
+/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_satellite/share/rviz_satellite/cmake/rviz_satelliteConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/rviz_satellite/cmake/rviz_satelliteConfig.cmake
+/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_satellite/lib/librviz_satellite.so /home/jacobdr/AllSeaingVehicle/devel/lib/librviz_satellite.so
+/home/jacobdr/AllSeaingVehicle/devel/.private/rviz_satellite/lib/pkgconfig/rviz_satellite.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/rviz_satellite.pc
