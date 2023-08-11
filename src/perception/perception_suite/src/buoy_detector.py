@@ -8,6 +8,7 @@ import rospy
 import cv_bridge 
 import cv2
 from perception_suite.msg import LabeledBoundingBox2D, LabeledBoundingBox2DArray
+from geometry_msgs.msg import Point
 from sensor_msgs.msg import Image
 from utility.geometry import Vec2D
 from utility.constants import BUOY_CLASSES, IMG_WIDTH, IMG_HEIGHT
@@ -25,21 +26,22 @@ class BuoyDetector():
         )]
 
         self.bbox_sub = rospy.Subscriber(
-            '/perception_suite/filtered_boxes',
-            #'/perception_suite/bounding_boxes',
+            "/perception_suite/filtered_boxes",
+            #"/perception_suite/bounding_boxes",
             LabeledBoundingBox2DArray,
             self.bbox_callback,
             queue_size=1
         )
         self.img_sub = rospy.Subscriber(
-            '/zed2i/zed_node/rgb/image_rect_color', 
+            "/zed2i/zed_node/rgb/image_rect_color", 
             Image,
             self.img_callback, 
             queue_size=1, 
             buff_size=2**24,
         )
-        self.bbox_pub = rospy.Publisher('/perception_suite/buoy_boxes', LabeledBoundingBox2DArray, queue_size=1)
-        self.img_pub = rospy.Publisher('/perception_suite/buoy_image', Image, queue_size=1)
+        self.bbox_pub = rospy.Publisher("/perception_suite/buoy_boxes", LabeledBoundingBox2DArray, queue_size=1)
+        self.img_pub = rospy.Publisher("/perception_suite/buoy_image", Image, queue_size=1)
+        self.center_pub = rospy.Publisher("/perception_suite/buoy_center", Point, queue_size=1)
 
     def avg_center(self):
         center = Vec2D()
@@ -121,6 +123,12 @@ class BuoyDetector():
             (255, 0, 0),
             2
         )
+
+        # Publish center
+        center_point = Point()
+        center_point.x = center.x
+        center_point.y = center.y
+        self.center_pub.publish(center_point)
 
         self.img_pub.publish(self.bridge.cv2_to_imgmsg(img, "rgb8"))
 

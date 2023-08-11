@@ -58,7 +58,7 @@ class BBoxFilter():
                 if iou == 0:
                     distance = float("inf")
                 else:
-                    distance = 1 / (self.calculate_iou(curr_bbox, prev_bbox))
+                    distance = 1 / iou
                 distance_matrix[i, j] = distance
 
         # Calculate pairs that are closest to each other

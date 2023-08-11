@@ -27,6 +27,9 @@ class Yolov5Image():
         path_cardinal_model = rospack.get_path("perception_suite") + "/model/best_cardinal_marks.pt"
         self.cardinal_model = torch.hub.load(path_hubconfig, 'custom', path=path_cardinal_model, source='local')
 
+        # Model options
+        self.color_model.classes = [2, 4]
+
         # Subscribers and publishers
         bbox_pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
         img_pub = rospy.Publisher('/perception_suite/segmented_image', sensor_msgs.msg.Image, queue_size=1)
