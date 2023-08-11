@@ -17,6 +17,8 @@ find_package(catkin REQUIRED COMPONENTS
 	visualization_msgs
 )
 
+catkin_python_setup()
+
 find_package(OpenCV REQUIRED)
 
 add_message_files(
@@ -49,10 +51,10 @@ include_directories(
 #############
 
 catkin_install_python(PROGRAMS
-	scripts/yolov5_detector.py
-	scripts/yolov5_image.py
-	scripts/buoy_detector.py
-	scripts/bbox_filter.py
+	src/yolov5_detector.py
+	src/yolov5_image.py
+	src/buoy_detector.py
+	src/bbox_filter.py
 	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

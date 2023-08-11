@@ -13,6 +13,7 @@ from perception_suite.msg import LabeledBoundingBox2D, LabeledBoundingBox2DArray
 from sensor_msgs.msg import Image
 from utility.geometry import Vec2D
 from utility.constants import IMG_WIDTH, IMG_HEIGHT
+from perception_suite.utils import *
 
 class BBoxFilter():
     def __init__(self):
@@ -47,38 +48,13 @@ class BBoxFilter():
         self.remembered_bboxes = list(filter(lambda x: x[0].max_x < IMG_WIDTH, self.remembered_bboxes))
         self.remembered_bboxes = list(filter(lambda x: x[0].max_y < IMG_HEIGHT, self.remembered_bboxes))
 
-    def calculate_iou(self, box1, box2):
-        
-        # Calculate the coordinates of the intersection rectangle
-        x_left = max(box1.min_x, box2.min_x)
-        x_right = min(box1.max_x, box2.max_x)
-        y_top = max(box1.min_y, box2.min_y)
-        y_bottom = min(box1.max_y, box2.max_y)
-        
-        # Calculate the area of the intersection rectangle
-        if x_right < x_left or y_bottom < y_top:
-            return 0
-        else:
-            intersection_area = (x_right - x_left) * (y_bottom - y_top)
-        
-        # Calculate the area of each box
-        box1_area = (box1.max_x - box1.min_x) * (box1.max_y - box1.min_y)
-        box2_area = (box2.max_x - box2.min_x) * (box2.max_y - box2.min_y)
-        
-        # Calculate the Union area
-        union_area = box1_area + box2_area - intersection_area
-        
-        # Calculate IoU
-        iou = intersection_area / union_area
-        return iou
-
     def bbox_matching(self, curr_bboxes):
         
         # Calculate distance between two objects based on IoU
         distance_matrix = np.empty((len(curr_bboxes), len(self.remembered_bboxes)))
         for i, curr_bbox in enumerate(curr_bboxes):
             for j, (prev_bbox, _) in enumerate(self.remembered_bboxes):
-                iou = self.calculate_iou(curr_bbox, prev_bbox)
+                iou = calculate_iou(curr_bbox, prev_bbox)
                 if iou == 0:
                     distance = float("inf")
                 else:

@@ -10,7 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
 	message_generation
 	roslaunch
 )
-roslaunch_add_file_check(launch)
 
 catkin_python_setup()
 
@@ -57,15 +56,15 @@ include_directories(
 #############
 
 catkin_install_python(PROGRAMS
-	scripts/ardupilot.py
-	scripts/navigation_pilot.py
-	scripts/waypoint_sim.py
-	scripts/tf2.py
-	scripts/local_planner.py
-	scripts/mode_listener.py
-	scripts/pilot_shifter.py
-	scripts/open_loop_distance.py
-	scripts/velocity_control.py
-	scripts/pwm_sender.py
+	src/ardupilot.py
+	src/navigation_pilot.py
+	src/waypoint_sim.py
+	src/tf2.py
+	src/local_planner.py
+	src/mode_listener.py
+	src/pilot_shifter.py
+	src/open_loop_distance.py
+	src/velocity_control.py
+	src/pwm_sender.py
 	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

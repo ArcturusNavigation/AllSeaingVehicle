@@ -26,6 +26,7 @@ class BuoyDetector():
 
         self.bbox_sub = rospy.Subscriber(
             '/perception_suite/filtered_boxes',
+            #'/perception_suite/bounding_boxes',
             LabeledBoundingBox2DArray,
             self.bbox_callback,
             queue_size=1

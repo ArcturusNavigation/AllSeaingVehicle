@@ -19,11 +19,11 @@ catkin_package()
 #############
 
 catkin_install_python(PROGRAMS
-	scripts/ball_launch.py
-	scripts/ocean_cleanup_nav.py
-	scripts/roboboat_planner.py
-	scripts/skeeball_task.py
-	scripts/turtle_nest.py
-	scripts/water_gun_task.py
+	src/ball_launch.py
+	src/ocean_cleanup_nav.py
+	src/roboboat_planner.py
+	src/skeeball_task.py
+	src/turtle_nest.py
+	src/water_gun_task.py
 	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
