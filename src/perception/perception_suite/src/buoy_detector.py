@@ -8,6 +8,7 @@ import rospy
 import cv_bridge 
 import cv2
 import math
+import numpy as np
 from perception_suite.msg import LabeledBoundingBox2D, LabeledBoundingBox2DArray
 from geometry_msgs.msg import Point
 from sensor_msgs.msg import Image
@@ -136,9 +137,10 @@ class BuoyDetector():
 
         # Creating heading error object
         heading_error = Float32MultiArray()
+        heading_error.data = np.zeros(2)
 
         # Calculate heading error in x coord to be used by controller suite
-        heading_error_px = (IMG_WIDTH / 2.0) - center_point.max
+        heading_error_px = (IMG_WIDTH / 2.0) - center_point.x
 
 
         # Assumes distance to buoy from robot is 2 meters, this defined how far to the left the robot can see
@@ -153,7 +155,7 @@ class BuoyDetector():
         heading_error.data[0] = heading_error_px * pix_to_dist
 
         # Heading angle from boat's heading
-        heading_error.data[1] = math.atan(heading_error[0] / 1.0)
+        heading_error.data[1] = math.atan(heading_error.data[0] / 1.0)
 
         # Publish heading error for controller
         self.buoy_heading_pub.publish(heading_error)
