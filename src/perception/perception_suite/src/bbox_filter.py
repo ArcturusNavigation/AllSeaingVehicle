@@ -61,29 +61,6 @@ class BBoxFilter():
                     distance = 1 / iou
                 distance_matrix[i, j] = distance
 
-        # Calculate pairs that are closest to each other
-        pairs = {}
-        while distance_matrix.size != 0 and np.min(distance_matrix) != float("inf"):
-            min_row, min_col = divmod(distance_matrix.argmin(), distance_matrix.shape[1]) 
-            pairs[min_row] = min_col
-            distance_matrix[min_row, :] = float("inf")
-            distance_matrix[:, min_col] = float("inf")
-
-        # For matched pairs, find how much the boxes moved on average
-        avg_move = Vec2D()
-        for i, j in pairs.items():
-            curr_center = Vec2D(
-                (curr_bboxes[i].max_x + curr_bboxes[i].min_x) / 2,
-                (curr_bboxes[i].max_y + curr_bboxes[i].min_y) / 2
-            )
-            rem_center = Vec2D(
-                (self.remembered_bboxes[j][0].max_x + self.remembered_bboxes[j][0].min_x) / 2,
-                (self.remembered_bboxes[j][0].max_y + self.remembered_bboxes[j][0].min_y) / 2
-            )
-            avg_move += curr_center - rem_center
-        if pairs:
-            avg_move = (avg_move / len(pairs)).to_int()
-
         # Move remembered bboxes by this average
         for i in range(len(self.remembered_bboxes)):
             self.remembered_bboxes[i][0].min_x += avg_move.x

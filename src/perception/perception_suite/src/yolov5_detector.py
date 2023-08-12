@@ -20,7 +20,8 @@ class Yolov5Detector():
 
         # Get pretrained yolov5 models for colored buoys and cardinal markers
         path_hubconfig = f"/home/{getpass.getuser()}/yolov5"
-        path_color_model = rospack.get_path("perception_suite") + "/model/njord_weights_color1.pt"
+        #path_color_model = rospack.get_path("perception_suite") + "/model/njord_weights_color1.pt"
+        path_color_model = rospack.get_path("perception_suite") + "/model/buoy_detection_best_weights_v7.pt"
         self.color_model = torch.hub.load(path_hubconfig, 'custom', path=path_color_model, source='local')
         path_cardinal_model = rospack.get_path("perception_suite") + "/model/njord_weights_cardinal1.pt"
         self.cardinal_model = torch.hub.load(path_hubconfig, 'custom', path=path_cardinal_model, source='local')
