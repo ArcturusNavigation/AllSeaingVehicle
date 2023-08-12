@@ -61,12 +61,13 @@ class BBoxFilter():
                     distance = 1 / iou
                 distance_matrix[i, j] = distance
 
-        # Move remembered bboxes by this average
-        for i in range(len(self.remembered_bboxes)):
-            self.remembered_bboxes[i][0].min_x += avg_move.x
-            self.remembered_bboxes[i][0].max_x += avg_move.x
-            self.remembered_bboxes[i][0].min_y += avg_move.y
-            self.remembered_bboxes[i][0].max_y += avg_move.y
+         # Calculate pairs that are closest to each other
+        pairs = {}
+        while distance_matrix.size != 0 and np.min(distance_matrix) != float("inf"):
+            min_row, min_col = divmod(distance_matrix.argmin(), distance_matrix.shape[1]) 
+            pairs[min_row] = min_col
+            distance_matrix[min_row, :] = float("inf")
+            distance_matrix[:, min_col] = float("inf")
 
         # For current bboxes in pairs, modify remembered bboxes. For others add them to remembered bboxes.
         for i, curr_bbox in enumerate(curr_bboxes):
