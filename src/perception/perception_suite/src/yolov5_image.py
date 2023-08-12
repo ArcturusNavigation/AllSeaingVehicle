@@ -22,7 +22,8 @@ class Yolov5Image():
         
         # Get pretrained yolov5 models for colored buoys and cardinal markers
         path_hubconfig = f"/home/{getpass.getuser()}/yolov5"
-        path_color_model = rospack.get_path("perception_suite") + "/model/njord_weights_color1.pt"
+        path_color_model = rospack.get_path("perception_suite") + "/model/buoy_detection_best_weights_v7.pt"
+        #path_color_model = rospack.get_path("perception_suite") + "/model/njord_weights_color2.pt"
         self.color_model = torch.hub.load(path_hubconfig, 'custom', path=path_color_model, source='local')
         path_cardinal_model = rospack.get_path("perception_suite") + "/model/njord_weights_cardinal1.pt"
         self.cardinal_model = torch.hub.load(path_hubconfig, 'custom', path=path_cardinal_model, source='local')
@@ -39,7 +40,8 @@ class Yolov5Image():
         while not rospy.is_shutdown():
 
             # Get image
-            img = PIL.Image.open(rospack.get_path("perception_suite") + "/images/test_cardinal_west.jpg")
+            #img = PIL.Image.open(rospack.get_path("perception_suite") + "/images/test_color_buoy_2.jpg")
+            img = PIL.Image.open(rospack.get_path("perception_suite") + "/images/small_buoy_lane_test.jpg")
             img = np.array(img.convert("RGB"))
 
             # Get image predictions for colored buoys and cardinal markers
@@ -49,7 +51,7 @@ class Yolov5Image():
             cardinal_preds = cardinal_results.pandas().xyxy[0]
 
             rospy.loginfo(color_preds)
-            rospy.loginfo(cardinal_preds)
+            #rospy.loginfo(cardinal_preds)
 
             # Set header of bboxes
             bboxes = LabeledBoundingBox2DArray()
