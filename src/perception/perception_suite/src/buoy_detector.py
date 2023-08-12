@@ -7,11 +7,13 @@ https://pypi.org/project/yolo5/
 import rospy
 import cv_bridge 
 import cv2
+import math
 from perception_suite.msg import LabeledBoundingBox2D, LabeledBoundingBox2DArray
 from geometry_msgs.msg import Point
 from sensor_msgs.msg import Image
+from std_msgs.msg import Float32MultiArray
 from utility.geometry import Vec2D
-from utility.constants import BUOY_CLASSES, IMG_WIDTH, IMG_HEIGHT
+from utility.constants import BUOY_CLASSES, IMG_WIDTH, IMG_HEIGHT, ZED_FOV
 
 class BuoyDetector():
     def __init__(self):
@@ -24,6 +26,7 @@ class BuoyDetector():
             IMG_WIDTH / 2,
             3 * IMG_HEIGHT / 4
         )]
+        self.heading_error = 0
 
         self.bbox_sub = rospy.Subscriber(
             "/perception_suite/filtered_boxes",
@@ -42,6 +45,7 @@ class BuoyDetector():
         self.bbox_pub = rospy.Publisher("/perception_suite/buoy_boxes", LabeledBoundingBox2DArray, queue_size=1)
         self.img_pub = rospy.Publisher("/perception_suite/buoy_image", Image, queue_size=1)
         self.center_pub = rospy.Publisher("/perception_suite/buoy_center", Point, queue_size=1)
+        self.buoy_heading_pub = rospy.Publisher("/perception_suite/buoy_heading_error", Float32MultiArray, queue_size=1)
 
     def avg_center(self):
         center = Vec2D()
@@ -129,6 +133,30 @@ class BuoyDetector():
         center_point.x = center.x
         center_point.y = center.y
         self.center_pub.publish(center_point)
+
+        # Creating heading error object
+        heading_error = Float32MultiArray()
+
+        # Calculate heading error in x coord to be used by controller suite
+        heading_error_px = (IMG_WIDTH / 2.0) - center_point.max
+
+
+        # Assumes distance to buoy from robot is 2 meters, this defined how far to the left the robot can see
+        abstracted_fov_dist = 2 * math.tan(math.radians(ZED_FOV) / 1.0) 
+
+        # Converts pixels to distance space
+        pix_to_dist = abstracted_fov_dist / (IMG_WIDTH / 1.0)
+
+        # Turn heading error into a simulated distance and then calculate heading error angle from there
+
+        # Distance from center in camera frame
+        heading_error.data[0] = heading_error_px * pix_to_dist
+
+        # Heading angle from boat's heading
+        heading_error.data[1] = math.atan(heading_error[0] / 1.0)
+
+        # Publish heading error for controller
+        self.buoy_heading_pub.publish(heading_error)
 
         self.img_pub.publish(self.bridge.cv2_to_imgmsg(img, "rgb8"))
 
