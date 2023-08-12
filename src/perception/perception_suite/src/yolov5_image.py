@@ -22,14 +22,16 @@ class Yolov5Image():
         
         # Get pretrained yolov5 models for colored buoys and cardinal markers
         path_hubconfig = f"/home/{getpass.getuser()}/yolov5"
-        path_color_model = rospack.get_path("perception_suite") + "/model/buoy_detection_best_weights_v7.pt"
-        #path_color_model = rospack.get_path("perception_suite") + "/model/njord_weights_color2.pt"
+        #path_color_model = rospack.get_path("perception_suite") + "/model/buoy_detection_best_weights_v7.pt"
+        path_color_model = rospack.get_path("perception_suite") + "/model/NJORD_WEIGHTS_COLOR_FINAL.pt"
         self.color_model = torch.hub.load(path_hubconfig, 'custom', path=path_color_model, source='local')
+
+        
         path_cardinal_model = rospack.get_path("perception_suite") + "/model/njord_weights_cardinal1.pt"
         self.cardinal_model = torch.hub.load(path_hubconfig, 'custom', path=path_cardinal_model, source='local')
 
         # Model options
-        self.color_model.classes = [2, 4]
+        # self.color_model.classes = [2, 4]
 
         # Subscribers and publishers
         bbox_pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
@@ -41,7 +43,7 @@ class Yolov5Image():
 
             # Get image
             #img = PIL.Image.open(rospack.get_path("perception_suite") + "/images/test_color_buoy_2.jpg")
-            img = PIL.Image.open(rospack.get_path("perception_suite") + "/images/small_buoy_lane_test.jpg")
+            img = PIL.Image.open(rospack.get_path("perception_suite") + "/images/njord_buoy_test.jpg")
             img = np.array(img.convert("RGB"))
 
             # Get image predictions for colored buoys and cardinal markers
