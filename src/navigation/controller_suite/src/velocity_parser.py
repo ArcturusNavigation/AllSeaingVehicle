@@ -13,6 +13,7 @@ class PWMConverter:
     DRIFT_MULTIPLIER = 1.0 # Multiplier to correct for drift when moving straight
 
     def __init__(self):
+
         rospy.init_node('pwm_converter', anonymous=True)
         # Subscribe to the command velocity topic
         rospy.Subscriber("/cmd_vel", Twist, self.calc_pwm_values)
