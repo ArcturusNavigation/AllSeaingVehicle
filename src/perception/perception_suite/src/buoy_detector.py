@@ -22,7 +22,7 @@ class BuoyDetector():
 
         self.bbox_mins = {}
         self.bbox_maxes = {}
-        self.num_avg = 5
+        self.num_avg = 20
         self.centers = [Vec2D(
             IMG_WIDTH / 2,
             3 * IMG_HEIGHT / 4
@@ -30,7 +30,8 @@ class BuoyDetector():
         self.heading_error = 0
 
         self.bbox_sub = rospy.Subscriber(
-            "/perception_suite/filtered_boxes",
+            #"/perception_suite/filtered_boxes",
+            "/perception_suite/bounding_boxes",
             LabeledBoundingBox2DArray,
             self.bbox_callback,
             queue_size=1
@@ -83,10 +84,18 @@ class BuoyDetector():
 
         # Accumulate center positions
         if BUOY_CLASSES["RED"] in self.bbox_mins and BUOY_CLASSES["GREEN"] in self.bbox_mins:
-            center = (self.bbox_mins[BUOY_CLASSES["RED"]] + 
-                      self.bbox_maxes[BUOY_CLASSES["RED"]] + 
-                      self.bbox_mins[BUOY_CLASSES["GREEN"]] + 
-                      self.bbox_maxes[BUOY_CLASSES["GREEN"]]) / 4
+
+            reds = (self.bbox_mins[BUOY_CLASSES["RED"]] + 
+                    self.bbox_maxes[BUOY_CLASSES["RED"]])
+            greens = (self.bbox_mins[BUOY_CLASSES["GREEN"]] +
+                      self.bbox_maxes[BUOY_CLASSES["GREEN"]])
+            
+            if (BUOY_CLASSES["WEST"] in self.bbox_mins):
+                reds = self.bbox_mins[BUOY_CLASSES["WEST"]] + self.bbox_maxes[BUOY_CLASSES["WEST"]]
+            elif (BUOY_CLASSES["EAST"] in self.bbox_mins):
+                greens = self.bbox_mins[BUOY_CLASSES["EAST"]] + self.bbox_maxes[BUOY_CLASSES["EAST"]]
+
+            center = (reds + greens) / 4
             self.centers.append(center)
         else:
             self.centers.append(self.avg_center())
@@ -111,7 +120,7 @@ class BuoyDetector():
                 4
             )
 
-        # Draw crosshair
+        # Draw crosshairs
         center = self.avg_center()
         cv2.line(
             img,
@@ -125,6 +134,20 @@ class BuoyDetector():
             (center.x, center.y - 10),
             (center.x, center.y + 10),
             (255, 0, 0),
+            2
+        )
+        cv2.line(
+            img,
+            (center.x - 10, IMG_HEIGHT // 2),
+            (center.x + 10, IMG_HEIGHT // 2),
+            (0, 255, 0),
+            2
+        )
+        cv2.line(
+            img,
+            (center.x, IMG_HEIGHT // 2 - 10),
+            (center.x, IMG_HEIGHT // 2 + 10),
+            (0, 255, 0),
             2
         )
 
