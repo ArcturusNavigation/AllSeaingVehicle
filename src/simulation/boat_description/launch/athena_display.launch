@@ -12,9 +12,8 @@
     name="robot_state_publisher"
     pkg="robot_state_publisher"
     type="robot_state_publisher" />
-  <node
-    name="rviz"
-    pkg="rviz"
-    type="rviz"
-    />
+  
+  <!-- Start rviz with a pre-configured AerialMap instance. It will use the fake GPS fix from above. -->
+  <node pkg="rviz" type="rviz" name="robot_rviz" args="-d $(find boat_description)/rviz/boat_display.rviz"/>
+
 </launch>

@@ -1,14 +1,13 @@
 Panels:
   - Class: rviz/Displays
-    Help Height: 138
+    Help Height: 78
     Name: Displays
     Property Tree Widget:
       Expanded:
         - /Global Options1
         - /Status1
-        - /RobotModel1
       Splitter Ratio: 0.5
-    Tree Height: 627
+    Tree Height: 719
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -81,21 +80,10 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        gps_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        gps_stand_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         imu_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
         left_hull:
           Alpha: 1
           Show Axes: false
@@ -131,11 +119,6 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        velodyne_lidar:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
       Name: RobotModel
       Robot Description: robot_description
       TF Prefix: ""
@@ -151,17 +134,11 @@ Visualization Manager:
         All Enabled: true
         base_link:
           Value: true
-        base_link_frd:
-          Value: true
         camera_link:
           Value: true
         camera_stand:
           Value: true
         dummy_base_link:
-          Value: true
-        gps_link:
-          Value: true
-        gps_stand_link:
           Value: true
         imu_link:
           Value: true
@@ -169,43 +146,15 @@ Visualization Manager:
           Value: true
         left_motor_mount:
           Value: true
+        left_propeller_link:
+          Value: true
         lidar_stand:
-          Value: true
-        map:
-          Value: true
-        map_ned:
-          Value: true
-        odom:
-          Value: true
-        odom_ned:
           Value: true
         right_hull:
           Value: true
         right_motor_mount:
           Value: true
-        velodyne_lidar:
-          Value: true
-        zed2i_baro_link:
-          Value: true
-        zed2i_base_link:
-          Value: true
-        zed2i_camera_center:
-          Value: true
-        zed2i_imu_link:
-          Value: true
-        zed2i_left_camera_frame:
-          Value: true
-        zed2i_left_camera_optical_frame:
-          Value: true
-        zed2i_mag_link:
-          Value: true
-        zed2i_right_camera_frame:
-          Value: true
-        zed2i_right_camera_optical_frame:
-          Value: true
-        zed2i_temp_left_link:
-          Value: true
-        zed2i_temp_right_link:
+        right_propeller_link:
           Value: true
       Marker Alpha: 1
       Marker Scale: 1
@@ -215,52 +164,25 @@ Visualization Manager:
       Show Names: true
       Tree:
         dummy_base_link:
-          {}
-        map:
-          map_ned:
-            {}
-          odom:
-            base_link:
-              base_link_frd:
+          base_link:
+            camera_stand:
+              camera_link:
                 {}
-              camera_stand:
-                camera_link:
-                  {}
-              gps_stand_link:
-                gps_link:
-                  {}
-              imu_link:
-                {}
-              left_hull:
-                {}
-              left_motor_mount:
-                {}
-              lidar_stand:
-                velodyne_lidar:
-                  {}
-              right_hull:
-                {}
-              right_motor_mount:
-                {}
-              zed2i_base_link:
-                zed2i_camera_center:
-                  zed2i_baro_link:
-                    {}
-                  zed2i_left_camera_frame:
-                    zed2i_imu_link:
-                      {}
-                    zed2i_left_camera_optical_frame:
-                      {}
-                    zed2i_temp_left_link:
-                      {}
-                  zed2i_mag_link:
-                    {}
-                  zed2i_right_camera_frame:
-                    zed2i_right_camera_optical_frame:
-                      {}
-                    zed2i_temp_right_link:
-                      {}
-            odom_ned:
+            imu_link:
+              {}
+            left_hull:
+              {}
+            left_motor_mount:
+              {}
+            left_propeller_link:
+              {}
+            lidar_stand:
+              {}
+            right_hull:
+              {}
+            right_motor_mount:
+              {}
+            right_propeller_link:
               {}
       Update Interval: 0
       Value: true
@@ -292,7 +214,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 23.116209030151367
+      Distance: 1.0167468786239624
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -308,9 +230,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.45039814710617065
+      Pitch: 0.1603984832763672
       Target Frame: <Fixed Frame>
-      Yaw: 1.6203949451446533
+      Yaw: 0.47541332244873047
     Saved: ~
 Window Geometry:
   Displays:
@@ -318,7 +240,7 @@ Window Geometry:
   Height: 1016
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001f70000033afc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000033a000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015f0000033afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003d0000033a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007380000005efc0100000002fb0000000800540069006d0065010000000000000738000003bc00fffffffb0000000800540069006d00650100000000000004500000000000000000000003d60000033a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001560000035afc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000035a000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f0000035afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003d0000035a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007380000003efc0100000002fb0000000800540069006d0065010000000000000738000003bc00fffffffb0000000800540069006d00650100000000000004500000000000000000000004c70000035a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

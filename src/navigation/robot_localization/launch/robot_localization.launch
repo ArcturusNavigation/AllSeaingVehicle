@@ -3,7 +3,7 @@
 	<arg name="model" />
   	<param
     name="robot_description"
-    textfile="$(find boat_description)/urdf/athena.urdf" />
+    textfile="$(find boat_description)/urdf/norway.urdf" />
 
  	<node
 		name="robot_state_publisher"
@@ -22,7 +22,7 @@
 	</node> -->
 
 	 <!-- Start rviz with a pre-configured AerialMap instance. It will use the fake GPS fix from above. -->
-    <node pkg="rviz" type="rviz" name="gps_rviz" args="-d $(find robot_localization)/rviz/boat_gps.rviz"/>
+    <node pkg="rviz" type="rviz" name="gps_rviz" args="-d $(find rviz_satellite)/launch/boat_gps.rviz"/>
 
 	<!-- Start rviz with a pre-configured AerialMap instance. It will use the fake GPS fix from above. -->
     <node pkg="rviz" type="rviz" name="robot_rviz" args="-d $(find robot_localization)/rviz/boat_visualizer.rviz"/>

@@ -8,7 +8,7 @@ class PWMConverter:
     # Constants: Set these values according to your robot's requirements
     K_P = 10 # Proportional gain for the linear velocity control
     b = 5.0 # Offset for linear velocity control
-    PWM_TURN = 100 # PWM value for turning
+    PWM_TURN = 500 # PWM value for turning
     PWM_MIN = 10 # Minimum PWM value to activate motors
     DRIFT_MULTIPLIER = 1.0 # Multiplier to correct for drift when moving straight
 

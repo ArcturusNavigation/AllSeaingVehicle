@@ -1,0 +1,19 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="swri_transform" args="0 0 0 0 0 0 /map /dummy 100"  />
+
+    <node pkg="swri_transform_util" type="initialize_origin.py" name="initialize_origin" >
+        <param name="local_xy_frame" value="/map"/>
+        <param name="local_xy_origin" value="auto"/>
+        <rosparam param="local_xy_origins">
+            [{ name: local,
+             latitude: 63.441714,
+             longitude: 10.423756,
+             altitude: 0,
+             heading: 0.0}]
+        </rosparam>
+        <remap from="fix" to="/mavros/global_position/raw/fix"/>
+    </node>
+
+    <node pkg="mapviz" type="mapviz" name="mapviz"/>
+</launch>
+
