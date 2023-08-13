@@ -6,8 +6,7 @@ ZED_FOV = 107
 
 BUOY_CLASSES = {
     "EAST": 0,
-    "WEST": 1,
-    "GREEN": 2,
-    "RED": 4,
-    "YELLOW": 6,
+    "GREEN": 1,
+    "RED": 2,
+    "WEST": 3,
 }
