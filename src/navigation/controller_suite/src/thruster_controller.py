@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import rospy
 from geometry_msgs.msg import Twist
 from mavros_msgs.srv import CommandLong
@@ -9,6 +8,8 @@ class ThrusterController:
 
     K_P_ROT = 5
     K_P_LIN = 5
+    ROT_THRESHOLD = 0.2 # rad/s
+    LIN_THRESHOLD = 0.5 # m/s
 
     def __init__(self):
 
@@ -40,23 +41,22 @@ class ThrusterController:
     def calc_pwm_values(self, cmd_vel):
 
         # Proportional error
-        delta_pwm_lin = self.K_P_LIN * (cmd_vel.linear.x - self.vel.linear.x)
-        delta_pwm_rot = self.K_P_ROT * (cmd_vel.angular.z - self.vel.angular.z)
+        lin_diff = cmd_vel.linear.x - self.vel.linear.x
+        rot_diff = cmd_vel.angular.z - self.vel.angular.z
+        delta_pwm_lin = self.K_P_LIN * lin_diff if lin_diff > self.LIN_THRESHOLD else 0
+        delta_pwm_rot = self.K_P_ROT * rot_diff if rot_diff > self.ROT_THRESHOLD else 0
 
         # Add to pwm
-        self.curr_pwm_l += delta_pwm_lin + delta_pwm_rot
-        self.curr_pwm_r += delta_pwm_lin - delta_pwm_rot
+        self.curr_pwm_l += delta_pwm_lin - delta_pwm_rot
+        self.curr_pwm_r += delta_pwm_lin + delta_pwm_rot
 
         # Clip pwm value
         self.curr_pwm_l = max(min(self.curr_pwm_l, PWM_MAX), PWM_MIN)
         self.curr_pwm_r = max(min(self.curr_pwm_r, PWM_MAX), PWM_MIN)
-        
-        print(self.curr_pwm_l)
-        print(self.curr_pwm_r)
 
         # Move robot based on calculated PWM values
-        #self.send_pwm(channel=THR_BL, value=self.curr_pwm_l)
-        #self.send_pwm(channel=THR_BR, value=self.curr_pwm_r)
+        self.send_pwm(channel=THR_BL, value=self.curr_pwm_l)
+        self.send_pwm(channel=THR_BR, value=self.curr_pwm_r)
 
 if __name__ == '__main__':
     try:
