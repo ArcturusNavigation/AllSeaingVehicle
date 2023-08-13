@@ -1,0 +1,12 @@
+
+<launch>
+  <!-- Node for converting command velocity to PWM -->
+  <node name="pwm_converter" pkg="controller_suite" type="velocity_parser.py" output="screen" />
+
+  <!-- Node for simulating the boat -->
+  <node name="boat_simulator" pkg="controller_suite" type="pwm_simple_sim.py" output="screen" />
+
+  <!-- Launch rqt_robot_steering -->
+  <node name="rqt_robot_steering" pkg="rqt_robot_steering" type="rqt_robot_steering" />
+
+</launch>
