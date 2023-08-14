@@ -18,9 +18,9 @@ class ActionPlanner():
             LabeledBoundingBox2DArray,
             self.bbox_callback,
         )
-        self.state_timer = rospy.Timer(rospy.Duration(0.1), self.state_pub)
+        rospy.Timer(rospy.Duration(0.1), self.publish_state)
 
-    def state_pub(self):
+    def publish_state(self, event=None):
         self.state_pub.publish(self.state)
 
     def bbox_callback(self, bboxes):
@@ -32,7 +32,7 @@ class ActionPlanner():
             else:
                 self.start_no_bboxes = bboxes.header.stamp
 
-            if self.start_no_bboxes - self.start_bboxes > rospy.Duration(1):
+            if self.start_no_bboxes - self.start_bboxes > rospy.Duration(0.1):
                 self.state += 1
                 
 if __name__ == "__main__":
