@@ -114,6 +114,7 @@
   <gazebo reference="camera_link">
     <sensor name="camera1" type="camera">
       <horizontal_fov>1.047</horizontal_fov>
+      <visualize>true</visualize>
       <image>
         <width>640</width>
         <height>480</height>
@@ -466,106 +467,6 @@
   <gazebo reference="right_motor_joint">
     <use_parent_model_frame>1</use_parent_model_frame>
   </gazebo>
-  <gazebo>
-    <plugin filename="libArduPilotPlugin.so" name="ArduCopter_Plugin">
-      <fdm_addr>127.0.0.1</fdm_addr>
-      <fdm_port_in>9002</fdm_port_in>
-      <fdm_port_out>9003</fdm_port_out>
-      <modelXYZToAirplaneXForwardZDown>0 0 0 3.141593 0 0</modelXYZToAirplaneXForwardZDown>
-      <gazeboXYZToNED>0 0 0 3.141593 0 0</gazeboXYZToNED>
-      <imuName>dummy_base_link::imu_sensor</imuName>
-      <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
-      <control channel="0">
-        <type>VELOCITY</type>
-        <offset>-0.5</offset>
-        <p_gain>1</p_gain>
-        <i_gain>0</i_gain>
-        <d_gain>0</d_gain>
-        <i_max>0</i_max>
-        <i_min>0</i_min>
-        <cmd_max>10</cmd_max>
-        <cmd_min>-10</cmd_min>
-        <jointName>left_motor_joint</jointName>
-        <multiplier>-100</multiplier>
-      </control>
-      <control channel="2">
-        <type>VELOCITY</type>
-        <offset>-0.5</offset>
-        <p_gain>1</p_gain>
-        <i_gain>0</i_gain>
-        <d_gain>0</d_gain>
-        <i_max>0</i_max>
-        <i_min>0</i_min>
-        <cmd_max>10</cmd_max>
-        <cmd_min>-10</cmd_min>
-        <jointName>right_motor_joint</jointName>
-        <multiplier>-100</multiplier>
-      </control>
-    </plugin>
-    <plugin filename="libLiftDragPlugin.so" name="rotor_1_blade_1">
-      <a0>2</a0>
-      <alpha_stall>4</alpha_stall>
-      <cla>10.2500</cla>
-      <cda>0.10</cda>
-      <cma>0.00</cma>
-      <cla_stall>-0.025</cla_stall>
-      <cda_stall>0.0</cda_stall>
-      <cma_stall>0.0</cma_stall>
-      <area>0.002</area>
-      <air_density>997</air_density>
-      <cp>0.084 0 0</cp>
-      <forward>0 1 0</forward>
-      <upward>0 0 1</upward>
-      <link_name>right_propeller_link</link_name>
-    </plugin>
-    <plugin filename="libLiftDragPlugin.so" name="rotor_1_blade_2">
-      <a0>2</a0>
-      <alpha_stall>4</alpha_stall>
-      <cla>10.2500</cla>
-      <cda>0.10</cda>
-      <cma>0.00</cma>
-      <cla_stall>-0.025</cla_stall>
-      <cda_stall>0.0</cda_stall>
-      <cma_stall>0.0</cma_stall>
-      <area>0.002</area>
-      <air_density>997</air_density>
-      <cp>-0.084 0 0</cp>
-      <forward>0 -1 0</forward>
-      <upward>0 0 1</upward>
-      <link_name>left_propeller_link</link_name>
-    </plugin>
-    <plugin filename="libusv_gazebo_dynamics_plugin.so" name="usv_dynamics_wamv_dynamics_plugin">
-      <bodyName>base_link</bodyName>
-      <waterLevel>.25</waterLevel>
-      <waterDensity>997.8</waterDensity>
-      <xDotU>0.0</xDotU>
-      <yDotV>0.0</yDotV>
-      <nDotR>0.0</nDotR>
-      <xU>51.3</xU>
-      <xUU>72.4</xUU>
-      <yV>40.0</yV>
-      <yVV>0.0</yVV>
-      <zW>500.0</zW>
-      <kP>50.0</kP>
-      <mQ>50.0</mQ>
-      <nR>400.0</nR>
-      <nRR>0.0</nRR>
-      <hullRadius>0.1</hullRadius>
-      <boatWidth>0.7</boatWidth>
-      <boatLength>1</boatLength>
-      <length_n>2</length_n>
-      <!-- <wave_model>ocean</wave_model> -->
-      <wave_n> 3 </wave_n>
-      <wave_amp0> 0</wave_amp0>
-      <wave_amp1> 0</wave_amp1>
-      <wave_amp2> 0</wave_amp2>
-      <wave_period0> 12 </wave_period0>
-      <wave_period1> 8 </wave_period1>
-      <wave_period2> 5.33333 </wave_period2>
-      <wave_direction0> 0.921061 -0.389418 </wave_direction0>
-      <wave_direction1> 1 0 </wave_direction1>
-      <wave_direction2> 0.921061 0.389418 </wave_direction2>
-    </plugin>
-  </gazebo>
+
 </robot>
 

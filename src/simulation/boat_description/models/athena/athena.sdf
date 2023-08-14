@@ -1,0 +1,238 @@
+<?xml version='1.0'?>
+<sdf version='1.5'>
+  <model name="athena">
+    <link name='deck'>
+          <sensor name='imu_sensor' type='imu'>
+        <always_on>1</always_on>
+        <update_rate>1000</update_rate>
+        <imu/>
+        <pose>0 0 0 0 -0 0</pose>
+      </sensor>
+      <pose>0 0 .25 0 0 0</pose>
+
+      <inertial>
+        <mass>20.0</mass>
+        <pose>-0.1 0 -0.1 0 0 0</pose>
+        <inertia>
+          <ixx>0.5</ixx>
+          <iyy>1.0</iyy>
+          <izz>0.1</izz>
+        </inertia>
+      </inertial>
+
+      <collision name='collision'>
+        <geometry>
+          <box>
+            <size>2 1 0.3</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name='visual'>
+        <geometry>
+          <box>
+            <size>2 1 0.3</size>
+          </box>
+        </geometry>
+      </visual>
+    </link>
+    <link name="left_thruster">
+      <pose>0.8 0.4 -.1 0 1.5707 0</pose>
+      <collision name="collision">
+        <geometry>
+          <cylinder>
+            <radius>.125</radius>
+            <length>.05</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <cylinder>
+            <radius>.125</radius>
+            <length>.05</length>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+
+    <link name="right_thruster">
+      <pose>0.8 -0.4 -.1 0 1.5707 0</pose>
+      <collision name="collision">
+        <geometry>
+          <cylinder>
+            <radius>.125</radius>
+            <length>.05</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <cylinder>
+            <radius>.125</radius>
+            <length>.05</length>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+    <link name="camera_link">
+    <pose> -.5 0 .75 0 0  3.14</pose>
+    <sensor type="camera" name="camera1">
+    <static> 1 </static>
+      <horizontal_fov>1.047</horizontal_fov>
+      <image>
+        <width>640</width>
+        <height>480</height>
+      </image>
+      <clip>
+        <near>0.1</near>
+        <far>100</far>
+      </clip>
+      <always_on>1</always_on>
+      <update_rate>30</update_rate>
+      <plugin name='camera_controller' filename='libgazebo_ros_camera.so'>
+        <alwaysOn>1</alwaysOn>
+        <updateRate>0.0</updateRate>
+        <cameraName>zed2i</cameraName>
+        <imageTopicName>/zed2i/zed_node/rgb/image_rect_color</imageTopicName>
+        <cameraInfoTopicName>/zed_node/camera_info</cameraInfoTopicName>
+        <frameName>camera_link</frameName>
+        <hackBaseline>0.07</hackBaseline>
+        <distortionK1>0.0</distortionK1>
+        <distortionK2>0.0</distortionK2>
+        <distortionK3>0.0</distortionK3>
+        <distortionT1>0.0</distortionT1>
+        <distortionT2>0.0</distortionT2>
+      </plugin>
+    </sensor>
+    </link>
+
+    <joint type="revolute" name="left_thruster_joint">
+      <pose>0 0 -0.03 0 0 0</pose>
+      <child>left_thruster</child>
+      <parent>deck</parent>
+      <axis>
+        <use_parent_model_frame>true</use_parent_model_frame>
+        <xyz>1 0 0</xyz>
+      </axis>
+    </joint>
+
+    <joint type="revolute" name="right_thruster_joint">
+      <pose>0 0 0.03 0 0 0</pose>
+      <child>right_thruster</child>
+      <parent>deck</parent>
+      <axis>
+        <use_parent_model_frame>true</use_parent_model_frame>
+        <xyz>1 0 0</xyz>
+      </axis>
+    </joint>
+
+    <joint type="fixed" name="camera_joint">
+      <pose>0 0 0 0 0 0</pose>
+      <child>camera_link</child>
+      <parent>deck</parent>
+    </joint>
+
+    <plugin name='ArduCopter_Plugin' filename='libArduPilotPlugin.so'>
+      <fdm_addr>127.0.0.1</fdm_addr>
+      <fdm_port_in>9002</fdm_port_in>
+      <fdm_port_out>9003</fdm_port_out>
+      <modelXYZToAirplaneXForwardZDown>0 0 0 3.141593 0 0</modelXYZToAirplaneXForwardZDown>
+      <gazeboXYZToNED>0 0 0 3.141593 0 0</gazeboXYZToNED>
+      <imuName>deck::imu_sensor</imuName>
+      <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
+      <control channel='0'>
+        <type>VELOCITY</type>
+        <offset>-0.5</offset>
+        <p_gain>1</p_gain>
+        <i_gain>0</i_gain>
+        <d_gain>0</d_gain>
+        <i_max>0</i_max>
+        <i_min>0</i_min>
+        <cmd_max>10</cmd_max>
+        <cmd_min>-10</cmd_min>
+        <jointName>left_thruster_joint</jointName>
+        <multiplier>100</multiplier>
+      </control>
+      <control channel='2'>
+        <type>VELOCITY</type>
+        <offset>-0.5</offset>
+        <p_gain>1</p_gain>
+        <i_gain>0</i_gain>
+        <d_gain>0</d_gain>
+        <i_max>0</i_max>
+        <i_min>0</i_min>
+        <cmd_max>10</cmd_max>
+        <cmd_min>-10</cmd_min>
+        <jointName>right_thruster_joint</jointName>
+        <multiplier>100</multiplier>
+      </control>
+    </plugin>
+    <plugin name='rotor_1_blade_1' filename='libLiftDragPlugin.so'>
+      <a0>2</a0>
+      <alpha_stall>4</alpha_stall>
+      <cla>10.2500</cla>
+      <cda>0.10</cda>
+      <cma>0.00</cma>
+      <cla_stall>-0.025</cla_stall>
+      <cda_stall>0.0</cda_stall>
+      <cma_stall>0.0</cma_stall>
+      <area>0.002</area>
+      <air_density>997</air_density>
+      <cp>0.084 0 0</cp>
+      <forward>0 1 0</forward>
+      <upward>0 0 1</upward>
+      <link_name>right_thruster</link_name>
+    </plugin>
+    <plugin name='rotor_1_blade_2' filename='libLiftDragPlugin.so'>
+      <a0>2</a0>
+      <alpha_stall>4</alpha_stall>
+      <cla>10.2500</cla>
+      <cda>0.10</cda>
+      <cma>0.00</cma>
+      <cla_stall>-0.025</cla_stall>
+      <cda_stall>0.0</cda_stall>
+      <cma_stall>0.0</cma_stall>
+      <area>0.002</area>
+      <air_density>997</air_density>
+      <cp>-0.084 0 0</cp>
+      <forward>0 -1 0</forward>
+      <upward>0 0 1</upward>
+      <link_name>left_thruster</link_name>
+    </plugin>
+    <plugin name='usv_dynamics_wamv_dynamics_plugin' filename='libusv_gazebo_dynamics_plugin.so'>
+      <waterLevel>.25</waterLevel>
+      <waterDensity>997.8</waterDensity>
+      <xDotU>0.0</xDotU>
+      <yDotV>0.0</yDotV>
+      <nDotR>0.0</nDotR>
+      <xU>51.3</xU>
+      <xUU>72.4</xUU>
+      <yV>40.0</yV>
+      <yVV>0.0</yVV>
+      <zW>500.0</zW>
+      <kP>50.0</kP>
+      <mQ>50.0</mQ>
+      <nR>400.0</nR>
+      <nRR>0.0</nRR>
+      <hullRadius>0.1</hullRadius>
+      <boatWidth>0.7</boatWidth>
+      <boatLength>1</boatLength>
+      <length_n>2</length_n>
+      <wave_n>3</wave_n>
+      <wave_amp0>0</wave_amp0>
+      <wave_amp1>0</wave_amp1>
+      <wave_amp2>0</wave_amp2>
+      <wave_period0>12</wave_period0>
+      <wave_period1>8</wave_period1>
+      <wave_period2>5.33333</wave_period2>
+      <wave_direction0>0.921061 -0.389418</wave_direction0>
+      <wave_direction1>1 0</wave_direction1>
+      <wave_direction2>0.921061 0.389418</wave_direction2>
+      <bodyName>deck</bodyName>
+      <xyzOffset>0 0 0</xyzOffset>
+      <rpyOffset>0 -0 0</rpyOffset>
+      <ignition::corrected_offsets>1</ignition::corrected_offsets>
+    </plugin>
+  </model>
+ </sdf>

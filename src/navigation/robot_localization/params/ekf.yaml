@@ -5,8 +5,8 @@ print_diagnostics: true
 
 map_frame: map              
 odom_frame: odom            
-base_link_frame: base_link  
-world_frame: odom           
+base_link_frame: base_link 
+world_frame: map        
 
 odom0: /zed2i/zed_node/odom
 odom0_config: [true,  true,  false,
