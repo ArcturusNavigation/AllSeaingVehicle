@@ -6,6 +6,7 @@ class Loop():
     def __init__(self):
         self.state_sub = rospy.Subscriber(
             "/state",
+            Int32,
             self.state_callback,
             queue_size=10
         )
@@ -22,4 +23,6 @@ class Loop():
             self.cmd_pub.publish(cmd_vel)
 
 if __name__ == "__main__":
-
+    rospy.init_node("loop")
+    Loop()
+    rospy.spin()

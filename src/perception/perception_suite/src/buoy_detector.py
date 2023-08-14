@@ -16,6 +16,11 @@ from utility.constants import BUOY_CLASSES, IMG_WIDTH, IMG_HEIGHT, ZED_FOV
 
 class BuoyDetector():
     def __init__(self):
+		802.11nstremenv2
+Network Name		
+Frequency		
+MHz
+Band		
         self.bridge = cv_bridge.CvBridge()
 
         self.bbox_mins = {}
