@@ -1,5 +1,0 @@
-<launch>
-<include file = "$(find sim_suite)/launch/apm.launch"/>
-<node pkg = "pilot_suite" type = "ardupilot.py" name = "pilot_node" output = "screen"/>
-<node pkg = "pilot_suite" type = "navigation_pilot.py" name = "navigation_pilot_node" output = "screen"/>
-</launch>
