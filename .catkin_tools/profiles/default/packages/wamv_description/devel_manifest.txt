@@ -1,6 +1,0 @@
-simulation/wamv_description
-/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_description/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
-/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_description/share/wamv_description/cmake/wamv_descriptionConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wamv_description/cmake/wamv_descriptionConfig.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_description/share/wamv_description/cmake/wamv_descriptionConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wamv_description/cmake/wamv_descriptionConfig-version.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_description/share/wamv_description/urdf/wamv_base.urdf /home/jacobdr/AllSeaingVehicle/devel/share/wamv_description/urdf/wamv_base.urdf
-/home/jacobdr/AllSeaingVehicle/devel/.private/wamv_description/lib/pkgconfig/wamv_description.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/wamv_description.pc

@@ -1,5 +1,0 @@
-perception/hector_slam/hector_geotiff_launch
-/home/jacobdr/AllSeaingVehicle/devel/.private/hector_geotiff_launch/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
-/home/jacobdr/AllSeaingVehicle/devel/.private/hector_geotiff_launch/share/hector_geotiff_launch/cmake/hector_geotiff_launchConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/hector_geotiff_launch/cmake/hector_geotiff_launchConfig.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/hector_geotiff_launch/share/hector_geotiff_launch/cmake/hector_geotiff_launchConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/hector_geotiff_launch/cmake/hector_geotiff_launchConfig-version.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/hector_geotiff_launch/lib/pkgconfig/hector_geotiff_launch.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/hector_geotiff_launch.pc

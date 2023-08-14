@@ -1,6 +1,0 @@
-perception/zed-ros-wrapper/zed_wrapper
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_wrapper/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_wrapper/share/zed_wrapper/cmake/zed_wrapperConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/zed_wrapper/cmake/zed_wrapperConfig.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_wrapper/share/zed_wrapper/cmake/zed_wrapperConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/zed_wrapper/cmake/zed_wrapperConfig-version.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_wrapper/lib/zed_wrapper/zed_wrapper_node /home/jacobdr/AllSeaingVehicle/devel/lib/zed_wrapper/zed_wrapper_node
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_wrapper/lib/pkgconfig/zed_wrapper.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/zed_wrapper.pc

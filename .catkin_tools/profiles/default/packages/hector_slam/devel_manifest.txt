@@ -1,2 +1,0 @@
-perception/hector_slam/hector_slam
-/home/jacobdr/AllSeaingVehicle/devel/.private/hector_slam/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock

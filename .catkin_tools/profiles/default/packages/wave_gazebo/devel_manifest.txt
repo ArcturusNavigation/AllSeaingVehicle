@@ -1,8 +1,0 @@
-simulation/wave_gazebo
-/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
-/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/share/wave_gazebo/cmake/wave_gazeboConfig-version.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wave_gazebo/cmake/wave_gazeboConfig-version.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/share/wave_gazebo/cmake/wave_gazeboConfig.cmake /home/jacobdr/AllSeaingVehicle/devel/share/wave_gazebo/cmake/wave_gazeboConfig.cmake
-/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/share/wave_gazebo/worlds/ocean_buoys.world /home/jacobdr/AllSeaingVehicle/devel/share/wave_gazebo/worlds/ocean_buoys.world
-/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/share/wave_gazebo/worlds/ocean.world /home/jacobdr/AllSeaingVehicle/devel/share/wave_gazebo/worlds/ocean.world
-/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/share/wave_gazebo/worlds/ocean_wamv.world /home/jacobdr/AllSeaingVehicle/devel/share/wave_gazebo/worlds/ocean_wamv.world
-/home/jacobdr/AllSeaingVehicle/devel/.private/wave_gazebo/lib/pkgconfig/wave_gazebo.pc /home/jacobdr/AllSeaingVehicle/devel/lib/pkgconfig/wave_gazebo.pc

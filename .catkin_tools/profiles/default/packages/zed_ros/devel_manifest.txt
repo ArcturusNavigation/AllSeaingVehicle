@@ -1,2 +1,0 @@
-perception/zed-ros-wrapper/zed_ros
-/home/jacobdr/AllSeaingVehicle/devel/.private/zed_ros/cmake.lock /home/jacobdr/AllSeaingVehicle/devel/./cmake.lock
