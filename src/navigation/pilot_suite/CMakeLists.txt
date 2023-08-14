@@ -58,6 +58,7 @@ include_directories(
 catkin_install_python(PROGRAMS
 	src/ardupilot.py
 	src/navigation_pilot.py
+	src/buoy_nav.py
 	src/waypoint_sim.py
 	src/tf2.py
 	src/local_planner.py

@@ -12,6 +12,7 @@ import rospy
 import rospkg
 from sensor_msgs.msg import Image
 from perception_suite.msg import LabeledBoundingBox2D, LabeledBoundingBox2DArray
+from utility.constants import IMG_WIDTH, IMG_HEIGHT
 
 class Yolov5Detector():
     def __init__(self):
@@ -29,13 +30,13 @@ class Yolov5Detector():
         # Subscribers and publishers
         self.bbox_pub = rospy.Publisher('/perception_suite/bounding_boxes', LabeledBoundingBox2DArray, queue_size=1)
         self.img_pub = rospy.Publisher('/perception_suite/segmented_image', Image, queue_size=1)
-#        self.img_sub = rospy.Subscriber(
-#            '/zed2i/zed_node/rgb/image_rect_color', 
-#            Image, 
-#            self.img_callback, 
-#            queue_size=1, 
-#            buff_size=2**24,
-#        )
+        self.img_sub = rospy.Subscriber(
+            '/zed2i/zed_node/rgb/image_rect_color', 
+            Image, 
+            self.img_callback, 
+            queue_size=1, 
+            buff_size=2**24,
+        )
     
     def img_callback(self, img):
         try:
@@ -52,7 +53,6 @@ class Yolov5Detector():
         # Set header of bboxes
         bboxes = LabeledBoundingBox2DArray()
         bboxes.header.stamp = rospy.Time.now()
-        bboxes.header.frame_id = "zed2i_camera_center"
 
         # Set bounding boxes around colored buoys
         for _, row in preds.iterrows():
