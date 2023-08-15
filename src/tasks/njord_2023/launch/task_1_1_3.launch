@@ -1,9 +1,8 @@
 <launch>
 
 	<!-- Nodes -->
-	<node pkg="perception_suite" type="yolov5_detector.py" 	   name="yolov5"/>
-	<node pkg="perception_suite" type="buoy_detector.py"   	   name="buoy_detector"/>
-<!--<node pkg="controller_suite" type="thruster_controller.py" name="thruster_controller"/>-->
+	<node pkg="perception_suite" type="yolov5_detector.py" name="yolov5"/>
+	<node pkg="perception_suite" type="buoy_detector.py" name="buoy_detector"/>
 	
 	<!-- Launch files -->
 	<include file="$(find pilot_suite)/launch/mavros.launch"></include>
