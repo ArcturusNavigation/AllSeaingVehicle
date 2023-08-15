@@ -10,22 +10,31 @@
 		pkg="robot_state_publisher"
 		type="robot_state_publisher" 
 	/>
-	<!-- vim: set ft=xml noet : -->
-	<!-- <node pkg="robot_localization" type="ekf_localization_node" name="ekf_local" clear_params="true">
-		<rosparam command="load" file="$(find robot_localization)/params/ekf.yaml" />
-	</node> -->
 
-	<node pkg="robot_localization" type="navsat_transform_node" name="navsat_transform_node" clear_params="true">
-		<rosparam command="load" file="$(find robot_localization)/params/navsat_transform.yaml" />
-		<remap from="/imu/data" to="/mavros/data/imu" />
+	<!-- Send a static GPS fix to every new subscriber. Edit latitude and longitude in launch/demo.gps to use your own position. -->
+	<node pkg="robot_localization" type="navsat_transform_node" name="navsat_transform_node" respawn="true">
+		<remap from="/imu/data" to="/mavros/imu/data" />
 		<remap from="/gps/fix" to="/mavros/global_position/global" />
+		<remap from="/odometry/filtered" to="/zed2i/zed_node/odom"/>
+	</node> 
+
+	<!-- vim: set ft=xml noet : -->
+	<node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization_odom" clear_params="true">
+		<rosparam command="load" file="$(find robot_localization)/params/odom_ekf.yaml" />
 	</node>
 
-	 <!-- Start rviz with a pre-configured AerialMap instance. It will use the fake GPS fix from above. -->
-    <node pkg="rviz" type="rviz" name="gps_rviz" args="-d $(find rviz_satellite)/launch/boat_gps.rviz"/>
+	<!-- vim: set ft=xml noet : -->
+	<node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization_gps" clear_params="true">
+		<rosparam command="load" file="$(find robot_localization)/params/gps_ekf.yaml" />
+	</node>
 
+
+	 <!-- Start rviz with a pre-configured AerialMap instance. It will use the fake GPS fix from above. -->
+    <!-- Start rviz with a pre-configured AerialMap instance. It will use the fake GPS fix from above. -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find rviz_satellite)/launch/demo.rviz"/>
 	<!-- Start rviz with a pre-configured AerialMap instance. It will use the fake GPS fix from above. -->
     <node pkg="rviz" type="rviz" name="robot_rviz" args="-d $(find robot_localization)/rviz/boat_visualizer.rviz"/>
+
 
 
 </launch>
