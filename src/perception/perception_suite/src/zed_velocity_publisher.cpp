@@ -18,30 +18,30 @@ class ZedVelocityPublisher {
 
     public:
         ZedVelocityPublisher(ros::NodeHandle *nh);
-        void poseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg);
+        void poseCallback(const nav_msgs::Odometry::ConstPtr &msg);
 };
 
 ZedVelocityPublisher::ZedVelocityPublisher(ros::NodeHandle *nh) {
     pubVel = nh->advertise<geometry_msgs::Twist>("/perception_suite/zed_velocity", 1, this);
-    subPose = nh->subscribe("/zed2i/zed_node/pose", 10, &ZedVelocityPublisher::poseCallback, this);
+    subPose = nh->subscribe("/zed2i/zed_node/odom", 1, &ZedVelocityPublisher::poseCallback, this);
     prevTime = ros::Time();
     prevPose = geometry_msgs::Twist();
 }
 
-void ZedVelocityPublisher::poseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg) {
+void ZedVelocityPublisher::poseCallback(const nav_msgs::Odometry::ConstPtr &msg) {
 
     // Camera position in map frame
     ros::Time currTime = msg->header.stamp;
-    double tx = msg->pose.position.x;
-    double ty = msg->pose.position.y;
-    double tz = msg->pose.position.z;
+    double tx = msg->pose.pose.position.x;
+    double ty = msg->pose.pose.position.y;
+    double tz = msg->pose.pose.position.z;
 
     // Orientation quaternion
     tf2::Quaternion q(
-        msg->pose.orientation.x,
-        msg->pose.orientation.y,
-        msg->pose.orientation.z,
-        msg->pose.orientation.w);
+        msg->pose.pose.orientation.x,
+        msg->pose.pose.orientation.y,
+        msg->pose.pose.orientation.z,
+        msg->pose.pose.orientation.w);
 
     // 3x3 Rotation matrix from quaternion
     tf2::Matrix3x3 m(q);

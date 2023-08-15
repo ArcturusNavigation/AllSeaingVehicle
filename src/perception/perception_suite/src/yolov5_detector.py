@@ -12,6 +12,7 @@ import rospy
 import rospkg
 from sensor_msgs.msg import Image
 from perception_suite.msg import LabeledBoundingBox2D, LabeledBoundingBox2DArray
+from utility.constants import IMG_WIDTH, IMG_HEIGHT
 
 class Yolov5Detector():
     def __init__(self):
@@ -20,13 +21,10 @@ class Yolov5Detector():
 
         # Get pretrained yolov5 models for colored buoys and cardinal markers
         path_hubconfig = f"/home/{getpass.getuser()}/yolov5"
-        path_color_model = rospack.get_path("perception_suite") + "/model/NJORD_WEIGHTS_COLOR_FINAL.pt"
-        #path_color_model = rospack.get_path("perception_suite") + "/model/buoy_detection_best_weights_v7.pt"
-        self.color_model = torch.hub.load(path_hubconfig, 'custom', path=path_color_model, source='local')
-        path_cardinal_model = rospack.get_path("perception_suite") + "/model/NJORD_WEIGHTS_CARDINAL_FINAL.pt"
-        self.cardinal_model = torch.hub.load(path_hubconfig, 'custom', path=path_cardinal_model, source='local')
+        path_model = rospack.get_path("perception_suite") + "/model/NJORD_WEIGHTS_ALL.pt"
+        self.model = torch.hub.load(path_hubconfig, 'custom', path=path_model, source='local')
 
-        # # Model options
+        # Model options
         # self.color_model.classes = [2, 4]
 
         # Subscribers and publishers
@@ -47,21 +45,17 @@ class Yolov5Detector():
             rospy.loginfo(e)
 
         # Get image predictions for colored buoys and cardinal markers
-        color_results = self.color_model(img)
-        color_preds = color_results.pandas().xyxy[0]
-        cardinal_results = self.cardinal_model(img)        
-        cardinal_preds = cardinal_results.pandas().xyxy[0]
+        results = self.model(img)
+        preds = results.pandas().xyxy[0]
 
-        rospy.loginfo(color_preds)
-        rospy.loginfo(cardinal_preds)
+        rospy.loginfo(preds)
 
         # Set header of bboxes
         bboxes = LabeledBoundingBox2DArray()
         bboxes.header.stamp = rospy.Time.now()
-        bboxes.header.frame_id = "zed2i_camera_center"
 
         # Set bounding boxes around colored buoys
-        for _, row in color_preds.iterrows():
+        for _, row in preds.iterrows():
             bbox = LabeledBoundingBox2D()
             
             bbox.min_x = int(row['xmin'])
@@ -74,21 +68,6 @@ class Yolov5Detector():
             bbox.probability = row['confidence']
             bboxes.boxes.append(bbox)
             cv2.rectangle(img, (bbox.min_x, bbox.min_y), (bbox.max_x, bbox.max_y), (255, 0, 0), 4)
-
-        # Set bounding boxes around cardinal markers
-        for _, row in cardinal_preds.iterrows():
-            bbox = LabeledBoundingBox2D()
-            
-            bbox.min_x = int(row['xmin'])
-            bbox.min_y = int(row['ymin'])
-            
-            bbox.max_x = int(row['xmax'])
-            bbox.max_y = int(row['ymax'])
-            
-            bbox.label = row['class']
-            bbox.probability = row['confidence']
-            bboxes.boxes.append(bbox)
-            cv2.rectangle(img, (bbox.min_x, bbox.min_y), (bbox.max_x, bbox.max_y), (0, 0, 255), 4)
 
         self.img_pub.publish(self.bridge.cv2_to_imgmsg(img, "rgb8"))
         self.bbox_pub.publish(bboxes)

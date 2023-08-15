@@ -19,9 +19,9 @@ class BBoxFilter():
     def __init__(self):
         self.bridge = cv_bridge.CvBridge()
 
-        self.bbox_multiplier = 2
-        self.filter_y_threshold = 2 * IMG_HEIGHT / 3
-        self.forget_threshold = rospy.Duration.from_sec(0.8)
+        self.bbox_multiplier = 1.5
+        self.filter_y_threshold = 0
+        self.forget_threshold = rospy.Duration.from_sec(0.5)
         self.remembered_bboxes = []
 
         self.bbox_sub = rospy.Subscriber(
@@ -42,11 +42,11 @@ class BBoxFilter():
 
     def filter_remembered_bboxes(self):
         self.remembered_bboxes = list(filter(lambda x: rospy.Time.now() - x[1] < self.forget_threshold, self.remembered_bboxes))
-        self.remembered_bboxes = list(filter(lambda x: x[0].min_y > self.filter_y_threshold, self.remembered_bboxes))
-        self.remembered_bboxes = list(filter(lambda x: x[0].min_x > 0, self.remembered_bboxes))
-        self.remembered_bboxes = list(filter(lambda x: x[0].min_y > 0, self.remembered_bboxes))
-        self.remembered_bboxes = list(filter(lambda x: x[0].max_x < IMG_WIDTH, self.remembered_bboxes))
-        self.remembered_bboxes = list(filter(lambda x: x[0].max_y < IMG_HEIGHT, self.remembered_bboxes))
+#        self.remembered_bboxes = list(filter(lambda x: x[0].min_y > self.filter_y_threshold, self.remembered_bboxes))
+#        self.remembered_bboxes = list(filter(lambda x: x[0].min_x > 0, self.remembered_bboxes))
+#        self.remembered_bboxes = list(filter(lambda x: x[0].min_y > 0, self.remembered_bboxes))
+#        self.remembered_bboxes = list(filter(lambda x: x[0].max_x < IMG_WIDTH, self.remembered_bboxes))
+#        self.remembered_bboxes = list(filter(lambda x: x[0].max_y < IMG_HEIGHT, self.remembered_bboxes))
 
     def bbox_matching(self, curr_bboxes):
         
