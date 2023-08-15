@@ -44,7 +44,6 @@ catkin_package()
 
 catkin_install_python(PROGRAMS
 	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-	src/loop.py
-	src/action_planner.py
+	src/maneuver.py
 )
 

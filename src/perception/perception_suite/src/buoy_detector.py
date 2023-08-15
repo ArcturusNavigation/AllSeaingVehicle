@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 References:
 https://pytorch.org/hub/ultralytics_yolov5/
@@ -16,16 +17,11 @@ from utility.constants import BUOY_CLASSES, IMG_WIDTH, IMG_HEIGHT, ZED_FOV
 
 class BuoyDetector():
     def __init__(self):
-		802.11nstremenv2
-Network Name		
-Frequency		
-MHz
-Band		
         self.bridge = cv_bridge.CvBridge()
 
         self.bbox_mins = {}
         self.bbox_maxes = {}
-        self.num_avg = 20
+        self.num_avg = 5
         self.centers = [Vec2D(
             IMG_WIDTH / 2,
             3 * IMG_HEIGHT / 4
@@ -86,22 +82,19 @@ Band
             new_bboxes.boxes.append(labeled_bbox)
 
         # Accumulate center positions
-        if BUOY_CLASSES["RED"] in self.bbox_mins and BUOY_CLASSES["GREEN"] in self.bbox_mins:
-
-            reds = (self.bbox_mins[BUOY_CLASSES["RED"]] + 
-                    self.bbox_maxes[BUOY_CLASSES["RED"]])
-            greens = (self.bbox_mins[BUOY_CLASSES["GREEN"]] +
-                      self.bbox_maxes[BUOY_CLASSES["GREEN"]])
-            
-            if (BUOY_CLASSES["WEST"] in self.bbox_mins):
-                reds = self.bbox_mins[BUOY_CLASSES["WEST"]] + self.bbox_maxes[BUOY_CLASSES["WEST"]]
-            elif (BUOY_CLASSES["EAST"] in self.bbox_mins):
-                greens = self.bbox_mins[BUOY_CLASSES["EAST"]] + self.bbox_maxes[BUOY_CLASSES["EAST"]]
-
-            center = (reds + greens) / 4
-            self.centers.append(center)
-        else:
-            self.centers.append(self.avg_center())
+        reds = 0
+        if BUOY_CLASSES["EAST"] in self.bbox_maxes:
+            reds = self.bbox_maxes[BUOY_CLASSES["EAST"]]
+        elif BUOY_CLASSES["RED"] in self.bbox_maxes:
+            reds = self.bbox_maxes[BUOY_CLASSES["RED"]]
+        greens = IMG_WIDTH
+        if BUOY_CLASSES["WEST"] in self.bbox_mins:
+            greens = self.bbox_mins[BUOY_CLASSES["WEST"]]
+        elif BUOY_CLASSES["GREEN"] in self.bbox_mins:
+            greens = self.bbox_mins[BUOY_CLASSES["GREEN"]]
+           
+        center = (reds + greens) / 2
+        self.centers.append(center)
         if len(self.centers) > self.num_avg:
             self.centers.pop(0)
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import rospy
 from std_msgs.msg import Float64
 from geometry_msgs.msg import Twist
@@ -5,8 +6,8 @@ from utility.constants import IMG_WIDTH, IMG_HEIGHT
 
 class BuoyNav():
     
-    ANG_VEL_SCALE = 0.002
-    LIN_SPEED = 2
+    ANG_VEL_SCALE = 0.001
+    LIN_SPEED = 1
     
     def __init__(self):
         self.center_sub = rospy.Subscriber(

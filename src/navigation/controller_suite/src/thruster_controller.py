@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
 import rospy
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Float64
 from mavros_msgs.srv import CommandLong
-from utility.constants import THR_BL, THR_BR, PWM_MIN, PWM_MAX, PWM_MID
+from utility.constants import THR_BL, THR_BR, PWM_MIN, PWM_MAX, PWM_MID, IMG_WIDTH
 
 class ThrusterController:
 
-    K_P_ROT = 5
-    K_P_LIN = 5
-    ROT_THRESHOLD = 0.2 # rad/s
-    LIN_THRESHOLD = 0.5 # m/s
+    K_P_ROT = 0.5
+    FORWARD_PWM = 1700
 
     def __init__(self):
 
         rospy.init_node('thruster_controller', anonymous=True)
 
         # Current robot velocity
-        self.vel = Twist()
+        self.center = Float64()
         self.curr_pwm_l = PWM_MID
         self.curr_pwm_r = PWM_MID
 
         # Subscribe to the command velocity topic
-        rospy.Subscriber("/cmd_vel", Twist, self.calc_pwm_values)
-        rospy.Subscriber("/perception_suite/zed_velocity", Twist, self.get_velocity)
+        rospy.Subscriber("/perception_suite/buoy_center", Float64, self.calc_pwm_values)
 
         rospy.spin()
 
@@ -35,20 +33,15 @@ class ThrusterController:
             param2=float(value)
         ).success
 
-    def get_velocity(self, vel):
-        self.vel = vel
-
-    def calc_pwm_values(self, cmd_vel):
+    def calc_pwm_values(self, center):
 
         # Proportional error
-        lin_diff = cmd_vel.linear.x - self.vel.linear.x
-        rot_diff = cmd_vel.angular.z - self.vel.angular.z
-        delta_pwm_lin = self.K_P_LIN * lin_diff if lin_diff > self.LIN_THRESHOLD else 0
-        delta_pwm_rot = self.K_P_ROT * rot_diff if rot_diff > self.ROT_THRESHOLD else 0
+        rot_diff = IMG_WIDTH / 2 - center.data
+        delta_pwm_rot = self.K_P_ROT * rot_diff
 
         # Add to pwm
-        self.curr_pwm_l += delta_pwm_lin - delta_pwm_rot
-        self.curr_pwm_r += delta_pwm_lin + delta_pwm_rot
+        self.curr_pwm_l = self.FORWARD_PWM - delta_pwm_rot
+        self.curr_pwm_r = self.FORWARD_PWM + delta_pwm_rot
 
         # Clip pwm value
         self.curr_pwm_l = max(min(self.curr_pwm_l, PWM_MAX), PWM_MIN)
