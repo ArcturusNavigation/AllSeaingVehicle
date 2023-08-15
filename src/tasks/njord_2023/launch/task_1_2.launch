@@ -1,4 +1,4 @@
 <launch>
-	<node pkg="njord_2023" type="loop.py" name="loop"/>
+	<node pkg="njord_2023" type="maneuver.py" name="loop"/>
 	<include file="$(find pilot_suite)/launch/mavros.launch"></include>
 </launch>
