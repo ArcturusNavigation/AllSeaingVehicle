@@ -9,10 +9,11 @@ ZED_FOV = 107
 
 # Buoy classes for object detection
 BUOY_CLASSES = {
-    "EAST": 0,
+    #"EAST": 0,
     "GREEN": 1,
     "RED": 2,
-    "WEST": 3,
+    #"WEST": 3,
+    "BOAT": 0
 }
 
 #---------- NAVIGATION ----------#
@@ -21,9 +22,15 @@ BUOY_CLASSES = {
 PWM_MIN = 1100
 PWM_MID = 1500
 PWM_MAX = 1900
+PWM_MAX_TURN = 150
 
 # Thruster mappings
 THR_FL = 0
 THR_FR = 0
-THR_BL = 2
-THR_BR = 3
+THR_BL = 3
+THR_BR = 2
+
+# GPS WAYPOINTS
+GPS_LONG = 10.424066471642856 
+GPS_LAT = 63.44094650532144
+GPS_HEADING = 300 

@@ -1,0 +1,10 @@
+<launch>
+
+	<!-- Nodes Will Be Run By Base Station-->
+	<!-- node pkg="perception_suite" type="yolov5_detector.py" name="yolov5"/-->
+	<!-- node pkg="perception_suite" type="buoy_detector.py" name="buoy_detector"/-->
+	
+	<!-- Launch files -->
+	<include file="$(find pilot_suite)/launch/mavros.launch"></include>
+	<node pkg="pilot_suite" type="mode_listener.py" name="mode_listener"/>
+</launch>

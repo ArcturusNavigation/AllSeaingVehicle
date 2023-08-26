@@ -102,6 +102,8 @@ catkin_install_python(PROGRAMS
   src/controller.py
   src/thruster_controller.py
   src/velocity_parser.py
+  src/waypoint_tracker.py
+  src/waypoint_controller.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

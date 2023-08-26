@@ -44,6 +44,7 @@ catkin_package()
 
 catkin_install_python(PROGRAMS
 	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-	src/maneuver.py
+	src/otonomus_turn.py
+	src/otonomus.py
 )
 

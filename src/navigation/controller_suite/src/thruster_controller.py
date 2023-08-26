@@ -7,8 +7,8 @@ from utility.constants import THR_BL, THR_BR, PWM_MIN, PWM_MAX, PWM_MID, IMG_WID
 
 class ThrusterController:
 
-    K_P_ROT = 0.5
-    FORWARD_PWM = 1700
+    K_P_ROT = 0.7
+    FORWARD_PWM = 1600
 
     def __init__(self):
 
